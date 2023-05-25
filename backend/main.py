@@ -15,7 +15,7 @@ def simulate():
     result = eng.simulate(str(data).replace("'", '"'))
 
     for i in range(len(result['compartments'])):
-        result['compartments'][i] = np.array(result['compartments'][i]).flatten().tolist()
+        result['compartments'][i]['values'] = np.array(result['compartments'][i]['values']).flatten().tolist()
 
     string = str(result).replace("'", '"')
 

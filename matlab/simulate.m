@@ -19,16 +19,23 @@ function data=simulate(modelJson)
     % Initialize the compartments with their initial values and symbols
     for i = 1:compartmentsAmount
         % Fetch the compartment from the model
-        compartment = model.compartments(i);
+        modelCompartment = model.compartments(i);
+
+        % Initialize output compartment
+        dataCompartment = struct();
 
         % Initialize the compartment values
-        data.compartments = [data.compartments, zeros(1, data.time/data.step)];
-
-        % Set the initial value
-        data.compartments{i}(1) = compartment.initial;
+        dataCompartment.id = modelCompartment.id;
+        dataCompartment.values = zeros(1, data.time/data.step);
 
         % Set the symbol
-        compartmentSymbols{i} = sym(compartment.id);
+        compartmentSymbols{i} = sym(dataCompartment.id);
+
+        % Set the initial value
+        dataCompartment.values(1) = modelCompartment.initialValue;
+
+        % Add the compartment to the output
+        data.compartments = [data.compartments, dataCompartment];
     end
 
     % Simulate the model
@@ -38,17 +45,17 @@ function data=simulate(modelJson)
 
         % Set the compartment values
         for i = 1:compartmentsAmount
-            compartmentValues{i} = data.compartments{i}(t);
+            compartmentValues{i} = data.compartments{i}.values(t);
         end
 
         % Calculate the new compartment values
         for i = 1:compartmentsAmount
             % Fetch the compartment from the model
-            compartment = model.compartments(i);
+            modelCompartment = model.compartments(i);
 
             % Get the amount of inflows and outflows
-            compartmentInflows = numel(compartment.inflows);
-            compartmentOutflows = numel(compartment.outflows);
+            compartmentInflows = numel(modelCompartment.inflows);
+            compartmentOutflows = numel(modelCompartment.outflows);
 
             % Initialize the derivative
             d = 0;
@@ -56,7 +63,7 @@ function data=simulate(modelJson)
             % Calculate inflow part of the derivative
             for j = 1:compartmentInflows
                 % Fetch the inflow from the compartment
-                inflow = compartment.inflows(j);
+                inflow = modelCompartment.inflows(j);
 
                 % Add the inflow to the derivative
                 d = d + inflow.ratio * str2sym(inflow.value);
@@ -65,14 +72,14 @@ function data=simulate(modelJson)
             % Calculate outflow part of the derivative
             for j = 1:compartmentOutflows
                 % Fetch the outflow from the compartment
-                outflow = compartment.outflows(j);
+                outflow = modelCompartment.outflows(j);
 
                 % Subtract the outflow from the derivative
                 d = d - outflow.ratio * str2sym(outflow.value);
             end
 
             % Calculate the new compartment value
-            data.compartments{i}(t + 1) = data.compartments{i}(t) + eval(subs(d, compartmentSymbols, compartmentValues));
+            data.compartments{i}.values(t + 1) = data.compartments{i}.values(t) + eval(subs(d, compartmentSymbols, compartmentValues));
         end
     end
 end

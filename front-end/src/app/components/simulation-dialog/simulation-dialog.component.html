@@ -1,0 +1,53 @@
+<div class="header">
+    <p class="title">Model Simulation</p>
+
+    <button mat-icon-button class="close-button" (click)="closeDialog()">
+        <mat-icon>close</mat-icon>
+    </button>
+</div>
+
+<div class="body" [formGroup]="formGroup">
+    <mat-form-field>
+        <mat-label>Simulation Time</mat-label>
+
+        <input
+            matInput
+            placeholder="Enter simulation time"
+            type="number"
+            formControlName="time"
+        />
+    </mat-form-field>
+
+    <mat-form-field>
+        <mat-label>Time Step</mat-label>
+
+        <input
+            matInput
+            type="number"
+            placeholder="Enter time step"
+            type="number"
+            formControlName="step"
+        />
+    </mat-form-field>
+</div>
+
+<div class="footer">
+    <button
+        mat-raised-button
+        class="button"
+        color="accent"
+        (click)="closeDialog()"
+    >
+        Cancel
+    </button>
+
+    <button
+        mat-raised-button
+        class="button"
+        color="primary"
+        [disabled]="!formGroup.valid"
+        (click)="simulate()"
+    >
+        Simulate
+    </button>
+</div>
