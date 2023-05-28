@@ -14,14 +14,25 @@ def simulate():
 
     result = eng.simulate(str(data).replace("'", '"'))
 
-    for i in range(len(result['compartments'])):
-        result['compartments'][i]['values'] = np.array(result['compartments'][i]['values']).flatten().tolist()
+    return getResponseJSON(result)
 
-    string = str(result).replace("'", '"')
+@app.route('/optimalControl', methods=['POST'])
+def optimalControl():
+    data = request.get_json()
+
+    result = eng.optimalControl(str(data).replace("'", '"'))
+
+    return getResponseJSON(result)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+def getResponseJSON(responseObj):
+    for i in range(len(responseObj['compartments'])):
+        responseObj['compartments'][i]['values'] = np.array(responseObj['compartments'][i]['values']).flatten().tolist()
+
+    string = str(responseObj).replace("'", '"')
 
     obj = json.loads(string)
 
     return jsonify(obj)
-
-if __name__ == '__main__':
-    app.run(debug=True)
