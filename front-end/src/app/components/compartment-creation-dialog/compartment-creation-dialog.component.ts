@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, Inject } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { ICompartmentBase } from 'src/app/core/interfaces';
 
 @Component({
@@ -11,12 +11,17 @@ import { ICompartmentBase } from 'src/app/core/interfaces';
 export class CompartmentCreationDialogComponent {
     public readonly formGroup: FormGroup = new FormGroup({
         id: new FormControl(null, [Validators.required]),
-        initialValue: new FormControl(null, [Validators.required]),
+        value: new FormControl(null, [Validators.required]),
     });
 
     constructor(
-        private readonly dialogRef: MatDialogRef<CompartmentCreationDialogComponent>
-    ) {}
+        private readonly dialogRef: MatDialogRef<CompartmentCreationDialogComponent>,
+        @Inject(MAT_DIALOG_DATA) public data?: ICompartmentBase
+    ) {
+        if (data) {
+            this.formGroup.patchValue(data);
+        }
+    }
 
     public closeDialog(): void {
         this.dialogRef.close(null);

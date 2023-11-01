@@ -1,34 +1,54 @@
 <div class="header">
     <p class="title">Model Simulation</p>
 
-    <button mat-icon-button class="close-button" (click)="closeDialog()">
+    <button
+        mat-mini-fab
+        class="close-button"
+        color="primary"
+        (click)="closeDialog()"
+    >
         <mat-icon>close</mat-icon>
     </button>
 </div>
 
 <div class="body" [formGroup]="formGroup">
-    <mat-form-field>
-        <mat-label>Simulation Time</mat-label>
+    <div class="simulation-config" formGroupName="simulationParameters">
+        <mat-form-field>
+            <mat-label>Simulation Time</mat-label>
 
-        <input
-            matInput
-            placeholder="Enter simulation time"
-            type="number"
-            formControlName="time"
-        />
-    </mat-form-field>
+            <input
+                matInput
+                placeholder="Enter simulation time"
+                type="number"
+                formControlName="time"
+            />
+        </mat-form-field>
 
-    <mat-form-field>
-        <mat-label>Time Step</mat-label>
+        <mat-form-field>
+            <mat-label>Time Step</mat-label>
 
-        <input
-            matInput
-            type="number"
-            placeholder="Enter time step"
-            type="number"
-            formControlName="step"
-        />
-    </mat-form-field>
+            <input
+                matInput
+                type="number"
+                placeholder="Enter time step"
+                type="number"
+                formControlName="step"
+            />
+        </mat-form-field>
+    </div>
+
+    <mat-slide-toggle formControlName="isOptimalControlProblem">
+        Optimal control problem
+    </mat-slide-toggle>
+
+    <app-equation-input
+        class="cost-function-input"
+        [isCostFunction]="true"
+        [title]="'Cost Function'"
+        [placeholder]="'Enter cost function'"
+        formControlName="costFunction"
+        (errorsChange)="onErrorsChange($event)"
+    ></app-equation-input>
 </div>
 
 <div class="footer">
@@ -45,7 +65,7 @@
         mat-raised-button
         class="button"
         color="primary"
-        [disabled]="!formGroup.valid"
+        [disabled]="!formGroup.errors"
         (click)="simulate()"
     >
         Simulate

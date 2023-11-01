@@ -1,30 +1,43 @@
 :host {
-    display: grid;
+    display: block;
     width: 100%;
     height: 100%;
     background-color: #333;
 
-    .control-buttons-wrapper,
-    .results-buttons-wrapper {
+    .buttons-container {
         position: absolute;
         z-index: 1;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: space-between;
 
         .button:not(:last-child) {
             margin-bottom: 10px;
         }
     }
 
-    .control-buttons-wrapper {
+    .top-left-buttons {
+        top: 20px;
+        left: 20px;
+    }
+
+    .top-right-buttons {
         top: 20px;
         right: 20px;
     }
 
-    .results-buttons-wrapper {
+    .bottom-left-buttons {
         bottom: 20px;
         left: 20px;
+    }
+
+    .bottom-right-buttons {
+        bottom: 20px;
+        right: 20px;
+    }
+
+    .canvas {
+        width: 100%;
+        height: 100%;
     }
 }

@@ -11,7 +11,7 @@ function data=simulate(modelJson)
     data.compartments = {};
 
     % Get the amount of compartments
-    compartmentsAmount = numel(model.compartments);
+    compartmentsAmount = numel(model.model);
 
     % Initialize the compartment symbols array
     compartmentSymbols = cell(1, compartmentsAmount);
@@ -19,7 +19,7 @@ function data=simulate(modelJson)
     % Initialize the compartments with their initial values and symbols
     for i = 1:compartmentsAmount
         % Fetch the compartment from the model
-        modelCompartment = model.compartments(i);
+        modelCompartment = model.model(i);
 
         % Initialize output compartment
         dataCompartment = struct();
@@ -32,7 +32,7 @@ function data=simulate(modelJson)
         compartmentSymbols{i} = sym(dataCompartment.id);
 
         % Set the initial value
-        dataCompartment.values(1) = modelCompartment.initialValue;
+        dataCompartment.values(1) = modelCompartment.value;
 
         % Add the compartment to the output
         data.compartments = [data.compartments, dataCompartment];
@@ -51,7 +51,7 @@ function data=simulate(modelJson)
         % Calculate the new compartment values
         for i = 1:compartmentsAmount
             % Fetch the compartment from the model
-            modelCompartment = model.compartments(i);
+            modelCompartment = model.model(i);
 
             % Get the amount of inflows and outflows
             compartmentInflows = numel(modelCompartment.inflows);
@@ -66,7 +66,7 @@ function data=simulate(modelJson)
                 inflow = modelCompartment.inflows(j);
 
                 % Add the inflow to the derivative
-                d = d + inflow.ratio * str2sym(inflow.value);
+                d = d + str2sym(inflow);
             end
 
             % Calculate outflow part of the derivative
@@ -75,7 +75,7 @@ function data=simulate(modelJson)
                 outflow = modelCompartment.outflows(j);
 
                 % Subtract the outflow from the derivative
-                d = d - outflow.ratio * str2sym(outflow.value);
+                d = d - str2sym(outflow);
             end
 
             % Calculate the new compartment value

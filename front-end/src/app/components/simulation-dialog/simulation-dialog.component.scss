@@ -1,6 +1,8 @@
 :host {
     display: flex;
     flex-direction: column;
+    width: 700px;
+    height: 95vh;
 
     .header,
     .footer {
@@ -26,9 +28,19 @@
 
     .body {
         display: flex;
-        justify-content: center;
+        flex-direction: column;
+        height: calc(100% - 160px);
         gap: 20px;
         padding: 20px;
+
+        .simulation-config {
+            display: flex;
+            gap: 20px;
+        }
+
+        .cost-function-input {
+            overflow: auto;
+        }
     }
 
     .footer {

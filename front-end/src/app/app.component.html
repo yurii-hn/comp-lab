@@ -1,4 +1,15 @@
-<div class="control-buttons-wrapper">
+<div class="buttons-container top-left-buttons">
+    <button
+        mat-mini-fab
+        class="button"
+        color="primary"
+        (click)="openDefinitionsTableDialog()"
+    >
+        <mat-icon>tune</mat-icon>
+    </button>
+</div>
+
+<div class="buttons-container top-right-buttons">
     <button
         mat-mini-fab
         class="button"
@@ -31,19 +42,9 @@
     >
         <mat-icon>delete_forever</mat-icon>
     </button>
-
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        [disabled]="!isModelValid"
-        (click)="onModelSimulateDialog()"
-    >
-        <mat-icon>memory</mat-icon>
-    </button>
 </div>
 
-<div class="results-buttons-wrapper">
+<div class="buttons-container bottom-left-buttons">
     <button
         mat-mini-fab
         class="button"
@@ -55,4 +56,16 @@
     </button>
 </div>
 
-<div #canvas></div>
+<div class="buttons-container bottom-right-buttons">
+    <button
+        mat-mini-fab
+        class="button"
+        color="primary"
+        [disabled]="!isModelValid"
+        (click)="onModelSimulateDialog()"
+    >
+        <mat-icon>memory</mat-icon>
+    </button>
+</div>
+
+<div #canvas class="canvas"></div>

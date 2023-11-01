@@ -1,7 +1,6 @@
-import { Component } from '@angular/core';
-import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { MatDialogRef } from '@angular/material/dialog';
-import { IFlow } from 'src/app/core/interfaces';
+import { Component, Inject } from '@angular/core';
+import { FormControl, ValidationErrors, Validators } from '@angular/forms';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 @Component({
     selector: 'app-flow-creation-dialog',
@@ -9,20 +8,29 @@ import { IFlow } from 'src/app/core/interfaces';
     styleUrls: ['./flow-creation-dialog.component.scss'],
 })
 export class FlowCreationDialogComponent {
-    public readonly formGroup: FormGroup = new FormGroup({
-        ratio: new FormControl(null, [Validators.required]),
-        value: new FormControl(null, [Validators.required]),
-    });
+    public readonly flowEquationFormControl: FormControl = new FormControl(
+        '',
+        [Validators.required]
+    );
 
     constructor(
-        private readonly dialogRef: MatDialogRef<FlowCreationDialogComponent>
-    ) {}
+        private readonly dialogRef: MatDialogRef<FlowCreationDialogComponent>,
+        @Inject(MAT_DIALOG_DATA) public data?: string
+    ) {
+        if (data) {
+            this.flowEquationFormControl.setValue(data);
+        }
+    }
+
+    public onErrorsChange(validationErrors: ValidationErrors | null): void {
+        this.flowEquationFormControl.setErrors(validationErrors);
+    }
 
     public closeDialog(): void {
         this.dialogRef.close(null);
     }
 
     public addCompartment(): void {
-        this.dialogRef.close(this.formGroup.value as IFlow);
+        this.dialogRef.close(this.flowEquationFormControl.value);
     }
 }

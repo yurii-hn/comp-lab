@@ -16,7 +16,7 @@ function data = optimalControl(modelJson)
     compartmentEquations = getCompartmentsEquations(payload);
 
     for i = 1:numel(payload.model)
-        payload.model(i).values = [payload.model(i).initialValue, zeros(1, simulationNodesAmount - 1)];
+        payload.model(i).values = [payload.model(i).value, zeros(1, simulationNodesAmount - 1)];
         payload.model(i).equation = compartmentEquations(i);
     end
 
@@ -67,7 +67,7 @@ function data = optimalControl(modelJson)
         end
 
         for i = 1:numel(payload.model)
-            payload.model(i).values = [payload.model(i).initialValue, zeros(1, simulationNodesAmount - 1)];
+            payload.model(i).values = [payload.model(i).value, zeros(1, simulationNodesAmount - 1)];
         end
 
         simulationResults = sir_optimised(payload);
@@ -170,8 +170,7 @@ function interventions = updateUFunctions(payload)
                 values{j} = variablesData.(payload.interventions(i).equation.vars{j})(t);
             end
 
-            variablesData.(interventionId)(t) = 0.5 * ( ...
-                variablesData.(interventionId)(t) + ...
+            variablesData.(interventionId)(t) = ( ...
                 min( ...
                     0.9, ...
                     max( ...
@@ -258,13 +257,13 @@ function equations = getCompartmentsEquations(payload)
         for j = 1:numel(payload.model(i).inflows)
             inflow = payload.model(i).inflows(j);
 
-            compartmentEquation = compartmentEquation + inflow.ratio * str2sym(inflow.value);
+            compartmentEquation = compartmentEquation + str2sym(inflow);
         end
 
         for j = 1:numel(payload.model(i).outflows)
             outflow = payload.model(i).outflows(j);
 
-            compartmentEquation = compartmentEquation - outflow.ratio * str2sym(outflow.value);
+            compartmentEquation = compartmentEquation - str2sym(outflow);
         end
 
         vars = string(symvar(compartmentEquation));

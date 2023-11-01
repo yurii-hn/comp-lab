@@ -1,7 +1,7 @@
 <div class="header">
     <p class="title">Compartment Creation</p>
 
-    <button mat-icon-button class="close-button" (click)="closeDialog()">
+    <button mat-mini-fab class="close-button" color="primary" (click)="closeDialog()">
         <mat-icon>close</mat-icon>
     </button>
 </div>
@@ -24,7 +24,7 @@
             matInput
             type="number"
             placeholder="Enter initial value"
-            formControlName="initialValue"
+            formControlName="value"
         />
     </mat-form-field>
 </div>

@@ -24,15 +24,30 @@ def optimalControl():
 
     return getResponseJSON(result)
 
+@app.route('/validateExpression', methods=['POST'])
+def validateExpression():
+    data = request.get_json()
+
+    result = eng.validateExpression(str(data).replace("'", '"'))
+
+    return getResponseJSON(result)
+
+@app.route('/validateCostFunction', methods=['POST'])
+def validateCostFunction():
+    data = request.get_json()
+
+    result = eng.validateCostFunction(str(data).replace("'", '"'))
+
+    return getResponseJSON(result)
+
 if __name__ == '__main__':
     app.run(debug=True)
 
 def getResponseJSON(responseObj):
-    for i in range(len(responseObj['compartments'])):
-        responseObj['compartments'][i]['values'] = np.array(responseObj['compartments'][i]['values']).flatten().tolist()
+    if 'compartments' in responseObj:
+        for i in range(len(responseObj['compartments'])):
+            responseObj['compartments'][i]['values'] = np.array(responseObj['compartments'][i]['values']).flatten().tolist()
 
-    string = str(responseObj).replace("'", '"')
-
-    obj = json.loads(string)
+    obj = json.loads(json.dumps(responseObj))
 
     return jsonify(obj)

@@ -6,17 +6,18 @@ import {
     ISimulationResults,
 } from 'src/app/core/interfaces';
 
+interface IPlot {
+    data: Data[];
+    layout: Partial<Layout>;
+}
+
 @Component({
     selector: 'app-simulation-dashboard',
     templateUrl: './simulation-dashboard.component.html',
     styleUrls: ['./simulation-dashboard.component.scss'],
 })
 export class SimulationDashboardComponent implements OnInit {
-    public readonly plotsData: Data[][] = [];
-
-    public readonly plotsLayout: Partial<Layout> = {
-        autosize: true,
-    };
+    public readonly plotsData: IPlot[] = [];
 
     public readonly plotsConfig: Partial<Config> = {};
 
@@ -47,14 +48,32 @@ export class SimulationDashboardComponent implements OnInit {
         xAxis: number[],
         compartment: ICompartmentSimulatedData
     ): void {
-        this.plotsData.push([
-            {
-                x: xAxis,
-                y: compartment.values,
-                type: 'scatter',
-                name: compartment.id,
+        this.plotsData.push({
+            data: [
+                {
+                    x: xAxis,
+                    y: compartment.values,
+                    type: 'scatter',
+                    name: compartment.id,
+                },
+            ],
+            layout: {
+                autosize: true,
+                title: {
+                    text: compartment.id,
+                },
+                xaxis: {
+                    title: {
+                        text: 'Time',
+                    },
+                },
+                yaxis: {
+                    title: {
+                        text: compartment.id,
+                    },
+                },
             },
-        ]);
+        });
     }
 
     private getXAxis(time: number, step: number): number[] {
