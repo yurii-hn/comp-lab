@@ -1,53 +1,70 @@
 from flask import Flask, request, jsonify
-import json
-import matlab.engine
-import numpy as np
 
-eng = matlab.engine.start_matlab()
-eng.cd(r'../matlab', nargout=0)
+from simulate import simulate
+from optimalControl import optimalControl
+from validateExpression import validateExpression
+from validateCostFunction import validateCostFunction
 
+# Creating the application instance
 app = Flask(__name__)
 
+
 @app.route('/simulate', methods=['POST'])
-def simulate():
+def simulateEndpoint():
+    """Simulation endpoint"""
+
+    # Getting the data from the request
     data = request.get_json()
 
-    result = eng.simulate(str(data).replace("'", '"'))
+    # Simulating the system
+    result = simulate(data)
 
-    return getResponseJSON(result)
+    # Returning the result
+    return jsonify(result)
 
-@app.route('/optimalControl', methods=['POST'])
-def optimalControl():
+
+@app.route('/optimal-control', methods=['POST'])
+def optimalControlEndpoint():
+    """Optimal control endpoint"""
+
+    # Getting the data from the request
     data = request.get_json()
 
-    result = eng.optimalControl(str(data).replace("'", '"'))
+    # Solving the optimal control problem
+    result = optimalControl(data)
 
-    return getResponseJSON(result)
+    # Returning the result
+    return jsonify(result)
 
-@app.route('/validateExpression', methods=['POST'])
-def validateExpression():
+
+@app.route('/validate-expression', methods=['POST'])
+def validateExpressionEndpoint():
+    """Expression validation endpoint"""
+
+    # Getting the data from the request
     data = request.get_json()
 
-    result = eng.validateExpression(str(data).replace("'", '"'))
+    # Validating the expression
+    result = validateExpression(data)
 
-    return getResponseJSON(result)
+    # Returning the result
+    return jsonify(result)
 
-@app.route('/validateCostFunction', methods=['POST'])
-def validateCostFunction():
+
+@app.route('/validate-cost-function', methods=['POST'])
+def validateCostFunctionEndpoint():
+    """Cost function validation endpoint"""
+
+    # Getting the data from the request
     data = request.get_json()
 
-    result = eng.validateCostFunction(str(data).replace("'", '"'))
+    # Validating the cost function
+    result = validateCostFunction(data)
 
-    return getResponseJSON(result)
+    # Returning the result
+    return jsonify(result)
 
+
+# Running the application
 if __name__ == '__main__':
     app.run(debug=True)
-
-def getResponseJSON(responseObj):
-    if 'compartments' in responseObj:
-        for i in range(len(responseObj['compartments'])):
-            responseObj['compartments'][i]['values'] = np.array(responseObj['compartments'][i]['values']).flatten().tolist()
-
-    obj = json.loads(json.dumps(responseObj))
-
-    return jsonify(obj)

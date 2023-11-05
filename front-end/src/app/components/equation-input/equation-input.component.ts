@@ -19,6 +19,7 @@ import {
     Subscription,
     debounceTime,
     distinctUntilChanged,
+    filter,
     switchMap,
     tap,
 } from 'rxjs';
@@ -79,6 +80,7 @@ export class EquationInputComponent
             this.equationFormControl.valueChanges
                 .pipe(
                     distinctUntilChanged(),
+                    filter((value: string) => !!value),
                     tap(() => {
                         this.errorsChange.emit({});
                     }),

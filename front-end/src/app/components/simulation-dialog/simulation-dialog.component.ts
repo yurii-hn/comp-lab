@@ -1,5 +1,10 @@
 import { Component, OnInit } from '@angular/core';
-import { FormControl, FormGroup, ValidationErrors, Validators } from '@angular/forms';
+import {
+    FormControl,
+    FormGroup,
+    ValidationErrors,
+    Validators,
+} from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { tap } from 'rxjs';
 
@@ -14,7 +19,7 @@ export class SimulationDialogComponent implements OnInit {
             time: new FormControl(null, [Validators.required]),
             step: new FormControl(null, [Validators.required]),
         }),
-        costFunction: new FormControl('', [Validators.required]),
+        costFunction: new FormControl(null, [Validators.required]),
         isOptimalControlProblem: new FormControl(false),
     });
 

@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { Observable } from 'rxjs';
 import { IValidationResponse } from '../core/interfaces';
 
 @Injectable({
@@ -14,7 +14,7 @@ export class ValidationService {
         allowedSymbols: string[]
     ): Observable<IValidationResponse> {
         return this.httpClient.post<IValidationResponse>(
-            'http://localhost:5000/validateExpression',
+            'http://localhost:5000/validate-expression',
             {
                 expression,
                 allowedSymbols,
@@ -27,18 +27,13 @@ export class ValidationService {
         allowedSymbols: string[],
         interventions: string[]
     ): Observable<IValidationResponse> {
-        // return this.httpClient.post<IValidationResponse>(
-        //     'http://localhost:5000/validateCostFunction',
-        //     {
-        //         func,
-        //         allowedSymbols,
-        //         interventions,
-        //     }
-        // );
-
-        return of({
-            isValid: true,
-            message: '',
-        });
+        return this.httpClient.post<IValidationResponse>(
+            'http://localhost:5000/validate-cost-function',
+            {
+                func,
+                allowedSymbols,
+                interventions,
+            }
+        );
     }
 }

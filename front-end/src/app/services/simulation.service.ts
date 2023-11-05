@@ -22,7 +22,7 @@ export class SimulationService {
         model: IOptimalControlData
     ): Observable<ISimulationResults> {
         return this.httpClient.post<ISimulationResults>(
-            'http://localhost:5000/optimalControl',
+            'http://localhost:5000/optimal-control',
             model
         );
     }
