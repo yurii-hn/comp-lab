@@ -21,7 +21,7 @@ def simulate(payload):
         dataCompartment = {}
 
         # Initialize the compartment values
-        dataCompartment['id'] = modelCompartment['id']
+        dataCompartment['name'] = modelCompartment['name']
         dataCompartment['values'] = [0] * int(data['time'] / data['step'])
 
         # Set the initial value
@@ -36,9 +36,9 @@ def simulate(payload):
         compartmentValues = {}
 
         for i in range(compartmentsAmount):
-            compartmentId = payload['model'][i]['id']
+            compartmentName = payload['model'][i]['name']
 
-            compartmentValues[compartmentId] = data['compartments'][i]['values'][t]
+            compartmentValues[compartmentName] = data['compartments'][i]['values'][t]
 
         # Calculate the new compartment values
         for i in range(compartmentsAmount):

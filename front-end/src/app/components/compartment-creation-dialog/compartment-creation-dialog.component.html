@@ -1,7 +1,12 @@
 <div class="header">
     <p class="title">Compartment Creation</p>
 
-    <button mat-mini-fab class="close-button" color="primary" (click)="closeDialog()">
+    <button
+        mat-mini-fab
+        class="close-button"
+        color="primary"
+        (click)="closeDialog()"
+    >
         <mat-icon>close</mat-icon>
     </button>
 </div>
@@ -13,7 +18,7 @@
         <input
             matInput
             placeholder="Enter compartment name"
-            formControlName="id"
+            formControlName="name"
         />
     </mat-form-field>
 
@@ -46,6 +51,6 @@
         [disabled]="!formGroup.valid"
         (click)="addCompartment()"
     >
-        Add
+        {{ isEditMode ? "Update" : "Add" }}
     </button>
 </div>

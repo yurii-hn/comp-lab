@@ -1,63 +1,63 @@
 {
     "compartments": [
         {
-            "id": "S",
+            "name": "S",
             "value": 35200000
         },
         {
-            "id": "E1",
+            "name": "E1",
             "value": 0
         },
         {
-            "id": "E2",
+            "name": "E2",
             "value": 0
         },
         {
-            "id": "I1",
+            "name": "I1",
             "value": 3520000
         },
         {
-            "id": "I2",
+            "name": "I2",
             "value": 5280000
         },
         {
-            "id": "Mild",
+            "name": "Mild",
             "value": 0
         },
         {
-            "id": "Severe",
+            "name": "Severe",
             "value": 0
         },
         {
-            "id": "Fatal",
+            "name": "Fatal",
             "value": 0
         },
         {
-            "id": "Hosp_Severe",
+            "name": "Hosp_Severe",
             "value": 0
         },
         {
-            "id": "Hosp_Fatal",
+            "name": "Hosp_Fatal",
             "value": 0
         },
         {
-            "id": "R1",
+            "name": "R1",
             "value": 0
         },
         {
-            "id": "R2",
+            "name": "R2",
             "value": 0
         },
         {
-            "id": "R3",
+            "name": "R3",
             "value": 0
         },
         {
-            "id": "Death",
+            "name": "Death",
             "value": 0
         },
         {
-            "id": "Immunity",
+            "name": "Immunity",
             "value": 0
         }
     ],
@@ -135,105 +135,105 @@
     ],
     "definitions": [
         {
-            "id": "u1",
+            "name": "u1",
             "type": "intervention"
         },
         {
-            "id": "u2",
+            "name": "u2",
             "type": "intervention"
         },
         {
-            "id": "c",
+            "name": "c",
             "type": "constant",
             "value": 10
         },
         {
-            "id": "d1",
+            "name": "d1",
             "type": "constant",
             "value": 3
         },
         {
-            "id": "d2",
+            "name": "d2",
             "type": "constant",
             "value": 10
         },
         {
-            "id": "alpha",
+            "name": "alpha",
             "type": "constant",
             "value": 0.7
         },
         {
-            "id": "beta",
+            "name": "beta",
             "type": "constant",
             "value": 0.83
         },
         {
-            "id": "Tvaccine_lag",
+            "name": "Tvaccine_lag",
             "type": "constant",
             "value": 28
         },
         {
-            "id": "R0",
+            "name": "R0",
             "type": "constant",
             "value": 2.25
         },
         {
-            "id": "N",
+            "name": "N",
             "type": "constant",
             "value": 44e6
         },
         {
-            "id": "Tinf",
+            "name": "Tinf",
             "type": "constant",
             "value": 10
         },
         {
-            "id": "Tinc",
+            "name": "Tinc",
             "type": "constant",
             "value": 10
         },
         {
-            "id": "Tquar",
+            "name": "Tquar",
             "type": "constant",
             "value": 10
         },
         {
-            "id": "Trecovery_mild",
+            "name": "Trecovery_mild",
             "type": "constant",
             "value": 11
         },
         {
-            "id": "Trecovery_severe",
+            "name": "Trecovery_severe",
             "type": "constant",
             "value": 35
         },
         {
-            "id": "Thospital_lag",
+            "name": "Thospital_lag",
             "type": "constant",
             "value": 30
         },
         {
-            "id": "Tdeath",
+            "name": "Tdeath",
             "type": "constant",
             "value": 5
         },
         {
-            "id": "pAsym",
+            "name": "pAsym",
             "type": "constant",
             "value": 0.4
         },
         {
-            "id": "pMild",
+            "name": "pMild",
             "type": "constant",
             "value": 0.43
         },
         {
-            "id": "pSevere",
+            "name": "pSevere",
             "type": "constant",
             "value": 0.15
         },
         {
-            "id": "pFatal",
+            "name": "pFatal",
             "type": "constant",
             "value": 0.02
         }

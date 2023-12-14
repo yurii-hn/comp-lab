@@ -17,14 +17,14 @@ def optimalControl(payload):
 
     # Put symbols in the payload
     for i in range(len(payload['model'])):
-        compartmentId = payload['model'][i]['id']
+        compartmentName = payload['model'][i]['name']
 
-        payload['symbolsTable'][compartmentId] = Symbol(compartmentId)
+        payload['symbolsTable'][compartmentName] = Symbol(compartmentName)
 
     for i in range(len(payload['interventions'])):
-        interventionId = payload['interventions'][i]['id']
+        interventionName = payload['interventions'][i]['name']
 
-        payload['symbolsTable'][interventionId] = Symbol(interventionId)
+        payload['symbolsTable'][interventionName] = Symbol(interventionName)
 
     simulationNodesAmount = data['time'] / data['step']
 
@@ -93,13 +93,13 @@ def optimalControl(payload):
 
     for i in range(len(payload['model'])):
         data['compartments'].append({
-            'id': payload['model'][i]['id'],
+            'name': payload['model'][i]['name'],
             'values': payload['model'][i]['values']
         })
 
     for i in range(len(payload['interventions'])):
         data['compartments'].append({
-            'id': payload['interventions'][i]['id'],
+            'name': payload['interventions'][i]['name'],
             'values': payload['interventions'][i]['values']
         })
 
@@ -114,22 +114,22 @@ def SIROptimised(payload):
             payload['simulationParameters']['step']) - 1
     ):
         for i in range(len(payload['model'])):
-            compartmentId = payload['model'][i]['id']
+            compartmentName = payload['model'][i]['name']
             values = [0] * len(payload['model'][i]['equation']['vars'])
 
             for j in range(len(payload['model'][i]['equation']['vars'])):
                 values[j] = variablesData[str(payload['model']
                                           [i]['equation']['vars'][j])][t]
 
-            variablesData[compartmentId][t + 1] = variablesData[compartmentId][t] + \
+            variablesData[compartmentName][t + 1] = variablesData[compartmentName][t] + \
                 payload['model'][i]['equation']['equation'](*values)
 
     modelData = []
 
     for i in range(len(payload['model'])):
         modelData.append({
-            'id': payload['model'][i]['id'],
-            'values': variablesData[payload['model'][i]['id']]
+            'name': payload['model'][i]['name'],
+            'values': variablesData[payload['model'][i]['name']]
         })
 
     return modelData
@@ -140,14 +140,14 @@ def lambdaSystem(payload):
 
     for t in range(int(payload['simulationParameters']['time'] / payload['simulationParameters']['step'] - 2), -1, -1):
         for i in range(len(payload['model'])):
-            lambdaId = 'lambda' + str(i)
+            lambdaName = 'lambda' + str(i)
             values = [0] * len(payload['lambdas'][i]['equation']['vars'])
 
             for j in range(len(payload['lambdas'][i]['equation']['vars'])):
                 values[j] = variablesData[str(payload['lambdas']
                                           [i]['equation']['vars'][j])][t + 1]
 
-            variablesData[lambdaId][t] = variablesData[lambdaId][t + 1] - \
+            variablesData[lambdaName][t] = variablesData[lambdaName][t + 1] - \
                 payload['lambdas'][i]['equation']['equation'](*values)
 
     lambdas = []
@@ -163,20 +163,20 @@ def updateUFunctions(payload):
 
     for t in range(int(payload['simulationParameters']['time'] / payload['simulationParameters']['step'])):
         for i in range(len(payload['interventions'])):
-            interventionId = payload['interventions'][i]['id']
+            interventionName = payload['interventions'][i]['name']
             values = [0] * len(payload['interventions'][i]['equation']['vars'])
 
             for j in range(len(payload['interventions'][i]['equation']['vars'])):
                 values[j] = variablesData[str(payload['interventions']
                                           [i]['equation']['vars'][j])][t]
 
-            variablesData[interventionId][t] = min(
+            variablesData[interventionName][t] = min(
                 0.9, max(0, payload['interventions'][i]['equation']['equation'](*values)))
 
     interventions = []
 
     for i in range(len(payload['interventions'])):
-        interventions.append(variablesData[payload['interventions'][i]['id']])
+        interventions.append(variablesData[payload['interventions'][i]['name']])
 
     return interventions
 
@@ -202,12 +202,12 @@ def getVariablesData(payload):
     variablesData = {}
 
     for i in range(len(payload['model'])):
-        variablesData[payload['model'][i]['id']
+        variablesData[payload['model'][i]['name']
                       ] = payload['model'][i]['values']
         variablesData['lambda' + str(i)] = payload['lambdas'][i]['values']
 
     for i in range(len(payload['interventions'])):
-        variablesData[payload['interventions'][i]['id']
+        variablesData[payload['interventions'][i]['name']
                       ] = payload['interventions'][i]['values']
 
     return variablesData
@@ -269,7 +269,7 @@ def getLambdaDerivatives(payload):
     for i in range(len(payload['model'])):
         lambdaDerivative = - diff(
             payload['hamiltonian']['symbolicEquation'],
-            payload['symbolsTable'][payload['model'][i]['id']]
+            payload['symbolsTable'][payload['model'][i]['name']]
         )
 
         derivative = {
@@ -290,9 +290,9 @@ def getInterventionDerivatives(payload):
         interventionDerivative = solve(
             diff(
                 payload['hamiltonian']['symbolicEquation'],
-                payload['symbolsTable'][payload['interventions'][i]['id']]
+                payload['symbolsTable'][payload['interventions'][i]['name']]
             ),
-            payload['symbolsTable'][payload['interventions'][i]['id']]
+            payload['symbolsTable'][payload['interventions'][i]['name']]
         )[0]
 
         derivative = {

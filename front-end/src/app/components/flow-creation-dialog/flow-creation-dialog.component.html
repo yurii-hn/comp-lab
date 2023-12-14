@@ -1,7 +1,12 @@
 <div class="header">
     <p class="title">Flow Creation</p>
 
-    <button mat-mini-fab class="close-button" color="primary" (click)="closeDialog()">
+    <button
+        mat-mini-fab
+        class="close-button"
+        color="primary"
+        (click)="closeDialog()"
+    >
         <mat-icon>close</mat-icon>
     </button>
 </div>
@@ -33,6 +38,6 @@
         [disabled]="flowEquationFormControl.errors"
         (click)="addCompartment()"
     >
-        Add
+        {{ isEditMode ? "Update" : "Add" }}
     </button>
 </div>

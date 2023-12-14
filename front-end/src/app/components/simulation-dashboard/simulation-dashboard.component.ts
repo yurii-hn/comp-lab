@@ -54,13 +54,13 @@ export class SimulationDashboardComponent implements OnInit {
                     x: xAxis,
                     y: compartment.values,
                     type: 'scatter',
-                    name: compartment.id,
+                    name: compartment.name,
                 },
             ],
             layout: {
                 autosize: true,
                 title: {
-                    text: compartment.id,
+                    text: compartment.name,
                 },
                 xaxis: {
                     title: {
@@ -69,7 +69,7 @@ export class SimulationDashboardComponent implements OnInit {
                 },
                 yaxis: {
                     title: {
-                        text: compartment.id,
+                        text: compartment.name,
                     },
                 },
             },

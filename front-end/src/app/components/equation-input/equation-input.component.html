@@ -33,9 +33,9 @@
             <mat-chip
                 *ngFor="let compartment of definitionsTable.compartments"
                 [disabled]="equationFormControl.disabled"
-                (click)="onChipInput(compartment.id)"
+                (click)="onChipInput(compartment.name)"
             >
-                {{ compartment.id }}
+                {{ compartment.name }}
             </mat-chip>
         </mat-chip-listbox>
     </div>
@@ -49,9 +49,9 @@
             <mat-chip
                 *ngFor="let constant of definitionsTable.constants"
                 [disabled]="equationFormControl.disabled"
-                (click)="onChipInput(constant.id)"
+                (click)="onChipInput(constant.name)"
             >
-                {{ constant.id }}
+                {{ constant.name }}
             </mat-chip>
         </mat-chip-listbox>
     </div>
@@ -65,9 +65,9 @@
             <mat-chip
                 *ngFor="let intervention of definitionsTable.interventions"
                 [disabled]="equationFormControl.disabled"
-                (click)="onChipInput(intervention.id)"
+                (click)="onChipInput(intervention.name)"
             >
-                {{ intervention.id }}
+                {{ intervention.name }}
             </mat-chip>
         </mat-chip-listbox>
     </div>

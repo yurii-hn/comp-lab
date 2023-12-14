@@ -10,7 +10,7 @@ export const cytoscapeOptions: cytoscape.CytoscapeOptions = {
         {
             selector: 'node',
             style: {
-                label: 'data(id)',
+                label: 'data(name)',
                 'font-weight': 'bold',
                 color: 'white',
                 width: '100px',

@@ -36,4 +36,15 @@ export class ValidationService {
             }
         );
     }
+
+    public validateCompartmentName(
+        name: string,
+        existingCompartmentNames: string[]
+    ): boolean {
+        if (existingCompartmentNames.includes(name)) {
+            return false;
+        }
+
+        return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name);
+    }
 }

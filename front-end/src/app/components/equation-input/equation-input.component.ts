@@ -27,7 +27,7 @@ import {
     IDefinitionsTable,
     IValidationResponse,
 } from 'src/app/core/interfaces';
-import { DefinitionsService } from 'src/app/services/definitions.service';
+import { ModelService } from 'src/app/services/model.service';
 import { ValidationService } from 'src/app/services/validation.service';
 
 @Component({
@@ -66,10 +66,10 @@ export class EquationInputComponent
     @ViewChild('equationInput') private equationInput!: ElementRef;
 
     constructor(
-        private readonly definitionsService: DefinitionsService,
+        private readonly modelService: ModelService,
         private readonly validationService: ValidationService
     ) {
-        this.definitionsTable = this.definitionsService.getDefinitionsTable();
+        this.definitionsTable = this.modelService.getDefinitionsTable();
     }
 
     public ngAfterViewInit(): void {
@@ -87,15 +87,14 @@ export class EquationInputComponent
                     debounceTime(500),
                     switchMap((value: string) => {
                         const allowedSymbols: string[] =
-                            this.definitionsService.getAvailableSymbols();
+                            this.modelService.getAvailableSymbols();
 
                         if (this.isCostFunction) {
-                            const interventions: string[] =
-                                this.definitionsService
-                                    .getDefinitionsTable()
-                                    .interventions.map(
-                                        (intervention) => intervention.id
-                                    );
+                            const interventions: string[] = this.modelService
+                                .getDefinitionsTable()
+                                .interventions.map(
+                                    (intervention) => intervention.name
+                                );
 
                             return this.validationService.validateCostFunction(
                                 value,
@@ -138,7 +137,7 @@ export class EquationInputComponent
         this.subscription.unsubscribe();
     }
 
-    public onChipInput(definitionId: string): void {
+    public onChipInput(definitionName: string): void {
         const equationValue: string = this.equationFormControl.value;
         const cursorPosition: number = this.getCursorPosition();
 
@@ -150,10 +149,10 @@ export class EquationInputComponent
             : '';
 
         this.equationFormControl.setValue(
-            `${leftPart} ${definitionId} ${rightPart}`
+            `${leftPart} ${definitionName} ${rightPart}`
         );
 
-        this.setCursorPosition(leftPart.length + definitionId.length + 2);
+        this.setCursorPosition(leftPart.length + definitionName.length + 2);
     }
 
     public writeValue(equation: any): void {

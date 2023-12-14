@@ -7,6 +7,9 @@ from validateExpression import validateExpression
 def validateCostFunction(payload):
     """Cost function validation function"""
 
+    if '' in _clash:
+        del _clash['']
+
     # Unpacking the payload
     func = payload['func']
     allowedSymbols = payload['allowedSymbols']

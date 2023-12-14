@@ -1,14 +1,6 @@
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
-import cytoscape, {
-    EdgeCollection,
-    EdgeSingular,
-    EventObject,
-    NodeSingular,
-    SingularElementArgument,
-} from 'cytoscape';
-import edgehandles from 'cytoscape-edgehandles';
-import klay from 'cytoscape-klay';
+import { EdgeSingular, NodeSingular, SingularElementArgument } from 'cytoscape';
 import { Observable, Subscription, filter, map, tap } from 'rxjs';
 import { CompartmentCreationDialogComponent } from './components/compartment-creation-dialog/compartment-creation-dialog.component';
 import { ConfirmationDialogComponent } from './components/confirmation-dialog/confirmation-dialog.component';
@@ -16,21 +8,19 @@ import { DefinitionsTableDialogComponent } from './components/definitions-table-
 import { FlowCreationDialogComponent } from './components/flow-creation-dialog/flow-creation-dialog.component';
 import { SimulationDashboardComponent } from './components/simulation-dashboard/simulation-dashboard.component';
 import { SimulationDialogComponent } from './components/simulation-dialog/simulation-dialog.component';
-import { cytoscapeLayoutOptions, cytoscapeOptions } from './core/constants';
 import {
-    Definition,
-    DefinitionType,
     ICompartment,
     ICompartmentBase,
+    ICompartmentDefinition,
     IConstant,
-    IImportFlow,
+    IEditCompartmentPayload,
     IImportModel,
     IIntervention,
     ISimulationParameters,
     ISimulationResults,
 } from './core/interfaces';
-import { DefinitionsService } from './services/definitions.service';
 import { SamplesService } from './services/model-samples.service';
+import { ModelService } from './services/model.service';
 import { SimulationService } from './services/simulation.service';
 
 interface ISimulationDialogOutput {
@@ -38,9 +28,6 @@ interface ISimulationDialogOutput {
     costFunction: string;
     isOptimalControlProblem: boolean;
 }
-
-cytoscape.use(klay);
-cytoscape.use(edgehandles);
 
 @Component({
     selector: 'app-root',
@@ -51,66 +38,57 @@ export class AppComponent {
     public simulationResults!: ISimulationResults;
 
     public get elementSelected(): boolean {
-        return (
-            this.cytoscapeObj &&
-            this.cytoscapeObj.elements(':selected').length > 0
-        );
+        return !!this.modelService.selectedElement;
     }
 
     public get compartmentsCount(): number {
-        return this.cytoscapeObj && this.cytoscapeObj.nodes().length;
-    }
-
-    public get isModelValid(): boolean {
-        return true;
+        return this.modelService.compartmentsCount;
     }
 
     @ViewChild('canvas') private readonly canvas!: ElementRef<HTMLElement>;
-
-    private cytoscapeObj!: cytoscape.Core;
-    private edgehandles!: edgehandles.EdgeHandlesInstance;
 
     private readonly subscriptions: Subscription = new Subscription();
 
     constructor(
         private readonly dialogService: MatDialog,
         private readonly simulationService: SimulationService,
-        private readonly definitionsService: DefinitionsService,
+        private readonly modelService: ModelService,
         private readonly samplesService: SamplesService
     ) {}
 
     public ngAfterViewInit(): void {
-        this.cytoscapeObj = cytoscape({
-            container: this.canvas.nativeElement,
-            ...cytoscapeOptions,
-        });
+        this.modelService.initCytoscape(this.canvas.nativeElement);
 
-        this.edgehandles = this.cytoscapeObj.edgehandles();
+        const compartmentOpeningSub: Subscription =
+            this.modelService.compartmentOpen
+                .pipe(
+                    tap((): void => {
+                        this.openEditCompartmentDialog();
+                    })
+                )
+                .subscribe();
 
-        this.cytoscapeObj.on('dblclick', (event: EventObject) => {
-            if (!event.target.group) {
-                return;
-            }
+        const fromOpeningSub: Subscription = this.modelService.fromOpen
+            .pipe(
+                tap((): void => {
+                    this.openEditFlowDialog();
+                })
+            )
+            .subscribe();
 
-            if (event.target.group() === 'nodes') {
-                this.openEditCompartmentDialog();
-            }
-
-            if (event.target.group() === 'edges') {
-                this.openEditFlowDialog();
-            }
-        });
-
-        this.cytoscapeObj.on('cxttapend', 'node', (event: EventObject) => {
-            this.edgehandles.start(event.target);
-        });
-
-        this.cytoscapeObj.on(
-            'ehcomplete',
-            this.onFlowCreationDialog.bind(this) as any
-        );
+        const flowAddSub: Subscription = this.modelService.flowAdd
+            .pipe(
+                tap((addedEdge: EdgeSingular): void => {
+                    this.onFlowCreationDialog(addedEdge);
+                })
+            )
+            .subscribe();
 
         this.loadSample();
+
+        this.subscriptions.add(compartmentOpeningSub);
+        this.subscriptions.add(fromOpeningSub);
+        this.subscriptions.add(flowAddSub);
     }
 
     public openDefinitionsTableDialog(): void {
@@ -143,16 +121,16 @@ export class AppComponent {
     }
 
     public layout(): void {
-        this.cytoscapeObj.elements().layout(cytoscapeLayoutOptions).run();
+        this.modelService.layout();
     }
 
     public onDeleteElementDialog(): void {
-        const selectedElement: SingularElementArgument = this.cytoscapeObj
-            .elements(':selected')
-            .first();
+        const selectedElement: SingularElementArgument =
+            this.modelService.selectedElement;
 
-        const deletionSubject: string =
-            selectedElement.group() === 'nodes' ? 'compartment' : 'flow';
+        const isCompartment: boolean = selectedElement.group() === 'nodes';
+
+        const deletionSubject: string = isCompartment ? 'compartment' : 'flow';
 
         const deletionDialog: MatDialogRef<ConfirmationDialogComponent> =
             this.dialogService.open(ConfirmationDialogComponent, {
@@ -167,8 +145,16 @@ export class AppComponent {
             deletionDialog
                 .afterClosed()
                 .pipe(
-                    filter((confirmed: boolean) => confirmed),
-                    tap(this.deleteElement.bind(this))
+                    filter((confirmed: boolean): boolean => confirmed),
+                    tap((): void => {
+                        if (isCompartment) {
+                            this.modelService.removeCompartment();
+
+                            return;
+                        }
+
+                        this.modelService.removeFlow();
+                    })
                 )
                 .subscribe()
         );
@@ -179,8 +165,8 @@ export class AppComponent {
             this.dialogService.open(ConfirmationDialogComponent, {
                 data: {
                     title: 'Clear model',
-                    message:
-                        'Are you sure you want to delete whole model?',
+                    message: 'Are you sure you want to delete whole model?' +
+                    '\n\nAll constants will remain intact'
                 },
                 autoFocus: false,
             });
@@ -190,7 +176,9 @@ export class AppComponent {
                 .afterClosed()
                 .pipe(
                     filter((confirmed: boolean) => confirmed),
-                    tap(this.clearCompartments.bind(this))
+                    tap((): void => {
+                        this.modelService.clear();
+                    })
                 )
                 .subscribe()
         );
@@ -226,14 +214,23 @@ export class AppComponent {
     }
 
     private openEditCompartmentDialog(): void {
-        const selectedCompartment: NodeSingular = this.cytoscapeObj
-            .nodes(':selected')
-            .first();
+        const selectedCompartment: NodeSingular = this.modelService
+            .selectedElement as NodeSingular;
+
+        const compartmentValue: number = this.modelService
+            .getDefinitionsTable()
+            .compartments.find(
+                (compartment: ICompartmentDefinition) =>
+                    compartment.name === selectedCompartment.data('name')
+            )!.value;
 
         const editDialog: MatDialogRef<CompartmentCreationDialogComponent> =
             this.dialogService.open(CompartmentCreationDialogComponent, {
                 autoFocus: false,
-                data: selectedCompartment.data(),
+                data: {
+                    name: selectedCompartment.data('name'),
+                    value: compartmentValue,
+                },
             });
 
         this.subscriptions.add(
@@ -243,18 +240,21 @@ export class AppComponent {
                     filter((compartment: ICompartmentBase) =>
                         Boolean(compartment)
                     ),
+                    map(
+                        (
+                            compartment: ICompartmentBase
+                        ): IEditCompartmentPayload => ({
+                            ...compartment,
+                            previousName: selectedCompartment.data('name'),
+                        })
+                    ),
                     tap(this.editCompartment.bind(this))
                 )
                 .subscribe()
         );
     }
 
-    private onFlowCreationDialog(
-        event: EventObject,
-        sourceNode: NodeSingular,
-        targetNode: NodeSingular,
-        addedEdge: EdgeSingular
-    ): void {
+    private onFlowCreationDialog(addedEdge: EdgeSingular): void {
         const creationDialog: MatDialogRef<FlowCreationDialogComponent> =
             this.dialogService.open(FlowCreationDialogComponent, {
                 autoFocus: false,
@@ -270,20 +270,17 @@ export class AppComponent {
                         }
                     }),
                     filter((flowEquation: string) => Boolean(flowEquation)),
-                    map((flowEquation: string): [string, EdgeSingular] => [
-                        flowEquation,
-                        addedEdge,
-                    ]),
-                    tap(this.addFlow.bind(this))
+                    tap((flowEquation: string): void => {
+                        this.modelService.editFlow(flowEquation);
+                    })
                 )
                 .subscribe()
         );
     }
 
     private openEditFlowDialog(): void {
-        const selectedFlow: EdgeSingular = this.cytoscapeObj
-            .edges(':selected')
-            .first();
+        const selectedFlow: EdgeSingular = this.modelService
+            .selectedElement as EdgeSingular;
 
         const editDialog: MatDialogRef<FlowCreationDialogComponent> =
             this.dialogService.open(FlowCreationDialogComponent, {
@@ -296,59 +293,20 @@ export class AppComponent {
                 .afterClosed()
                 .pipe(
                     filter((flowEquation: string) => Boolean(flowEquation)),
-                    tap(this.editFlow.bind(this))
+                    tap((flowEquation: string) => {
+                        this.modelService.editFlow(flowEquation);
+                    })
                 )
                 .subscribe()
         );
     }
 
     private addCompartment(compartmentData: ICompartmentBase): void {
-        this.cytoscapeObj.add({
-            group: 'nodes',
-            data: {
-                id: compartmentData.id,
-                value: compartmentData.value,
-            },
-            renderedPosition: {
-                x: this.cytoscapeObj.width() / 2,
-                y: this.cytoscapeObj.height() / 2,
-            },
-        });
-
-        this.definitionsService.addDefinition({
-            id: compartmentData.id,
-            type: DefinitionType.Compartment,
-            value: compartmentData.value,
-        });
+        this.modelService.addCompartment(compartmentData);
     }
 
-    private editCompartment(compartmentData: ICompartmentBase): void {
-        const selectedCompartment: NodeSingular = this.cytoscapeObj
-            .nodes(':selected')
-            .first();
-
-        selectedCompartment.data('id', compartmentData.id);
-        selectedCompartment.data('value', compartmentData.value);
-    }
-
-    private addFlow([flowEquation, flowEdge]: [string, EdgeSingular]): void {
-        flowEdge.data('equation', flowEquation);
-    }
-
-    private editFlow(flowEquation: string): void {
-        const selectedFlow: EdgeSingular = this.cytoscapeObj
-            .edges(':selected')
-            .first();
-
-        selectedFlow.data('equation', flowEquation);
-    }
-
-    private deleteElement(): void {
-        this.cytoscapeObj.remove(':selected');
-    }
-
-    private clearCompartments(): void {
-        this.cytoscapeObj.remove('node');
+    private editCompartment(compartmentData: IEditCompartmentPayload): void {
+        this.modelService.editCompartment(compartmentData);
     }
 
     private simulateModel(simulationData: ISimulationDialogOutput): void {
@@ -374,7 +332,7 @@ export class AppComponent {
                 costFunction: constants.reduce(
                     (costFunction: string, constant: IConstant) => {
                         return costFunction.replace(
-                            new RegExp(`\\b${constant.id}\\b`),
+                            new RegExp(`\\b${constant.name}\\b`),
                             constant.value.toString()
                         );
                     },
@@ -396,58 +354,23 @@ export class AppComponent {
     private getCompartments(): ICompartment[] {
         const constants: IConstant[] = this.getConstants();
 
-        return this.cytoscapeObj.nodes().map(
-            (node: NodeSingular): ICompartment => ({
-                id: node.id(),
-                value: node.data('value'),
-                inflows: this.getFlows(node.incomers().edges()).map(
-                    (flow: string) => {
-                        constants.forEach((constant: IConstant) => {
-                            flow = flow.replace(
-                                new RegExp(`\\b${constant.id}\\b`),
-                                constant.value.toString()
-                            );
-                        });
-
-                        return flow;
-                    }
-                ),
-                outflows: this.getFlows(node.outgoers().edges()).map(
-                    (flow: string) => {
-                        constants.forEach((constant: IConstant) => {
-                            flow = flow.replace(
-                                new RegExp(`\\b${constant.id}\\b`),
-                                constant.value.toString()
-                            );
-                        });
-
-                        return flow;
-                    }
-                ),
-            })
-        );
+        return this.modelService.getCompartments(constants);
     }
 
     private getConstants(): IConstant[] {
-        return this.definitionsService.getDefinitionsTable().constants.map(
+        return this.modelService.getDefinitionsTable().constants.map(
             (constant: IConstant): IConstant => ({
-                id: constant.id,
+                name: constant.name,
                 value: constant.value,
             })
         );
     }
 
     private getInterventions(): IIntervention[] {
-        return this.definitionsService.getDefinitionsTable().interventions.map(
+        return this.modelService.getDefinitionsTable().interventions.map(
             (intervention: IIntervention): IIntervention => ({
-                id: intervention.id,
+                name: intervention.name,
             })
-        );
-    }
-
-    private getFlows(flowEdges: EdgeCollection): string[] {
-        return flowEdges.map((flowEdge: EdgeSingular): string =>
-            flowEdge.data('equation')
         );
     }
 
@@ -456,7 +379,7 @@ export class AppComponent {
             .getSample('default')
             .pipe(
                 tap(this.parseSample.bind(this)),
-                tap(() => {
+                tap((): void => {
                     this.layout();
                 })
             )
@@ -464,25 +387,6 @@ export class AppComponent {
     }
 
     private parseSample(sample: IImportModel): void {
-        this.clearCompartments();
-
-        sample.compartments.forEach((compartment: ICompartmentBase) => {
-            this.addCompartment(compartment);
-        });
-
-        sample.flows.forEach((flow: IImportFlow) => {
-            this.cytoscapeObj.add({
-                group: 'edges',
-                data: {
-                    source: flow.source,
-                    target: flow.target,
-                    equation: flow.equation,
-                },
-            });
-        });
-
-        sample.definitions.forEach((definition: Definition) => {
-            this.definitionsService.addDefinition(definition);
-        });
+        this.modelService.parseSample(sample);
     }
 }

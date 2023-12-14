@@ -6,6 +6,9 @@ from sympy.abc import _clash
 def validateExpression(payload):
     """Expression validation function"""
 
+    if '' in _clash:
+        del _clash['']
+
     # Unpacking the payload
     expression = payload['expression']
     allowedSymbols = payload['allowedSymbols']

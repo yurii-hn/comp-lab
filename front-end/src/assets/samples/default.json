@@ -1,52 +1,134 @@
 {
     "compartments": [
         {
-            "id": "S",
+            "name": "S",
             "value": 35200000
         },
         {
-            "id": "E1",
+            "name": "E1",
             "value": 0
         },
         {
-            "id": "E2",
+            "name": "E2",
             "value": 0
         },
         {
-            "id": "I1",
+            "name": "I1",
             "value": 3520000
         },
         {
-            "id": "I2",
+            "name": "I2",
             "value": 5280000
         },
         {
-            "id": "Casual",
+            "name": "Casual",
             "value": 0
         },
         {
-            "id": "Fatal",
+            "name": "Fatal",
             "value": 0
         },
         {
-            "id": "Hosp",
+            "name": "Hosp",
             "value": 0
         },
         {
-            "id": "R1",
+            "name": "R1",
             "value": 0
         },
         {
-            "id": "R2",
+            "name": "R2",
             "value": 0
         },
         {
-            "id": "Death",
+            "name": "Death",
             "value": 0
         },
         {
-            "id": "Immunity",
+            "name": "Immunity",
             "value": 0
+        }
+    ],
+    "interventions": [
+        {
+            "name": "u1"
+        },
+        {
+            "name": "u2"
+        }
+    ],
+    "constants": [
+        {
+            "name": "c",
+            "value": 1000
+        },
+        {
+            "name": "d1",
+            "value": 300
+        },
+        {
+            "name": "d2",
+            "value": 1500
+        },
+        {
+            "name": "alpha",
+            "value": 0.7
+        },
+        {
+            "name": "beta",
+            "value": 0.3
+        },
+        {
+            "name": "Tvaccine_lag",
+            "value": 28
+        },
+        {
+            "name": "R0",
+            "value": 2.25
+        },
+        {
+            "name": "N",
+            "value": 44e6
+        },
+        {
+            "name": "Tinf",
+            "value": 10
+        },
+        {
+            "name": "Tinc",
+            "value": 10
+        },
+        {
+            "name": "Tquar",
+            "value": 10
+        },
+        {
+            "name": "Trecovery_casual",
+            "value": 11
+        },
+        {
+            "name": "Thospital_lag",
+            "value": 30
+        },
+        {
+            "name": "Tdeath",
+            "value": 5
+        },
+        {
+            "name": "pAsym",
+            "value": 0.4
+        },
+        {
+            "name": "pCasual",
+            "value": 0.8
+        },
+        {
+            "name": "pFatal",
+            "value": 0.2
+        },
+        {
+            "name": "Trenewal",
+            "value": 5
         }
     ],
     "flows": [
@@ -114,106 +196,6 @@
             "equation": "Hosp / Tdeath",
             "source": "Hosp",
             "target": "Death"
-        }
-    ],
-    "definitions": [
-        {
-            "id": "u1",
-            "type": "intervention"
-        },
-        {
-            "id": "u2",
-            "type": "intervention"
-        },
-        {
-            "id": "c",
-            "type": "constant",
-            "value": 1000
-        },
-        {
-            "id": "d1",
-            "type": "constant",
-            "value": 300
-        },
-        {
-            "id": "d2",
-            "type": "constant",
-            "value": 1500
-        },
-        {
-            "id": "alpha",
-            "type": "constant",
-            "value": 0.7
-        },
-        {
-            "id": "beta",
-            "type": "constant",
-            "value": 0.3
-        },
-        {
-            "id": "Tvaccine_lag",
-            "type": "constant",
-            "value": 28
-        },
-        {
-            "id": "R0",
-            "type": "constant",
-            "value": 2.25
-        },
-        {
-            "id": "N",
-            "type": "constant",
-            "value": 44e6
-        },
-        {
-            "id": "Tinf",
-            "type": "constant",
-            "value": 10
-        },
-        {
-            "id": "Tinc",
-            "type": "constant",
-            "value": 10
-        },
-        {
-            "id": "Tquar",
-            "type": "constant",
-            "value": 10
-        },
-        {
-            "id": "Trecovery_casual",
-            "type": "constant",
-            "value": 11
-        },
-        {
-            "id": "Thospital_lag",
-            "type": "constant",
-            "value": 30
-        },
-        {
-            "id": "Tdeath",
-            "type": "constant",
-            "value": 5
-        },
-        {
-            "id": "pAsym",
-            "type": "constant",
-            "value": 0.4
-        },
-        {
-            "id": "pCasual",
-            "type": "constant",
-            "value": 0.8
-        },
-        {
-            "id": "pFatal",
-            "type": "constant",
-            "value": 0.2
-        },
-        {
-            "id": "Trenewal",
-            "type": "constant",
-            "value": 5
         }
     ]
 }

@@ -8,10 +8,13 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
     styleUrls: ['./flow-creation-dialog.component.scss'],
 })
 export class FlowCreationDialogComponent {
-    public readonly flowEquationFormControl: FormControl = new FormControl(
-        '',
-        [Validators.required]
-    );
+    public readonly flowEquationFormControl: FormControl = new FormControl('', [
+        Validators.required,
+    ]);
+
+    public get isEditMode(): boolean {
+        return !!this.data;
+    }
 
     constructor(
         private readonly dialogRef: MatDialogRef<FlowCreationDialogComponent>,

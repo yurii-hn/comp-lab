@@ -1,5 +1,5 @@
 export interface ICompartmentBase {
-    id: string;
+    name: string;
     value: number;
 }
 
@@ -8,18 +8,29 @@ export interface ICompartment extends ICompartmentBase {
     outflows: string[];
 }
 
+export interface IEditCompartmentPayload extends ICompartmentBase {
+    previousName: string;
+}
+
+export interface IFlow {
+    source: string;
+    target: string;
+    equation: string;
+}
+
+
 export interface ISimulationParameters {
     time: number;
     step: number;
 }
 
 export interface IConstant {
-    id: string;
+    name: string;
     value: number;
 }
 
 export interface IIntervention {
-    id: string;
+    name: string;
 }
 
 export interface ISimulationData {
@@ -33,7 +44,7 @@ export interface IOptimalControlData extends ISimulationData {
 }
 
 export interface ICompartmentSimulatedData {
-    id: string;
+    name: string;
     values: number[];
 }
 
@@ -72,16 +83,11 @@ export interface IDefinitionsTable {
     interventions: IInterventionDefinition[];
 }
 
-export interface IImportFlow {
-    source: string;
-    target: string;
-    equation: string;
-}
-
 export interface IImportModel {
     compartments: ICompartmentBase[];
-    flows: IImportFlow[];
-    definitions: Definition[];
+    constants: IConstant[];
+    interventions: IIntervention[];
+    flows: IFlow[];
 }
 
 export interface IValidationResponse {
