@@ -12,9 +12,15 @@
         [formControl]="equationFormControl"
     ></textarea>
 
-    <mat-error *ngIf="equationFormControl.errors && equationFormControl.errors['equation']">
+    <mat-error
+        *ngIf="
+            equationFormControl.errors && equationFormControl.errors['equation']
+        "
+    >
         <ng-container
-            *ngFor="let error of equationFormControl.errors!['equation'] | keyvalue"
+            *ngFor="
+                let error of equationFormControl.errors!['equation'] | keyvalue
+            "
         >
             <p *ngIf="error.key !== 'required'" class="error-message">
                 {{ error.value }}

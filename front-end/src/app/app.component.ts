@@ -1,5 +1,6 @@
 import { Component, ElementRef, ViewChild } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { EdgeSingular, NodeSingular, SingularElementArgument } from 'cytoscape';
 import { Observable, Subscription, filter, map, tap } from 'rxjs';
 import { CompartmentCreationDialogComponent } from './components/compartment-creation-dialog/compartment-creation-dialog.component';
@@ -18,6 +19,7 @@ import {
     IIntervention,
     ISimulationParameters,
     ISimulationResults,
+    ISimulationResultsSuccess,
 } from './core/interfaces';
 import { SamplesService } from './services/model-samples.service';
 import { ModelService } from './services/model.service';
@@ -35,7 +37,7 @@ interface ISimulationDialogOutput {
     styleUrls: ['./app.component.scss'],
 })
 export class AppComponent {
-    public simulationResults!: ISimulationResults;
+    public simulationResults: ISimulationResultsSuccess | null = null;
 
     public get elementSelected(): boolean {
         return !!this.modelService.selectedElement;
@@ -53,7 +55,8 @@ export class AppComponent {
         private readonly dialogService: MatDialog,
         private readonly simulationService: SimulationService,
         private readonly modelService: ModelService,
-        private readonly samplesService: SamplesService
+        private readonly samplesService: SamplesService,
+        private readonly snackBar: MatSnackBar
     ) {}
 
     public ngAfterViewInit(): void {
@@ -165,8 +168,9 @@ export class AppComponent {
             this.dialogService.open(ConfirmationDialogComponent, {
                 data: {
                     title: 'Clear model',
-                    message: 'Are you sure you want to delete whole model?' +
-                    '\n\nAll constants will remain intact'
+                    message:
+                        'Are you sure you want to delete whole model?' +
+                        '\n\nAll constants will remain intact',
                 },
                 autoFocus: false,
             });
@@ -312,6 +316,8 @@ export class AppComponent {
     private simulateModel(simulationData: ISimulationDialogOutput): void {
         let observable: Observable<ISimulationResults>;
 
+        this.simulationResults = null;
+
         if (!simulationData.isOptimalControlProblem) {
             observable = this.simulationService.simulateModel({
                 model: this.getCompartments(),
@@ -345,7 +351,31 @@ export class AppComponent {
         observable
             .pipe(
                 tap((results: ISimulationResults) => {
-                    this.simulationResults = results;
+                    if (results.success) {
+                        this.simulationResults = results;
+
+                        this.snackBar.open(
+                            'Simulation completed successfully',
+                            'Dismiss',
+                            {
+                                panelClass: 'snackbar',
+                                horizontalPosition: 'right',
+                                verticalPosition: 'bottom',
+                            }
+                        );
+
+                        return;
+                    }
+
+                    this.snackBar.open(
+                        'Simulation failed.\n\n' + `Error: ${results.error}`,
+                        'Dismiss',
+                        {
+                            panelClass: 'snackbar',
+                            horizontalPosition: 'right',
+                            verticalPosition: 'bottom',
+                        }
+                    );
                 })
             )
             .subscribe();

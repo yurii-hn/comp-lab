@@ -1,3 +1,7 @@
+from sympy import Symbol
+
+from shared import getCompartmentsEquations, checkPopulationPreservation, simulateModel, checkModelEquationsContinuity
+
 def simulate(payload):
     """Model simulation function"""
 
@@ -9,67 +13,56 @@ def simulate(payload):
     data['step'] = payload['simulationParameters']['step']
     data['compartments'] = []
 
-    # Get the amount of compartments
-    compartmentsAmount = len(payload['model'])
+    payload['symbolsTable'] = {}
 
-    # Initialize the compartments with their initial values and symbols
-    for i in range(compartmentsAmount):
-        # Fetch the compartment from the model
-        modelCompartment = payload['model'][i]
+    for i in range(len(payload['model'])):
+        compartmentName = payload['model'][i]['name']
 
-        # Initialize output compartment
-        dataCompartment = {}
+        payload['symbolsTable'][compartmentName] = Symbol(compartmentName)
 
-        # Initialize the compartment values
-        dataCompartment['name'] = modelCompartment['name']
-        dataCompartment['values'] = [0] * int(data['time'] / data['step'])
+    simulationNodesAmount = data['time'] / data['step']
 
-        # Set the initial value
-        dataCompartment['values'][0] = modelCompartment['value']
+    compartmentsEquations = getCompartmentsEquations(payload)
 
-        # Add the compartment to the output
-        data['compartments'].append(dataCompartment)
+    for i in range(len(payload['model'])):
+        payload['model'][i]['values'] = [payload['model'][i]['value']] + \
+            [0] * int(simulationNodesAmount - 1)
+        payload['model'][i]['equation'] = compartmentsEquations[i]
 
-    # Simulate the model
-    for t in range(int(data['time'] / data['step']) - 1):
-        # Initialize the compartment values list
-        compartmentValues = {}
+    continuityCheckResult = checkModelEquationsContinuity(payload)
 
-        for i in range(compartmentsAmount):
-            compartmentName = payload['model'][i]['name']
+    if continuityCheckResult['error']:
+        return {
+            'error': continuityCheckResult['error'],
+            'success': False
+        }
 
-            compartmentValues[compartmentName] = data['compartments'][i]['values'][t]
+    populationPreservationCheckResult = checkPopulationPreservation(payload)
 
-        # Calculate the new compartment values
-        for i in range(compartmentsAmount):
-            # Fetch the compartment from the model
-            modelCompartment = payload['model'][i]
+    if populationPreservationCheckResult['error']:
+        return {
+            'error': populationPreservationCheckResult['error'],
+            'success': False
+        }
 
-            # Get the amount of inflows and outflows
-            compartmentInflows = len(modelCompartment['inflows'])
-            compartmentOutflows = len(modelCompartment['outflows'])
+    try:
+        simulationResults = simulateModel(payload)
 
-            # Initialize the derivative
-            d = ''
+        for i in range(len(payload['model'])):
+            payload['model'][i]['values'] = simulationResults[i]['values']
 
-            # Calculate inflow part of the derivative
-            for j in range(compartmentInflows):
-                # Fetch the inflow from the compartment
-                inflow = modelCompartment['inflows'][j].replace('^', '**')
+        for i in range(len(payload['model'])):
+            data['compartments'].append({
+                'name': payload['model'][i]['name'],
+                'values': payload['model'][i]['values']
+            })
 
-                # Add the inflow to the derivative
-                d += inflow
+        data['success'] = True
 
-            # Calculate outflow part of the derivative
-            for j in range(compartmentOutflows):
-                # Fetch the outflow from the compartment
-                outflow = modelCompartment['outflows'][j].replace('^', '**')
+        return data
 
-                # Subtract the outflow from the derivative
-                d += f"-({outflow})"
-
-            # Calculate the new compartment value
-            data['compartments'][i]['values'][t + 1] = data['compartments'][i]['values'][t] + \
-                eval(d, compartmentValues)
-
-    return data
+    except Exception as e:
+        return {
+            'error': str(e),
+            'success': False
+        }

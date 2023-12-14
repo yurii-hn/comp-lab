@@ -3,7 +3,6 @@ from flask import Flask, request, jsonify
 from simulate import simulate
 from optimalControl import optimalControl
 from validateExpression import validateExpression
-from validateCostFunction import validateCostFunction
 
 # Creating the application instance
 app = Flask(__name__)
@@ -46,20 +45,6 @@ def validateExpressionEndpoint():
 
     # Validating the expression
     result = validateExpression(data)
-
-    # Returning the result
-    return jsonify(result)
-
-
-@app.route('/validate-cost-function', methods=['POST'])
-def validateCostFunctionEndpoint():
-    """Cost function validation endpoint"""
-
-    # Getting the data from the request
-    data = request.get_json()
-
-    # Validating the cost function
-    result = validateCostFunction(data)
 
     # Returning the result
     return jsonify(result)

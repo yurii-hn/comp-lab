@@ -22,21 +22,6 @@ export class ValidationService {
         );
     }
 
-    public validateCostFunction(
-        func: string,
-        allowedSymbols: string[],
-        interventions: string[]
-    ): Observable<IValidationResponse> {
-        return this.httpClient.post<IValidationResponse>(
-            'http://localhost:5000/validate-cost-function',
-            {
-                func,
-                allowedSymbols,
-                interventions,
-            }
-        );
-    }
-
     public validateCompartmentName(
         name: string,
         existingCompartmentNames: string[]

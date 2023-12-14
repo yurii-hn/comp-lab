@@ -3,7 +3,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Config, Data, Layout } from 'plotly.js';
 import {
     ICompartmentSimulatedData,
-    ISimulationResults,
+    ISimulationResultsSuccess
 } from 'src/app/core/interfaces';
 
 interface IPlot {
@@ -29,7 +29,7 @@ export class SimulationDashboardComponent implements OnInit {
 
     constructor(
         private readonly dialogRef: MatDialogRef<SimulationDashboardComponent>,
-        @Inject(MAT_DIALOG_DATA) private readonly data: ISimulationResults
+        @Inject(MAT_DIALOG_DATA) private readonly data: ISimulationResultsSuccess
     ) {}
 
     public ngOnInit(): void {

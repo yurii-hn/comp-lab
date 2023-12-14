@@ -47,7 +47,6 @@ export class EquationInputComponent
 {
     @Input() public title: string = '';
     @Input() public placeholder: string = '';
-    @Input() public isCostFunction: boolean = false;
 
     @Output()
     public readonly errorsChange: EventEmitter<ValidationErrors | null> =
@@ -89,24 +88,10 @@ export class EquationInputComponent
                         const allowedSymbols: string[] =
                             this.modelService.getAvailableSymbols();
 
-                        if (this.isCostFunction) {
-                            const interventions: string[] = this.modelService
-                                .getDefinitionsTable()
-                                .interventions.map(
-                                    (intervention) => intervention.name
-                                );
-
-                            return this.validationService.validateCostFunction(
-                                value,
-                                allowedSymbols,
-                                interventions
-                            );
-                        } else {
-                            return this.validationService.validateEquation(
-                                value,
-                                allowedSymbols
-                            );
-                        }
+                        return this.validationService.validateEquation(
+                            value,
+                            allowedSymbols
+                        );
                     }),
                     tap((validationResponse: IValidationResponse) => {
                         if (!validationResponse.isValid) {

@@ -18,7 +18,6 @@ export interface IFlow {
     equation: string;
 }
 
-
 export interface ISimulationParameters {
     time: number;
     step: number;
@@ -48,11 +47,21 @@ export interface ICompartmentSimulatedData {
     values: number[];
 }
 
-export interface ISimulationResults {
+export interface ISimulationResultsSuccess {
     time: number;
     step: number;
     compartments: ICompartmentSimulatedData[];
+    success: true;
 }
+
+export interface ISimulationResultsError {
+    error: string;
+    success: false;
+}
+
+export type ISimulationResults =
+    | ISimulationResultsSuccess
+    | ISimulationResultsError;
 
 export enum DefinitionType {
     Compartment = 'compartment',
