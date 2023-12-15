@@ -36,6 +36,7 @@ import {
     IConstant,
     IDefinitionsTable,
     IEditCompartmentPayload,
+    IExportModel,
     IFlow,
     IImportModel,
     IIntervention,
@@ -141,6 +142,15 @@ export class ModelService {
         this.cytoscapeObj.layout(cytoscapeLayoutOptions).run();
     }
 
+    public getModelExport(): IExportModel {
+        return {
+            compartments: this.getCompartmentsBase(),
+            interventions: this.getInterventions(),
+            constants: this.getConstants(),
+            flows: this.getFlows(),
+        };
+    }
+
     public parseSample(sample: IImportModel): void {
         this.clear();
 
@@ -205,6 +215,34 @@ export class ModelService {
         this.removeDefinition(this.selectedElement.data('name'));
     }
 
+    public getConstants(): IConstant[] {
+        return this.getDefinitionsTable().constants.map(
+            (constant: IConstant): IConstant => ({
+                name: constant.name,
+                value: constant.value,
+            })
+        );
+    }
+
+    public getInterventions(): IIntervention[] {
+        return this.getDefinitionsTable().interventions.map(
+            (intervention: IIntervention): IIntervention => ({
+                name: intervention.name,
+            })
+        );
+    }
+
+    public getCompartmentsBase(): ICompartmentBase[] {
+        return this.getDefinitionsTable().compartments.map(
+            (compartment: ICompartmentDefinition): ICompartmentBase => {
+                return {
+                    name: compartment.name,
+                    value: compartment.value,
+                };
+            }
+        );
+    }
+
     public getCompartments(constants: IConstant[]): ICompartment[] {
         return this.getDefinitionsTable().compartments.map(
             (compartment: ICompartmentDefinition): ICompartment => {
@@ -241,6 +279,18 @@ export class ModelService {
                     }),
                 };
             }
+        );
+    }
+
+    public getFlows(): IFlow[] {
+        const flowEdges: EdgeCollection = this.cytoscapeObj.edges();
+
+        return flowEdges.map(
+            (flowEdge: EdgeSingular): IFlow => ({
+                equation: flowEdge.data('equation'),
+                source: flowEdge.source().data('name'),
+                target: flowEdge.target().data('name'),
+            })
         );
     }
 

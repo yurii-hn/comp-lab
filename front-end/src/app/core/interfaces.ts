@@ -92,12 +92,16 @@ export interface IDefinitionsTable {
     interventions: IInterventionDefinition[];
 }
 
-export interface IImportModel {
+export interface IModel {
     compartments: ICompartmentBase[];
     constants: IConstant[];
     interventions: IIntervention[];
     flows: IFlow[];
 }
+
+export type IImportModel = IModel;
+
+export type IExportModel = IModel;
 
 export interface IValidationResponse {
     isValid: boolean;

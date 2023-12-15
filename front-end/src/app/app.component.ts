@@ -15,6 +15,7 @@ import {
     ICompartmentDefinition,
     IConstant,
     IEditCompartmentPayload,
+    IExportModel,
     IImportModel,
     IIntervention,
     ISimulationParameters,
@@ -186,6 +187,67 @@ export class AppComponent {
                 )
                 .subscribe()
         );
+    }
+
+    public onModelImport(): void {
+        const fileInput: HTMLInputElement = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.sc, .json';
+
+        fileInput.onchange = (): void => {
+            const file: File = fileInput.files![0];
+
+            const fileReader: FileReader = new FileReader();
+
+            fileReader.onload = (): void => {
+                const model: IImportModel = JSON.parse(
+                    fileReader.result as string
+                );
+
+                this.modelService.parseSample(model);
+
+                this.layout();
+
+                this.snackBar.open('Model imported successfully', 'Dismiss', {
+                    panelClass: 'snackbar',
+                    horizontalPosition: 'right',
+                    verticalPosition: 'bottom',
+                });
+            };
+
+            fileReader.readAsText(file);
+        };
+
+        fileInput.click();
+
+        fileInput.remove();
+    }
+
+    public onModelExport(): void {
+        const model: IExportModel = this.modelService.getModelExport();
+        const modelString: string = JSON.stringify(model);
+
+        const blob: Blob = new Blob([modelString], {
+            type: 'application/json',
+        });
+
+        const url: string = URL.createObjectURL(blob);
+
+        const anchor: HTMLAnchorElement = document.createElement('a');
+        anchor.href = url;
+        anchor.download = 'model.sc';
+
+        anchor.click();
+
+        URL.revokeObjectURL(url);
+
+        anchor.remove();
+
+        this.snackBar.open('Model export is ready for downloading', 'Dismiss', {
+            panelClass: 'snackbar',
+            horizontalPosition: 'right',
+            verticalPosition: 'bottom',
+        });
     }
 
     public onSimulationResultsDialog(): void {
@@ -388,20 +450,11 @@ export class AppComponent {
     }
 
     private getConstants(): IConstant[] {
-        return this.modelService.getDefinitionsTable().constants.map(
-            (constant: IConstant): IConstant => ({
-                name: constant.name,
-                value: constant.value,
-            })
-        );
+        return this.modelService.getConstants();
     }
 
     private getInterventions(): IIntervention[] {
-        return this.modelService.getDefinitionsTable().interventions.map(
-            (intervention: IIntervention): IIntervention => ({
-                name: intervention.name,
-            })
-        );
+        return this.modelService.getInterventions();
     }
 
     private loadSample(): void {
