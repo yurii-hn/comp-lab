@@ -1,4 +1,5 @@
 import { Component, ElementRef, ViewChild } from '@angular/core';
+import { FormControl } from '@angular/forms';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { EdgeSingular, NodeSingular, SingularElementArgument } from 'cytoscape';
@@ -22,9 +23,9 @@ import {
     ISimulationResults,
     ISimulationResultsSuccess,
 } from './core/interfaces';
-import { SamplesService } from './services/model-samples.service';
 import { ModelService } from './services/model.service';
 import { SimulationService } from './services/simulation.service';
+import { WorkspacesService } from './services/workspaces.service';
 
 interface ISimulationDialogOutput {
     simulationParameters: ISimulationParameters;
@@ -39,6 +40,7 @@ interface ISimulationDialogOutput {
 })
 export class AppComponent {
     public simulationResults: ISimulationResultsSuccess | null = null;
+    public readonly workspaceControl: FormControl = new FormControl();
 
     public get elementSelected(): boolean {
         return !!this.modelService.selectedElement;
@@ -46,6 +48,10 @@ export class AppComponent {
 
     public get compartmentsCount(): number {
         return this.modelService.compartmentsCount;
+    }
+
+    public get workspaces(): string[] {
+        return this.workspacesService.getWorkspaceNames();
     }
 
     @ViewChild('canvas') private readonly canvas!: ElementRef<HTMLElement>;
@@ -56,7 +62,7 @@ export class AppComponent {
         private readonly dialogService: MatDialog,
         private readonly simulationService: SimulationService,
         private readonly modelService: ModelService,
-        private readonly samplesService: SamplesService,
+        private readonly workspacesService: WorkspacesService,
         private readonly snackBar: MatSnackBar
     ) {}
 
@@ -88,11 +94,33 @@ export class AppComponent {
             )
             .subscribe();
 
-        this.loadSample();
+        const workspaceChangeSub: Subscription =
+            this.workspacesService.currentWorkspaceName$
+                .pipe(
+                    tap((workspaceName: string): void => {
+                        this.workspaceControl.setValue(workspaceName);
+                    })
+                )
+                .subscribe();
+
+        this.initWorkspace();
 
         this.subscriptions.add(compartmentOpeningSub);
         this.subscriptions.add(fromOpeningSub);
         this.subscriptions.add(flowAddSub);
+        this.subscriptions.add(workspaceChangeSub);
+    }
+
+    public onWorkspaceChange(workspaceName: string): void {
+        this.modelService.changeWorkspace(workspaceName);
+    }
+
+    public addNewWorkspace(): void {
+        this.modelService.addNewWorkspace();
+    }
+
+    public removeCurrentWorkspace(): void {
+        this.modelService.removeCurrentWorkspace();
     }
 
     public openDefinitionsTableDialog(): void {
@@ -457,19 +485,7 @@ export class AppComponent {
         return this.modelService.getInterventions();
     }
 
-    private loadSample(): void {
-        this.samplesService
-            .getSample('default')
-            .pipe(
-                tap(this.parseSample.bind(this)),
-                tap((): void => {
-                    this.layout();
-                })
-            )
-            .subscribe();
-    }
-
-    private parseSample(sample: IImportModel): void {
-        this.modelService.parseSample(sample);
+    private initWorkspace(): void {
+        this.modelService.initWorkspaceFromSample('default');
     }
 }

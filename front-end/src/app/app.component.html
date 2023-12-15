@@ -1,4 +1,40 @@
 <div class="buttons-container top-left-buttons">
+    <div class="workspace-controls">
+        <div class="workspace-select-wrapper">
+            <mat-select
+                class="workspace-select"
+                [formControl]="workspaceControl"
+                (valueChange)="onWorkspaceChange($event)"
+            >
+                <mat-option
+                    *ngFor="let workspace of workspaces"
+                    [value]="workspace"
+                >
+                    {{ workspace }}
+                </mat-option>
+            </mat-select>
+        </div>
+
+        <button
+            mat-mini-fab
+            class="button"
+            color="primary"
+            (click)="addNewWorkspace()"
+        >
+            <mat-icon>add_box</mat-icon>
+        </button>
+
+        <button
+            mat-mini-fab
+            class="button"
+            color="primary"
+            [disabled]="workspaces.length === 1"
+            (click)="removeCurrentWorkspace()"
+        >
+            <mat-icon>close</mat-icon>
+        </button>
+    </div>
+
     <button
         mat-mini-fab
         class="button"

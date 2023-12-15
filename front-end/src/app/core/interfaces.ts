@@ -103,6 +103,14 @@ export type IImportModel = IModel;
 
 export type IExportModel = IModel;
 
+export interface IWorkspaceBase {
+    model: IModel;
+}
+
+export interface IWorkspace extends IWorkspaceBase {
+    name: string;
+}
+
 export interface IValidationResponse {
     isValid: boolean;
     message?: string;

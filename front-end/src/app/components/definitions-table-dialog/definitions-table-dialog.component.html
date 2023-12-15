@@ -20,12 +20,7 @@
                 <mat-form-field>
                     <mat-label>Name</mat-label>
 
-                    <input
-                        matInput
-                        [disabled]="true"
-                        placeholder="Name"
-                        formControlName="name"
-                    />
+                    <input matInput placeholder="Name" formControlName="name" />
                 </mat-form-field>
             </td>
         </ng-container>
@@ -37,7 +32,7 @@
                 <mat-form-field>
                     <mat-label>Type</mat-label>
 
-                    <mat-select [disabled]="true" formControlName="type">
+                    <mat-select formControlName="type">
                         <mat-option
                             *ngFor="let definitionType of definitionTypes"
                             [value]="definitionType.value"

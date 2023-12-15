@@ -232,6 +232,10 @@ def checkCostFunctionContinuity(payload):
                 'error': f'Equation for cost function derivative is not continuous by {symbol}'
             }
 
+    return {
+        'error': None
+    }
+
 def checkModelEquationsContinuity(payload):
     for symbol in payload['symbolsTable']:
         for i in range(len(payload['model'])):

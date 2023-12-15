@@ -41,8 +41,11 @@ import {
     IImportModel,
     IIntervention,
     IInterventionDefinition,
+    IWorkspaceBase,
 } from '../core/interfaces';
+import { SamplesService } from './model-samples.service';
 import { ValidationService } from './validation.service';
+import { WorkspacesService } from './workspaces.service';
 
 cytoscape.use(klay);
 cytoscape.use(edgehandles);
@@ -84,7 +87,11 @@ export class ModelService {
 
     private readonly subscription: Subscription = new Subscription();
 
-    public constructor(private readonly validationService: ValidationService) {
+    public constructor(
+        private readonly validationService: ValidationService,
+        private readonly samplesService: SamplesService,
+        public readonly workspacesService: WorkspacesService
+    ) {
         this.compartmentOpen = this.compartmentOpenSubject.asObservable();
         this.fromOpen = this.fromOpenSubject.asObservable();
         this.flowAdd = this.flowAddSubject.asObservable();
@@ -138,6 +145,23 @@ export class ModelService {
         }) as any);
     }
 
+    public initWorkspaceFromSample(sampleName: string): void {
+        this.samplesService
+            .getSample(sampleName)
+            .pipe(
+                tap((sampleModel: IImportModel): void => {
+                    this.workspacesService.addWorkspace({
+                        model: sampleModel,
+                    });
+
+                    this.parseSample(sampleModel);
+
+                    this.layout();
+                })
+            )
+            .subscribe();
+    }
+
     public layout(): void {
         this.cytoscapeObj.layout(cytoscapeLayoutOptions).run();
     }
@@ -152,7 +176,7 @@ export class ModelService {
     }
 
     public parseSample(sample: IImportModel): void {
-        this.clear();
+        this.clear(true);
 
         sample.compartments.forEach((compartment: ICompartmentBase): void => {
             this.addCompartment(compartment);
@@ -176,6 +200,68 @@ export class ModelService {
         sample.flows.forEach((flowData: IFlow): void => {
             this.addFlow(flowData);
         });
+    }
+
+    public addNewWorkspace(): void {
+        const newWorkspace: IWorkspaceBase = {
+            model: {
+                compartments: [],
+                constants: [],
+                interventions: [],
+                flows: [],
+            },
+        };
+        const currentWorkspace: IWorkspaceBase = {
+            model: this.getModelExport(),
+        };
+
+        this.workspacesService.updateWorkspace(
+            this.workspacesService.currentWorkspaceName,
+            currentWorkspace
+        );
+
+        const workspaceName: string =
+            this.workspacesService.addWorkspace(newWorkspace);
+
+        this.workspacesService.setCurrentWorkspace(workspaceName);
+
+        this.parseSample(newWorkspace.model);
+
+        this.layout();
+    }
+
+    public changeWorkspace(workspaceName: string): void {
+        const currentWorkspace: IWorkspaceBase = {
+            model: this.getModelExport(),
+        };
+        const newWorkspace: IWorkspaceBase =
+            this.workspacesService.getWorkspace(workspaceName);
+
+        this.workspacesService.updateWorkspace(
+            this.workspacesService.currentWorkspaceName,
+            currentWorkspace
+        );
+
+        this.workspacesService.setCurrentWorkspace(workspaceName);
+
+        this.parseSample(newWorkspace.model);
+
+        this.layout();
+    }
+
+    public removeCurrentWorkspace(): void {
+        this.workspacesService.removeWorkspace(
+            this.workspacesService.currentWorkspaceName
+        );
+
+        const newCurrentWorkspace: IWorkspaceBase =
+            this.workspacesService.getWorkspace(
+                this.workspacesService.currentWorkspaceName
+            );
+
+        this.parseSample(newCurrentWorkspace.model);
+
+        this.layout();
     }
 
     public addCompartment(
@@ -330,7 +416,7 @@ export class ModelService {
         );
     }
 
-    public clear(): void {
+    public clear(removeConstants: boolean = false): void {
         const definitionsTable: IDefinitionsTable = this.getDefinitionsTable();
 
         definitionsTable.compartments.forEach(
@@ -344,6 +430,12 @@ export class ModelService {
                 this.removeDefinition(intervention.name);
             }
         );
+
+        if (removeConstants) {
+            definitionsTable.constants.forEach((constant: IConstant): void => {
+                this.removeDefinition(constant.name);
+            });
+        }
 
         if (this.definitionsFormArray.length === 0) {
             this.definitionsFormArray.push(this.getNewDefinitionFormGroup());

@@ -14,11 +14,33 @@
         .button:not(:last-child) {
             margin-bottom: 10px;
         }
+
+        .workspace-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+
+            .button {
+                margin: 0;
+            }
+
+            .workspace-select-wrapper {
+                border-radius: 10px;
+                background-color: #4c4c4c;
+                padding: 10px;
+
+                .workspace-select {
+                    width: 200px;
+                }
+            }
+        }
     }
 
     .top-left-buttons {
         top: 20px;
         left: 20px;
+        align-items: flex-start;
     }
 
     .top-right-buttons {
