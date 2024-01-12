@@ -278,7 +278,7 @@ def checkPopulationPreservation(payload):
 
     if nsimplify(sumEquation, tolerance=1e-10) != 0:
         return {
-            'error': 'Model equations do not preserve population'
+            'error': 'Model equations do not preserve population\nApparently that is result of a program bug. Please reload the page and try again'
         }
 
     return {
