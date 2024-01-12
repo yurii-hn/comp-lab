@@ -58,7 +58,7 @@ def optimalControl(payload):
         })
 
     modelEquationsContinuityCheckResult = checkModelEquationsContinuity(
-        payload)
+        payload, True)
 
     if modelEquationsContinuityCheckResult['error']:
         return {

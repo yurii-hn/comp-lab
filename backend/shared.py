@@ -2,6 +2,7 @@
 from sympy import Symbol, sympify, lambdify, solve, diff, Interval, S, oo, nsimplify
 from sympy.calculus.util import continuous_domain
 
+
 def simulateModel(payload):
     variablesData = getVariablesData(payload)
 
@@ -112,7 +113,7 @@ def getVariablesData(payload):
     if 'interventions' in payload:
         for i in range(len(payload['interventions'])):
             variablesData[payload['interventions'][i]['name']
-                        ] = payload['interventions'][i]['values']
+                          ] = payload['interventions'][i]['values']
 
     return variablesData
 
@@ -209,6 +210,7 @@ def getInterventionDerivatives(payload):
 
     return derivatives
 
+
 def checkCostFunctionContinuity(payload):
     for symbol in payload['symbolsTable']:
         # Check if cost function is continuous for all symbols
@@ -236,7 +238,8 @@ def checkCostFunctionContinuity(payload):
         'error': None
     }
 
-def checkModelEquationsContinuity(payload):
+
+def checkModelEquationsContinuity(payload, derivative=False):
     for symbol in payload['symbolsTable']:
         for i in range(len(payload['model'])):
             # Check if model equation is continuous for all symbols
@@ -249,16 +252,17 @@ def checkModelEquationsContinuity(payload):
                     'error': f'Equation for {payload["model"][i]["name"]} is not continuous by {symbol}'
                 }
 
-            # Check if model equation derivative is continuous for all symbols
-            if not continuous_domain(
-                diff(payload['model'][i]['equation']
-                     ['symbolicEquation'], payload['symbolsTable'][symbol]),
-                payload['symbolsTable'][symbol],
-                Interval(0, oo)
-            ) == Interval(0, oo):
-                return {
-                    'error': f'Equation derivative for {payload["model"][i]["name"]} is not continuous by {symbol}'
-                }
+            if derivative:
+                # Check if model equation derivative is continuous for all symbols
+                if not continuous_domain(
+                    diff(payload['model'][i]['equation']
+                         ['symbolicEquation'], payload['symbolsTable'][symbol]),
+                    payload['symbolsTable'][symbol],
+                    Interval(0, oo)
+                ) == Interval(0, oo):
+                    return {
+                        'error': f'Equation derivative for {payload["model"][i]["name"]} is not continuous by {symbol}'
+                    }
 
     return {
         'error': None
