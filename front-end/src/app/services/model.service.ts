@@ -716,6 +716,10 @@ export class ModelService {
             compartmentNode.data('name', currentName);
         }
 
+        if (!previousName) {
+            return;
+        }
+
         const expressionRegExp: RegExp = new RegExp(
             `\\b${previousName}\\b`,
             'g'
