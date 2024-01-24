@@ -1,286 +1,284 @@
+"""Shared functions for the backend"""
 
-from sympy import Symbol, sympify, lambdify, solve, diff, Interval, S, oo, nsimplify
+from typing import List
+from sympy import Symbol, sympify, lambdify, solve, diff, Interval, nsimplify, Expr
 from sympy.calculus.util import continuous_domain
+from sympy.sets import Reals
+
+from definitions import (
+    ISymbolsTable,
+    IVariablesDatatable,
+    IEquation,
+    ICompartment,
+    ISimulationCompartment,
+    ISimulationIntervention,
+    ISimulationLambda,
+    ISimulationParameters,
+    ICompartmentSimulatedData,
+    IInterventionSimulatedData,
+    ILambdaSimulatedData,
+    ContinuityType,
+    IContinuityCheckResult
+)
 
 
-def simulateModel(payload):
-    variablesData = getVariablesData(payload)
+def get_equation(function_string: str, symbols_table: ISymbolsTable) -> IEquation:
+    """Get the equation from string"""
+    symbolic_equation: Expr = sympify(
+        function_string.replace('^', '**'),
+        symbols_table
+    )
 
-    for t in range(
-        int(payload['simulationParameters']['time'] /
-            payload['simulationParameters']['step']) - 1
-    ):
-        for i in range(len(payload['model'])):
-            compartmentName = payload['model'][i]['name']
-            values = [0] * len(payload['model'][i]['equation']['vars'])
-
-            for j in range(len(payload['model'][i]['equation']['vars'])):
-                values[j] = variablesData[str(payload['model']
-                                          [i]['equation']['vars'][j])][t]
-
-            variablesData[compartmentName][t + 1] = variablesData[compartmentName][t] + \
-                payload['model'][i]['equation']['equation'](*values)
-
-            if (variablesData[compartmentName][t + 1] < 0):
-                raise Exception(
-                    f'Negative value for {compartmentName} at time {t + 1}')
-
-    modelData = []
-
-    for i in range(len(payload['model'])):
-        modelData.append({
-            'name': payload['model'][i]['name'],
-            'values': variablesData[payload['model'][i]['name']]
-        })
-
-    return modelData
+    return IEquation(
+        list(symbolic_equation.free_symbols),
+        lambdify(symbolic_equation.free_symbols, symbolic_equation),
+        symbolic_equation,
+    )
 
 
-def lambdaSystem(payload):
-    variablesData = getVariablesData(payload)
+def get_compartment_equation(
+    compartment: ICompartment,
+    symbols_table: ISymbolsTable
+) -> IEquation:
+    """Get the equations for each compartment"""
 
-    for t in range(int(payload['simulationParameters']['time'] / payload['simulationParameters']['step'] - 2), -1, -1):
-        for i in range(len(payload['model'])):
-            lambdaName = 'lambda' + str(i)
-            values = [0] * len(payload['lambdas'][i]['equation']['vars'])
+    compartment_symbolic_equation: Expr = 0
 
-            for j in range(len(payload['lambdas'][i]['equation']['vars'])):
-                values[j] = variablesData[str(payload['lambdas']
-                                          [i]['equation']['vars'][j])][t + 1]
+    for inflow in compartment.inflows:
+        compartment_symbolic_equation += sympify(
+            inflow.replace('^', '**'),
+            symbols_table
+        )
 
-            variablesData[lambdaName][t] = variablesData[lambdaName][t + 1] - \
-                payload['lambdas'][i]['equation']['equation'](*values)
+    for outflow in compartment.outflows:
+        compartment_symbolic_equation -= sympify(
+            outflow.replace('^', '**'),
+            symbols_table
+        )
 
-    lambdas = []
+    equation: IEquation = IEquation(
+        list(compartment_symbolic_equation.free_symbols),
+        lambdify(
+            compartment_symbolic_equation.free_symbols,
+            compartment_symbolic_equation
+        ),
+        compartment_symbolic_equation,
+    )
 
-    for i in range(len(payload['model'])):
-        lambdas.append(variablesData['lambda' + str(i)])
-
-    return lambdas
-
-
-def updateUFunctions(payload):
-    variablesData = getVariablesData(payload)
-
-    for t in range(int(payload['simulationParameters']['time'] / payload['simulationParameters']['step'])):
-        for i in range(len(payload['interventions'])):
-            interventionName = payload['interventions'][i]['name']
-            values = [0] * len(payload['interventions'][i]['equation']['vars'])
-
-            for j in range(len(payload['interventions'][i]['equation']['vars'])):
-                values[j] = variablesData[str(payload['interventions']
-                                          [i]['equation']['vars'][j])][t]
-
-            variablesData[interventionName][t] = min(
-                0.9, max(0, payload['interventions'][i]['equation']['equation'](*values)))
-
-    interventions = []
-
-    for i in range(len(payload['interventions'])):
-        interventions.append(
-            variablesData[payload['interventions'][i]['name']])
-
-    return interventions
+    return equation
 
 
-def costFunction(payload):
-    variablesData = getVariablesData(payload)
+def get_hamiltonian_equation(
+    model: List[ISimulationCompartment],
+    cost_function: IEquation
+) -> IEquation:
+    """Get the hamiltonian equation"""
+    hamiltonian_equation: Expr = cost_function.symbolic_equation
 
-    cost = 0
+    for i, compartment in enumerate(model):
+        hamiltonian_equation += Symbol('lambda' + str(i)) * \
+            compartment.equation.symbolic_equation
 
-    for t in range(int(payload['simulationParameters']['time'] / payload['simulationParameters']['step'])):
-        values = [0] * len(payload['costFunction']['vars'])
+    return IEquation(
+        list(hamiltonian_equation.free_symbols),
+        lambdify(hamiltonian_equation.free_symbols, hamiltonian_equation),
+        hamiltonian_equation,
+    )
 
-        for i in range(len(payload['costFunction']['vars'])):
-            values[i] = variablesData[str(
-                payload['costFunction']['vars'][i])][t]
 
-        cost += payload['costFunction']['equation'](*values)
+def get_lambda_derivative(hamiltonian: Expr, compartment: Symbol) -> IEquation:
+    """Get the lambda derivative"""
+    lambda_derivative_symbolic_equation: Expr = - diff(
+        hamiltonian,
+        compartment
+    )
+
+    return IEquation(
+        list(lambda_derivative_symbolic_equation.free_symbols),
+        lambdify(
+            lambda_derivative_symbolic_equation.free_symbols,
+            lambda_derivative_symbolic_equation
+        ),
+        lambda_derivative_symbolic_equation,
+    )
+
+
+def get_intervention_derivative(hamiltonian: Expr, intervention: Symbol) -> IEquation:
+    """Get the intervention derivative"""
+    intervention_derivative_symbolic_equation: Expr = solve(
+        diff(hamiltonian, intervention),
+        intervention
+    )[0]
+
+    return IEquation(
+        list(intervention_derivative_symbolic_equation.free_symbols),
+        lambdify(
+            intervention_derivative_symbolic_equation.free_symbols,
+            intervention_derivative_symbolic_equation
+        ),
+        intervention_derivative_symbolic_equation,
+    )
+
+
+def check_continuity(
+    equation: Expr,
+    symbols_table: ISymbolsTable,
+    domain: Interval = Reals,
+    derivative: bool = False,
+) -> IContinuityCheckResult:
+    """Check if equation is continuous for all symbols"""
+
+    for symbol in symbols_table.values():
+        if not continuous_domain(equation, symbol, domain) == domain:
+            return IContinuityCheckResult(
+                ContinuityType.DISCONTINUOUS,
+                symbol
+            )
+
+        if derivative:
+            if not continuous_domain(
+                diff(equation, symbol),
+                symbol,
+                domain
+            ) == domain:
+                return IContinuityCheckResult(
+                    ContinuityType.CONTINUOUS,
+                    symbol
+                )
+
+    return IContinuityCheckResult(
+        ContinuityType.CONTINUOUSLY_DIFFERENTIABLE if derivative else ContinuityType.CONTINUOUS,
+        None
+    )
+
+
+def is_population_preserved(compartments_equations: List[Expr]) -> bool:
+    """Check if population is preserved"""
+
+    sum_equation: Expr = 0
+
+    for equation in compartments_equations:
+        sum_equation += equation
+
+    if nsimplify(sum_equation, tolerance=1e-10) != 0:
+        return False
+
+    return True
+
+
+def simulate_model(
+    model: List[ISimulationCompartment],
+    simulation_parameters: ISimulationParameters,
+    variables_datatable: IVariablesDatatable
+) -> List[ICompartmentSimulatedData]:
+    """Model simulation function"""
+    for t in range(int(simulation_parameters.time / simulation_parameters.step)):
+        for compartment in model:
+            values: List[float] = [
+                variables_datatable[str(var)][t]
+                for var in compartment.equation.vars
+            ]
+
+            variables_datatable[compartment.name][t + 1] = (
+                variables_datatable[compartment.name][t] +
+                compartment.equation.equation_function(*values)
+            )
+
+            if variables_datatable[compartment.name][t + 1] < 0:
+                raise ValueError(
+                    f'Negative value for {compartment.name} at time {t + 1}'
+                )
+
+    simulation_results: List[ICompartmentSimulatedData] = [
+        ICompartmentSimulatedData(
+            compartment.name,
+            variables_datatable[compartment.name]
+        )
+        for compartment in model
+    ]
+
+    return simulation_results
+
+
+def calculate_cost(
+    cost_function: IEquation,
+    simulation_parameters: ISimulationParameters,
+    variables_datatable: IVariablesDatatable
+) -> float:
+    """Cost function"""
+    cost: float = 0
+
+    for t in range(int(simulation_parameters.time / simulation_parameters.step)):
+        values: List[float] = [
+            variables_datatable[str(var)][t]
+            for var in cost_function.vars
+        ]
+
+        cost += cost_function.equation_function(*values)
 
     return cost
 
 
-def getVariablesData(payload):
-    variablesData = {}
+def get_lambda_values(
+    lambdas: List[ISimulationLambda],
+    simulation_parameters: ISimulationParameters,
+    variables_datatable: IVariablesDatatable,
+) -> List[ILambdaSimulatedData]:
+    """Get lambda values"""
+    for t in range(
+        int(simulation_parameters.time / simulation_parameters.step - 2),
+        -1,
+        -1
+    ):
+        for current_lambda in lambdas:
+            values: List[float] = [
+                variables_datatable[str(var)][t + 1]
+                for var in current_lambda.equation.vars
+            ]
 
-    for i in range(len(payload['model'])):
-        variablesData[payload['model'][i]['name']
-                      ] = payload['model'][i]['values']
+            variables_datatable[current_lambda.name][t] = (
+                variables_datatable[current_lambda.name][t + 1] -
+                current_lambda.equation.equation_function(*values)
+            )
 
-        if 'lambdas' in payload:
-            variablesData['lambda' + str(i)] = payload['lambdas'][i]['values']
-
-    if 'interventions' in payload:
-        for i in range(len(payload['interventions'])):
-            variablesData[payload['interventions'][i]['name']
-                          ] = payload['interventions'][i]['values']
-
-    return variablesData
-
-
-def getHamiltonian(payload):
-    hamiltonianEquation = payload['costFunction']['symbolicEquation']
-
-    for i in range(len(payload['model'])):
-        hamiltonianEquation += Symbol('lambda' + str(i)) * \
-            payload['model'][i]['equation']['symbolicEquation']
-
-    return {
-        'vars': list(hamiltonianEquation.free_symbols),
-        'equation': lambdify(hamiltonianEquation.free_symbols, hamiltonianEquation),
-        'symbolicEquation': hamiltonianEquation,
-    }
-
-
-def getCostFunction(payload):
-    costFunctionEquation = sympify(payload['costFunction'].replace(
-        '^', '**'), payload['symbolsTable'])
-
-    return {
-        'vars': list(costFunctionEquation.free_symbols),
-        'equation': lambdify(costFunctionEquation.free_symbols, costFunctionEquation),
-        'symbolicEquation': costFunctionEquation,
-    }
-
-
-def getCompartmentsEquations(payload):
-    equations = []
-
-    for i in range(len(payload['model'])):
-        compartmentEquation = 0
-
-        for j in range(len(payload['model'][i]['inflows'])):
-            compartmentEquation += sympify(payload['model'][i]['inflows'][j].replace(
-                '^', '**'), payload['symbolsTable'])
-
-        for j in range(len(payload['model'][i]['outflows'])):
-            compartmentEquation -= sympify(payload['model'][i]['outflows'][j].replace(
-                '^', '**'), payload['symbolsTable'])
-
-        equation = {
-            'vars': list(compartmentEquation.free_symbols),
-            'equation': lambdify(compartmentEquation.free_symbols, compartmentEquation),
-            'symbolicEquation': compartmentEquation,
-        }
-
-        equations.append(equation)
-
-    return equations
-
-
-def getLambdaDerivatives(payload):
-    lambdaDerivatives = []
-
-    for i in range(len(payload['model'])):
-        lambdaDerivative = - diff(
-            payload['hamiltonian']['symbolicEquation'],
-            payload['symbolsTable'][payload['model'][i]['name']]
+    lambdas_values: List[ILambdaSimulatedData] = [
+        ILambdaSimulatedData(
+            current_lambda.name,
+            variables_datatable[current_lambda.name]
         )
+        for current_lambda in lambdas
+    ]
 
-        derivative = {
-            'vars': list(lambdaDerivative.free_symbols),
-            'equation': lambdify(lambdaDerivative.free_symbols, lambdaDerivative),
-            'symbolicEquation': lambdaDerivative,
-        }
-
-        lambdaDerivatives.append(derivative)
-
-    return lambdaDerivatives
+    return lambdas_values
 
 
-def getInterventionDerivatives(payload):
-    derivatives = []
+def get_intervention_values(
+    interventions: List[ISimulationIntervention],
+    simulation_parameters: ISimulationParameters,
+    variables_datatable: IVariablesDatatable
+) -> List[IInterventionSimulatedData]:
+    """Update interventions"""
+    for t in range(int(simulation_parameters.time / simulation_parameters.step)):
+        for intervention in interventions:
+            values: List[float] = [
+                variables_datatable[str(var)][t]
+                for var in intervention.equation.vars
+            ]
 
-    for i in range(len(payload['interventions'])):
-        interventionDerivative = solve(
-            diff(
-                payload['hamiltonian']['symbolicEquation'],
-                payload['symbolsTable'][payload['interventions'][i]['name']]
-            ),
-            payload['symbolsTable'][payload['interventions'][i]['name']]
-        )[0]
+            variables_datatable[intervention.name][t] = min(
+                0.9,
+                max(
+                    0,
+                    intervention.equation.equation_function(*values)
+                )
+            )
 
-        derivative = {
-            'vars': list(interventionDerivative.free_symbols),
-            'equation': lambdify(interventionDerivative.free_symbols, interventionDerivative),
-            'symbolicEquation': interventionDerivative,
-        }
+    interventions_values: List[IInterventionSimulatedData] = [
+        IInterventionSimulatedData(
+            intervention.name,
+            variables_datatable[intervention.name]
+        )
+        for intervention in interventions
+    ]
 
-        derivatives.append(derivative)
-
-    return derivatives
-
-
-def checkCostFunctionContinuity(payload):
-    for symbol in payload['symbolsTable']:
-        # Check if cost function is continuous for all symbols
-        if not continuous_domain(
-            payload['costFunction']['symbolicEquation'],
-            payload['symbolsTable'][symbol],
-            S.Reals
-        ) == S.Reals:
-            return {
-                'error': f'Equation for cost function is not continuous by {symbol}'
-            }
-
-        # Check if cost function derivative is continuous for all symbols
-        if not continuous_domain(
-            diff(payload['costFunction']['symbolicEquation'],
-                 payload['symbolsTable'][symbol]),
-            payload['symbolsTable'][symbol],
-            S.Reals
-        ) == S.Reals:
-            return {
-                'error': f'Equation for cost function derivative is not continuous by {symbol}'
-            }
-
-    return {
-        'error': None
-    }
-
-
-def checkModelEquationsContinuity(payload, derivative=False):
-    for symbol in payload['symbolsTable']:
-        for i in range(len(payload['model'])):
-            # Check if model equation is continuous for all symbols
-            if not continuous_domain(
-                payload['model'][i]['equation']['symbolicEquation'],
-                payload['symbolsTable'][symbol],
-                Interval(0, oo)
-            ) == Interval(0, oo):
-                return {
-                    'error': f'Equation for {payload["model"][i]["name"]} is not continuous by {symbol}'
-                }
-
-            if derivative:
-                # Check if model equation derivative is continuous for all symbols
-                if not continuous_domain(
-                    diff(payload['model'][i]['equation']
-                         ['symbolicEquation'], payload['symbolsTable'][symbol]),
-                    payload['symbolsTable'][symbol],
-                    Interval(0, oo)
-                ) == Interval(0, oo):
-                    return {
-                        'error': f'Equation derivative for {payload["model"][i]["name"]} is not continuous by {symbol}'
-                    }
-
-    return {
-        'error': None
-    }
-
-
-def checkPopulationPreservation(payload):
-    # Sum all model symbolic equations and check if it is equal to zero
-    sumEquation = 0
-
-    for i in range(len(payload['model'])):
-        sumEquation += payload['model'][i]['equation']['symbolicEquation']
-
-    if nsimplify(sumEquation, tolerance=1e-10) != 0:
-        return {
-            'error': 'Model equations do not preserve population\nApparently that is result of a program bug. Please reload the page and try again'
-        }
-
-    return {
-        'error': None
-    }
+    return interventions_values

@@ -1,68 +1,108 @@
-from sympy import Symbol
+"""
+Simulation module
 
-from shared import getCompartmentsEquations, checkPopulationPreservation, simulateModel, checkModelEquationsContinuity
+This module contains the simulation logic
+"""
 
-def simulate(payload):
-    """Model simulation function"""
+from typing import List
+from sympy import Symbol, Interval, oo
 
-    # Initialize the data dictionary
-    data = {}
+from definitions import (
+    ISymbolsTable,
+    IVariablesDatatable,
+    ISimulationCompartment,
+    ISimulationData,
+    ICompartmentSimulatedData,
+    ISimulationResultsSuccess,
+    ISimulationResultsError,
+    ContinuityType,
+    IContinuityCheckResult
+)
+from shared import (
+    get_compartment_equation,
+    check_continuity,
+    is_population_preserved,
+    simulate_model,
+)
 
-    # Setting output init data
-    data['time'] = payload['simulationParameters']['time']
-    data['step'] = payload['simulationParameters']['step']
-    data['compartments'] = []
 
-    payload['symbolsTable'] = {}
+def simulate(payload: ISimulationData) -> ISimulationResultsSuccess | ISimulationResultsError:
+    """
+    Simulation function
 
-    for i in range(len(payload['model'])):
-        compartmentName = payload['model'][i]['name']
+    This function simulates the model and returns the results
 
-        payload['symbolsTable'][compartmentName] = Symbol(compartmentName)
+    Parameters
+    ----------
+    payload : ISimulationData
+        Payload
 
-    simulationNodesAmount = data['time'] / data['step']
+    Returns
+    -------
+    ISimulationResultsSuccess | ISimulationResultsError
+        Simulation results
+    """
 
-    compartmentsEquations = getCompartmentsEquations(payload)
+    symbols_table: ISymbolsTable = {
+        compartment.name: Symbol(compartment.name)
+        for compartment in payload.model
+    }
+    simulation_model: List[ISimulationCompartment] = []
 
-    for i in range(len(payload['model'])):
-        payload['model'][i]['values'] = [payload['model'][i]['value']] + \
-            [0] * int(simulationNodesAmount - 1)
-        payload['model'][i]['equation'] = compartmentsEquations[i]
+    for compartment in payload.model:
+        simulation_compartment: ISimulationCompartment = ISimulationCompartment(
+            compartment.name,
+            compartment.value,
+            get_compartment_equation(compartment, symbols_table)
+        )
 
-    continuityCheckResult = checkModelEquationsContinuity(payload)
+        continuity_type: IContinuityCheckResult = check_continuity(
+            simulation_compartment.equation.symbolic_equation,
+            symbols_table,
+            Interval(0, oo)
+        )
 
-    if continuityCheckResult['error']:
-        return {
-            'error': continuityCheckResult['error'],
-            'success': False
-        }
+        if continuity_type.type == ContinuityType.DISCONTINUOUS:
+            return ISimulationResultsError(
+                f'Equation of {compartment.name} is discontinuous by {continuity_type.discontinuity_symbol}',
+                False
+            )
 
-    populationPreservationCheckResult = checkPopulationPreservation(payload)
+        simulation_model.append(simulation_compartment)
 
-    if populationPreservationCheckResult['error']:
-        return {
-            'error': populationPreservationCheckResult['error'],
-            'success': False
-        }
+    if not is_population_preserved(
+        [compartment.equation.symbolic_equation for compartment in simulation_model]
+    ):
+        return ISimulationResultsError(
+            'Model equations do not preserve population. ' +
+            'Apparently that is result of a program bug. Please reload the page and try again',
+            False
+        )
 
     try:
-        simulationResults = simulateModel(payload)
-
-        for i in range(len(payload['model'])):
-            payload['model'][i]['values'] = simulationResults[i]['values']
-
-        for i in range(len(payload['model'])):
-            data['compartments'].append({
-                'name': payload['model'][i]['name'],
-                'values': payload['model'][i]['values']
-            })
-
-        data['success'] = True
-
-        return data
-
-    except Exception as e:
-        return {
-            'error': str(e),
-            'success': False
+        variables_datatable: IVariablesDatatable = {
+            compartment.name: [compartment.value] + [0] * int(
+                payload.simulation_parameters.time /
+                payload.simulation_parameters.step
+            )
+            for compartment in simulation_model
         }
+
+        simulation_results: List[ICompartmentSimulatedData] = simulate_model(
+            simulation_model,
+            payload.simulation_parameters,
+            variables_datatable
+        )
+
+        return ISimulationResultsSuccess(
+            payload.simulation_parameters.time,
+            payload.simulation_parameters.step,
+            simulation_results,
+            True
+        )
+
+    except ValueError as e:
+        return ISimulationResultsError(
+            str(e),
+            False
+        )

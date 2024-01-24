@@ -1,55 +1,88 @@
+"""
+Main module
+
+This module contains the main application logic.
+"""
+
 from flask import Flask, request, jsonify
 
 from simulate import simulate
-from optimalControl import optimalControl
-from validateExpression import validateExpression
+from optimal_control import optimal_control
+from validate_expression import validate_expression
+from definitions import (
+    IRawSimulationData,
+    IRawOptimalControlData,
+    ISimulationData,
+    IOptimalControlData,
+    ISimulationResultsSuccess,
+    ISimulationResultsError,
+    IRawValidationPayload,
+    IValidationPayload,
+    IValidationResult
+)
 
-# Creating the application instance
-app = Flask(__name__)
+app: Flask = Flask(__name__)
 
 
 @app.route('/simulate', methods=['POST'])
-def simulateEndpoint():
-    """Simulation endpoint"""
+def simulate_endpoint():
+    """
+    Simulation endpoint
 
-    # Getting the data from the request
-    data = request.get_json()
+    This endpoint is used for basic model simulation
+    """
 
-    # Simulating the system
-    result = simulate(data)
+    raw_data: IRawSimulationData = request.get_json()
 
-    # Returning the result
+    simulation_data: ISimulationData = ISimulationData(*raw_data.values())
+
+    result: (
+        ISimulationResultsSuccess |
+        ISimulationResultsError
+    ) = simulate(simulation_data)
+
     return jsonify(result)
 
 
 @app.route('/optimal-control', methods=['POST'])
-def optimalControlEndpoint():
-    """Optimal control endpoint"""
+def optimal_control_endpoint():
+    """
+    Optimal control endpoint
 
-    # Getting the data from the request
-    data = request.get_json()
+    This endpoint is used for solving the optimal control problem
+    """
 
-    # Solving the optimal control problem
-    result = optimalControl(data)
+    raw_data: IRawOptimalControlData = request.get_json()
 
-    # Returning the result
+    data: IOptimalControlData = IOptimalControlData(*raw_data.values())
+
+    result: (
+        ISimulationResultsSuccess |
+        ISimulationResultsError
+    ) = optimal_control(data)
+
     return jsonify(result)
 
 
 @app.route('/validate-expression', methods=['POST'])
-def validateExpressionEndpoint():
-    """Expression validation endpoint"""
+def validate_expression_endpoint():
+    """
+    Expression validation endpoint
 
-    # Getting the data from the request
-    data = request.get_json()
+    This endpoint is used for validating the expressions
+    """
 
-    # Validating the expression
-    result = validateExpression(data)
+    raw_data: IRawValidationPayload = request.get_json()
 
-    # Returning the result
-    return jsonify(result)
+    data: IValidationPayload = IValidationPayload(*raw_data.values())
+
+    result: IValidationResult = validate_expression(data)
+
+    return jsonify({
+        'isValid': result.is_valid,
+        'message': result.message
+    })
 
 
-# Running the application
 if __name__ == '__main__':
     app.run(debug=True)
