@@ -486,6 +486,6 @@ export class AppComponent {
     }
 
     private initWorkspace(): void {
-        this.modelService.initWorkspaceFromSample('default');
+        this.modelService.initWorkspaceFromSamples(['default', 'default.1']);
     }
 }

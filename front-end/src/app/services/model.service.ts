@@ -23,6 +23,7 @@ import {
     Subject,
     Subscription,
     bufferCount,
+    combineLatest,
     filter,
     tap,
 } from 'rxjs';
@@ -41,6 +42,7 @@ import {
     IImportModel,
     IIntervention,
     IInterventionDefinition,
+    IModel,
     IWorkspaceBase,
 } from '../core/interfaces';
 import { SamplesService } from './model-samples.service';
@@ -145,16 +147,22 @@ export class ModelService {
         }) as any);
     }
 
-    public initWorkspaceFromSample(sampleName: string): void {
-        this.samplesService
-            .getSample(sampleName)
+    public initWorkspaceFromSamples(sampleNames: string[]): void {
+        combineLatest(
+            sampleNames.map(
+                (name: string): Observable<IModel> =>
+                    this.samplesService.getSample(name)
+            )
+        )
             .pipe(
-                tap((sampleModel: IImportModel): void => {
-                    this.workspacesService.addWorkspace({
-                        model: sampleModel,
+                tap((sampleModels: IImportModel[]): void => {
+                    sampleModels.forEach((sampleModel: IImportModel): void => {
+                        this.workspacesService.addWorkspace({
+                            model: sampleModel,
+                        });
                     });
 
-                    this.parseSample(sampleModel);
+                    this.parseSample(sampleModels[0]);
 
                     this.layout();
                 })

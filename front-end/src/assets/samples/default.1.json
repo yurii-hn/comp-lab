@@ -2,240 +2,42 @@
     "compartments": [
         {
             "name": "S",
-            "value": 35200000
+            "value": 999
         },
         {
-            "name": "E1",
+            "name": "I",
+            "value": 1
+        },
+        {
+            "name": "R",
             "value": 0
+        }
+    ],
+    "interventions": [],
+    "constants": [
+        {
+            "name": "beta",
+            "value": 0.05
         },
         {
-            "name": "E2",
-            "value": 0
+            "name": "gamma",
+            "value": 0.01
         },
         {
-            "name": "I1",
-            "value": 3520000
-        },
-        {
-            "name": "I2",
-            "value": 5280000
-        },
-        {
-            "name": "Mild",
-            "value": 0
-        },
-        {
-            "name": "Severe",
-            "value": 0
-        },
-        {
-            "name": "Fatal",
-            "value": 0
-        },
-        {
-            "name": "Hosp_Severe",
-            "value": 0
-        },
-        {
-            "name": "Hosp_Fatal",
-            "value": 0
-        },
-        {
-            "name": "R1",
-            "value": 0
-        },
-        {
-            "name": "R2",
-            "value": 0
-        },
-        {
-            "name": "R3",
-            "value": 0
-        },
-        {
-            "name": "Death",
-            "value": 0
-        },
-        {
-            "name": "Immunity",
-            "value": 0
+            "name": "N",
+            "value": 1000
         }
     ],
     "flows": [
         {
-            "equation": "pAsym * (1 - u1 + (1 - alpha)*u1)^2 * (R0 * S*(I1 + I2))/(Tinf * N)",
+            "equation": "beta * S * I / N",
             "source": "S",
-            "target": "E1"
+            "target": "I"
         },
         {
-            "equation": "(1 - pAsym) * (1 - u1 + (1 - alpha)*u1)^2 * (R0 * S*(I1 + I2))/(Tinf * N)",
-            "source": "S",
-            "target": "E2"
-        },
-        {
-            "equation": "u2 * S * beta / Tvaccine_lag",
-            "source": "S",
-            "target": "Immunity"
-        },
-        {
-            "equation": "E1 / Tinc",
-            "source": "E1",
-            "target": "I1"
-        },
-        {
-            "equation": "E2 / Tinc",
-            "source": "E2",
-            "target": "I2"
-        },
-        {
-            "equation": "I1 / Tinf",
-            "source": "I1",
-            "target": "R1"
-        },
-        {
-            "equation": "(pMild)/(1 - pAsym) * I2 / Tquar",
-            "source": "I2",
-            "target": "Mild"
-        },
-        {
-            "equation": "(pSevere)/(1 - pAsym) * I2 / Tquar",
-            "source": "I2",
-            "target": "Severe"
-        },
-        {
-            "equation": "(pFatal)/(1 - pAsym) * I2 / Tquar",
-            "source": "I2",
-            "target": "Fatal"
-        },
-        {
-            "equation": "Mild / Trecovery_mild",
-            "source": "Mild",
-            "target": "R2"
-        },
-        {
-            "equation": "Severe / Thospital_lag",
-            "source": "Severe",
-            "target": "Hosp_Severe"
-        },
-        {
-            "equation": "Fatal / Thospital_lag",
-            "source": "Fatal",
-            "target": "Hosp_Fatal"
-        },
-        {
-            "equation": "Hosp_Severe / Trecovery_severe",
-            "source": "Hosp_Severe",
-            "target": "R3"
-        },
-        {
-            "equation": "Hosp_Fatal / Tdeath",
-            "source": "Hosp_Fatal",
-            "target": "Death"
-        }
-    ],
-    "definitions": [
-        {
-            "name": "u1",
-            "type": "intervention"
-        },
-        {
-            "name": "u2",
-            "type": "intervention"
-        },
-        {
-            "name": "c",
-            "type": "constant",
-            "value": 10
-        },
-        {
-            "name": "d1",
-            "type": "constant",
-            "value": 3
-        },
-        {
-            "name": "d2",
-            "type": "constant",
-            "value": 10
-        },
-        {
-            "name": "alpha",
-            "type": "constant",
-            "value": 0.7
-        },
-        {
-            "name": "beta",
-            "type": "constant",
-            "value": 0.83
-        },
-        {
-            "name": "Tvaccine_lag",
-            "type": "constant",
-            "value": 28
-        },
-        {
-            "name": "R0",
-            "type": "constant",
-            "value": 2.25
-        },
-        {
-            "name": "N",
-            "type": "constant",
-            "value": 44e6
-        },
-        {
-            "name": "Tinf",
-            "type": "constant",
-            "value": 10
-        },
-        {
-            "name": "Tinc",
-            "type": "constant",
-            "value": 10
-        },
-        {
-            "name": "Tquar",
-            "type": "constant",
-            "value": 10
-        },
-        {
-            "name": "Trecovery_mild",
-            "type": "constant",
-            "value": 11
-        },
-        {
-            "name": "Trecovery_severe",
-            "type": "constant",
-            "value": 35
-        },
-        {
-            "name": "Thospital_lag",
-            "type": "constant",
-            "value": 30
-        },
-        {
-            "name": "Tdeath",
-            "type": "constant",
-            "value": 5
-        },
-        {
-            "name": "pAsym",
-            "type": "constant",
-            "value": 0.4
-        },
-        {
-            "name": "pMild",
-            "type": "constant",
-            "value": 0.43
-        },
-        {
-            "name": "pSevere",
-            "type": "constant",
-            "value": 0.15
-        },
-        {
-            "name": "pFatal",
-            "type": "constant",
-            "value": 0.02
+            "equation": "gamma * I",
+            "source": "I",
+            "target": "R"
         }
     ]
 }
