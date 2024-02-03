@@ -1,19 +1,18 @@
 <div class="buttons-container top-left-buttons">
     <div class="workspace-controls">
-        <div class="workspace-select-wrapper">
-            <mat-select
-                class="workspace-select"
-                [formControl]="workspaceControl"
-                (valueChange)="onWorkspaceChange($event)"
-            >
+        <mat-form-field subscriptSizing="dynamic">
+            <mat-select [formControl]="workspaceControl">
                 <mat-option
-                    *ngFor="let workspace of workspaces"
+                    *ngFor="
+                        let workspace of workspacesService.workspacesNames$
+                            | async
+                    "
                     [value]="workspace"
                 >
                     {{ workspace }}
                 </mat-option>
             </mat-select>
-        </div>
+        </mat-form-field>
 
         <button
             mat-mini-fab
@@ -28,7 +27,7 @@
             mat-mini-fab
             class="button"
             color="primary"
-            [disabled]="workspaces.length === 1"
+            [disabled]="workspacesService.workspacesNames.length === 1"
             (click)="removeCurrentWorkspace()"
         >
             <mat-icon>close</mat-icon>
@@ -103,7 +102,7 @@
         mat-mini-fab
         class="button"
         color="primary"
-        [disabled]="!simulationResults"
+        [disabled]="resultsStorageService.resultsNames.length === 0"
         (click)="onSimulationResultsDialog()"
     >
         <mat-icon>query_stats</mat-icon>

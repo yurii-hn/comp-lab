@@ -7,53 +7,63 @@ import { IWorkspace, IWorkspaceBase } from '../core/interfaces';
 })
 export class WorkspacesService {
     private readonly workspaces: IWorkspace[] = [];
-    private readonly currentWorkspaceNameSubject: BehaviorSubject<string> =
-        new BehaviorSubject<string>('');
-
-    public readonly currentWorkspaceName$: Observable<string> =
-        this.currentWorkspaceNameSubject.asObservable();
-
-    public get currentWorkspaceName(): string {
-        return this.currentWorkspaceNameSubject.value;
-    }
-
-    public addWorkspace(workspace: IWorkspaceBase): string {
-        const workspaceName = `Workspace ${this.workspaces.length + 1}`;
-
-        if (this.workspaces.length === 0) {
-            this.currentWorkspaceNameSubject.next(workspaceName);
-        }
-
-        this.workspaces.push({
-            name: workspaceName,
-            ...workspace,
+    private readonly currentWorkspaceSubject: BehaviorSubject<IWorkspace> =
+        new BehaviorSubject<IWorkspace>({
+            model: {
+                compartments: [],
+                constants: [],
+                interventions: [],
+                flows: [],
+            },
+            name: '',
         });
+    private readonly workspacesNamesSubject: BehaviorSubject<string[]> =
+        new BehaviorSubject<string[]>([]);
 
-        return workspaceName;
+    public readonly currentWorkspace$: Observable<IWorkspace> =
+        this.currentWorkspaceSubject.asObservable();
+    public readonly workspacesNames$: Observable<string[]> =
+        this.workspacesNamesSubject.asObservable();
+
+    public get currentWorkspace(): IWorkspace {
+        return this.currentWorkspaceSubject.value;
+    }
+    public get workspacesNames(): string[] {
+        return this.workspacesNamesSubject.value;
     }
 
-    public updateWorkspace(
-        workspaceName: string,
-        workspace: IWorkspaceBase
-    ): void {
-        const workspaceIndex: number = this.workspaces.findIndex(
-            (workspace: IWorkspace): boolean => workspace.name === workspaceName
-        );
-
-        this.workspaces[workspaceIndex] = {
-            name: workspaceName,
+    public addWorkspace(workspace: IWorkspaceBase): IWorkspace {
+        const newWorkspace: IWorkspace = {
+            name: `Workspace ${this.workspaces.length + 1}`,
             ...workspace,
         };
+
+        if (this.workspaces.length === 0) {
+            this.currentWorkspaceSubject.next(newWorkspace);
+        }
+
+        this.workspaces.push(newWorkspace);
+
+        this.workspacesNamesSubject.next(this.getWorkspaceNames());
+
+        return newWorkspace;
+    }
+
+    public updateWorkspace(workspace: IWorkspace): void {
+        const workspaceIndex: number = this.workspaces.findIndex(
+            (currentWorkspace: IWorkspace): boolean =>
+                currentWorkspace.name === workspace.name
+        );
+
+        this.workspaces[workspaceIndex] = workspace;
     }
 
     public setCurrentWorkspace(workspaceName: string): void {
-        this.currentWorkspaceNameSubject.next(workspaceName);
-    }
-
-    public getWorkspace(workspaceName: string): IWorkspace {
-        return this.workspaces.find(
+        const workspace: IWorkspace = this.workspaces.find(
             (workspace: IWorkspace): boolean => workspace.name === workspaceName
         ) as IWorkspace;
+
+        this.currentWorkspaceSubject.next(workspace);
     }
 
     public removeWorkspace(workspaceName: string): void {
@@ -65,14 +75,16 @@ export class WorkspacesService {
 
         this.updateWorkspaceNames();
 
-        if (this.currentWorkspaceName === workspaceName) {
-            this.currentWorkspaceNameSubject.next(
-                this.workspaces[Math.max(workspaceIndex - 1, 0)].name
+        this.workspacesNamesSubject.next(this.getWorkspaceNames());
+
+        if (this.currentWorkspace.name === workspaceName) {
+            this.currentWorkspaceSubject.next(
+                this.workspaces[Math.max(workspaceIndex - 1, 0)]
             );
         }
     }
 
-    public getWorkspaceNames(): string[] {
+    private getWorkspaceNames(): string[] {
         return this.workspaces.map(
             (workspace: IWorkspace): string => workspace.name
         );

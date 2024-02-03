@@ -1,11 +1,15 @@
-import { Component, Inject, OnInit } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { FormControl } from '@angular/forms';
+import { MatDialogRef } from '@angular/material/dialog';
 import { Config, Data, Layout } from 'plotly.js';
+import { Subscription, take, tap } from 'rxjs';
 import {
     ICompartmentSimulatedData,
     IInterventionSimulatedData,
-    ISimulationResultsSuccess,
+    IResults,
 } from 'src/app/core/interfaces';
+import { isOptimalControlResults } from 'src/app/core/utils';
+import { ResultsStorageService } from 'src/app/services/results-storage.service';
 
 interface IPlot {
     data: Data[];
@@ -17,8 +21,8 @@ interface IPlot {
     templateUrl: './simulation-dashboard.component.html',
     styleUrls: ['./simulation-dashboard.component.scss'],
 })
-export class SimulationDashboardComponent implements OnInit {
-    public readonly plotsData: IPlot[] = [];
+export class SimulationDashboardComponent implements OnInit, OnDestroy {
+    public readonly resultsControl: FormControl = new FormControl();
 
     public readonly plotsConfig: Partial<Config> = {};
 
@@ -27,29 +31,80 @@ export class SimulationDashboardComponent implements OnInit {
         width: '100%',
         height: '100%',
     };
+    public plotsData: IPlot[] = [];
+
+    private readonly subscriptions: Subscription = new Subscription();
 
     constructor(
-        private readonly dialogRef: MatDialogRef<SimulationDashboardComponent>,
-        @Inject(MAT_DIALOG_DATA)
-        private readonly data: ISimulationResultsSuccess
+        public readonly resultsStorageService: ResultsStorageService,
+        private readonly dialogRef: MatDialogRef<SimulationDashboardComponent>
     ) {}
 
     public ngOnInit(): void {
-        this.data.compartments.forEach(
+        const resultsInitSub: Subscription =
+            this.resultsStorageService.currentResults$
+                .pipe(
+                    take(2),
+                    tap((results: IResults): void => {
+                        this.resultsControl.setValue(results.name, {
+                            emitEvent: false,
+                        });
+                    })
+                )
+                .subscribe();
+
+        const resultsChangeSub: Subscription = this.resultsControl.valueChanges
+            .pipe(
+                tap((resultsName: string): void => {
+                    this.resultsStorageService.setCurrentResults(resultsName);
+
+                    this.onResultsChange();
+                })
+            )
+            .subscribe();
+
+        this.onResultsChange();
+
+        this.subscriptions.add(resultsInitSub);
+        this.subscriptions.add(resultsChangeSub);
+    }
+
+    public ngOnDestroy(): void {
+        this.subscriptions.unsubscribe();
+    }
+
+    public removeCurrentResults(): void {
+        this.resultsStorageService.removeResults(
+            this.resultsStorageService.currentResults.name
+        );
+
+        this.onResultsChange();
+    }
+
+    public closeDialog(): void {
+        this.dialogRef.close();
+    }
+
+    private onResultsChange(): void {
+        this.clearPlots();
+
+        this.resultsStorageService.currentResults.data.compartments.forEach(
             (compartment: ICompartmentSimulatedData): void => {
                 this.addPlot(compartment);
             }
         );
 
-        this.data.interventions.forEach(
-            (intervention: IInterventionSimulatedData): void => {
-                this.addPlot(intervention, 'hv', true);
-            }
-        );
-    }
-
-    public closeDialog(): void {
-        this.dialogRef.close();
+        if (
+            isOptimalControlResults(
+                this.resultsStorageService.currentResults.data
+            )
+        ) {
+            this.resultsStorageService.currentResults.data.interventions.forEach(
+                (intervention: IInterventionSimulatedData): void => {
+                    this.addPlot(intervention, 'hv', true);
+                }
+            );
+        }
     }
 
     private addPlot(
@@ -65,7 +120,7 @@ export class SimulationDashboardComponent implements OnInit {
         isIntervention: boolean = false
     ): void {
         const xAxis: number[] = this.getXAxis(
-            this.data.time,
+            this.resultsStorageService.currentResults.data.time,
             compartment.values.length,
             isIntervention
         );
@@ -104,6 +159,10 @@ export class SimulationDashboardComponent implements OnInit {
                 },
             },
         });
+    }
+
+    private clearPlots(): void {
+        this.plotsData = [];
     }
 
     private getXAxis(

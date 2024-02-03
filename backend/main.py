@@ -14,8 +14,9 @@ from definitions import (
     IRawOptimalControlData,
     ISimulationData,
     IOptimalControlData,
-    ISimulationResultsSuccess,
-    ISimulationResultsError,
+    ISimulationSuccessResponse,
+    IOptimalControlSuccessResponse,
+    IErrorResponse,
     IRawValidationPayload,
     IValidationPayload,
     IValidationResult
@@ -37,8 +38,8 @@ def simulate_endpoint():
     simulation_data: ISimulationData = ISimulationData(*raw_data.values())
 
     result: (
-        ISimulationResultsSuccess |
-        ISimulationResultsError
+        ISimulationSuccessResponse |
+        IErrorResponse
     ) = simulate(simulation_data)
 
     return jsonify(result)
@@ -57,8 +58,8 @@ def optimal_control_endpoint():
     data: IOptimalControlData = IOptimalControlData(*raw_data.values())
 
     result: (
-        ISimulationResultsSuccess |
-        ISimulationResultsError
+        IOptimalControlSuccessResponse |
+        IErrorResponse
     ) = optimal_control(data)
 
     return jsonify(result)

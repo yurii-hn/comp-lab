@@ -20,8 +20,8 @@ from definitions import (
     ICompartmentSimulatedData,
     IInterventionSimulatedData,
     ILambdaSimulatedData,
-    ISimulationResultsSuccess,
-    ISimulationResultsError,
+    IOptimalControlSuccessResponse,
+    IErrorResponse,
     ContinuityType,
     IContinuityCheckResult,
 )
@@ -35,7 +35,7 @@ from shared import (
 
 
 def optimal_control(payload: IOptimalControlData) -> (
-    ISimulationResultsSuccess | ISimulationResultsError
+    IOptimalControlSuccessResponse | IErrorResponse
 ):
     """
     Optimal control solver
@@ -222,7 +222,7 @@ def optimal_control(payload: IOptimalControlData) -> (
 
         print(start_cost, optimized_cost, start_cost - optimized_cost)
 
-        return ISimulationResultsSuccess(
+        return IOptimalControlSuccessResponse(
             payload.simulation_parameters.time,
             payload.simulation_parameters.step,
             simulation_results[0],
@@ -231,7 +231,7 @@ def optimal_control(payload: IOptimalControlData) -> (
         )
 
     except ValueError as e:
-        return ISimulationResultsError(
+        return IErrorResponse(
             str(e),
             False
         )

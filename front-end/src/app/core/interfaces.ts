@@ -52,7 +52,25 @@ export interface IInterventionSimulatedData {
     values: number[];
 }
 
-export interface ISimulationResultsSuccess {
+export interface IErrorResponse {
+    error: string;
+    success: false;
+}
+
+export interface ISimulationSuccessResponse {
+    time: number;
+    step: number;
+    compartments: ICompartmentSimulatedData[];
+    success: true;
+}
+
+export type ISimulationErrorResponse = IErrorResponse;
+
+export type ISimulationResponse =
+    | ISimulationSuccessResponse
+    | ISimulationErrorResponse;
+
+export interface IOptimalControlSuccessResponse {
     time: number;
     step: number;
     compartments: ICompartmentSimulatedData[];
@@ -60,14 +78,19 @@ export interface ISimulationResultsSuccess {
     success: true;
 }
 
-export interface ISimulationResultsError {
-    error: string;
-    success: false;
+export type IOptimalControlErrorResponse = IErrorResponse;
+
+export type IOptimalControlResponse =
+    | IOptimalControlSuccessResponse
+    | IOptimalControlErrorResponse;
+
+export interface IResultsBase {
+    data: ISimulationSuccessResponse | IOptimalControlSuccessResponse;
 }
 
-export type ISimulationResults =
-    | ISimulationResultsSuccess
-    | ISimulationResultsError;
+export interface IResults extends IResultsBase {
+    name: string;
+}
 
 export enum DefinitionType {
     Compartment = 'compartment',

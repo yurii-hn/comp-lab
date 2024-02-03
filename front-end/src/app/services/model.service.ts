@@ -43,6 +43,7 @@ import {
     IIntervention,
     IInterventionDefinition,
     IModel,
+    IWorkspace,
     IWorkspaceBase,
 } from '../core/interfaces';
 import { SamplesService } from './model-samples.service';
@@ -211,7 +212,7 @@ export class ModelService {
     }
 
     public addNewWorkspace(): void {
-        const newWorkspace: IWorkspaceBase = {
+        const newWorkspaceBase: IWorkspaceBase = {
             model: {
                 compartments: [],
                 constants: [],
@@ -223,17 +224,17 @@ export class ModelService {
             model: this.getModelExport(),
         };
 
-        this.workspacesService.updateWorkspace(
-            this.workspacesService.currentWorkspaceName,
-            currentWorkspace
-        );
+        this.workspacesService.updateWorkspace({
+            name: this.workspacesService.currentWorkspace.name,
+            ...currentWorkspace,
+        });
 
-        const workspaceName: string =
-            this.workspacesService.addWorkspace(newWorkspace);
+        const newWorkspace: IWorkspace =
+            this.workspacesService.addWorkspace(newWorkspaceBase);
 
-        this.workspacesService.setCurrentWorkspace(workspaceName);
+        this.workspacesService.setCurrentWorkspace(newWorkspace.name);
 
-        this.parseSample(newWorkspace.model);
+        this.parseSample(newWorkspaceBase.model);
 
         this.layout();
     }
@@ -242,32 +243,25 @@ export class ModelService {
         const currentWorkspace: IWorkspaceBase = {
             model: this.getModelExport(),
         };
-        const newWorkspace: IWorkspaceBase =
-            this.workspacesService.getWorkspace(workspaceName);
 
-        this.workspacesService.updateWorkspace(
-            this.workspacesService.currentWorkspaceName,
-            currentWorkspace
-        );
+        this.workspacesService.updateWorkspace({
+            name: this.workspacesService.currentWorkspace.name,
+            ...currentWorkspace,
+        });
 
         this.workspacesService.setCurrentWorkspace(workspaceName);
 
-        this.parseSample(newWorkspace.model);
+        this.parseSample(this.workspacesService.currentWorkspace.model);
 
         this.layout();
     }
 
     public removeCurrentWorkspace(): void {
         this.workspacesService.removeWorkspace(
-            this.workspacesService.currentWorkspaceName
+            this.workspacesService.currentWorkspace.name
         );
 
-        const newCurrentWorkspace: IWorkspaceBase =
-            this.workspacesService.getWorkspace(
-                this.workspacesService.currentWorkspaceName
-            );
-
-        this.parseSample(newCurrentWorkspace.model);
+        this.parseSample(this.workspacesService.currentWorkspace.model);
 
         this.layout();
     }

@@ -1,9 +1,40 @@
 <div class="header">
     <p class="title">Simulation Dashboard</p>
 
-    <button mat-mini-fab class="close-button" color="primary" (click)="closeDialog()">
-        <mat-icon>close</mat-icon>
-    </button>
+    <div class="header-controls">
+        <mat-form-field subscriptSizing="dynamic">
+            <mat-select [formControl]="resultsControl">
+                <mat-option
+                    *ngFor="
+                        let results of resultsStorageService.resultsNames$
+                            | async
+                    "
+                    [value]="results"
+                >
+                    {{ results }}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+
+        <button
+            mat-mini-fab
+            class="button"
+            color="primary"
+            [disabled]="resultsStorageService.resultsNames.length === 1"
+            (click)="removeCurrentResults()"
+        >
+            <mat-icon>delete</mat-icon>
+        </button>
+
+        <button
+            mat-mini-fab
+            class="close-button"
+            color="primary"
+            (click)="closeDialog()"
+        >
+            <mat-icon>close</mat-icon>
+        </button>
+    </div>
 </div>
 
 <div class="body">

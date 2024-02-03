@@ -1,7 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { IOptimalControlData, ISimulationData, ISimulationResults } from '../core/interfaces';
+import {
+    IOptimalControlData,
+    IOptimalControlResponse,
+    ISimulationData,
+    ISimulationResponse,
+} from '../core/interfaces';
 
 @Injectable({
     providedIn: 'root',
@@ -11,8 +16,8 @@ export class SimulationService {
 
     public simulateModel(
         model: ISimulationData
-    ): Observable<ISimulationResults> {
-        return this.httpClient.post<ISimulationResults>(
+    ): Observable<ISimulationResponse> {
+        return this.httpClient.post<ISimulationResponse>(
             'http://localhost:5000/simulate',
             model
         );
@@ -20,8 +25,8 @@ export class SimulationService {
 
     public optimizeModel(
         model: IOptimalControlData
-    ): Observable<ISimulationResults> {
-        return this.httpClient.post<ISimulationResults>(
+    ): Observable<IOptimalControlResponse> {
+        return this.httpClient.post<IOptimalControlResponse>(
             'http://localhost:5000/optimal-control',
             model
         );

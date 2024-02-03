@@ -13,8 +13,8 @@ from definitions import (
     ISimulationCompartment,
     ISimulationData,
     ICompartmentSimulatedData,
-    ISimulationResultsSuccess,
-    ISimulationResultsError,
+    ISimulationSuccessResponse,
+    IErrorResponse,
     ContinuityType,
     IContinuityCheckResult
 )
@@ -26,7 +26,7 @@ from shared import (
 )
 
 
-def simulate(payload: ISimulationData) -> ISimulationResultsSuccess | ISimulationResultsError:
+def simulate(payload: ISimulationData) -> ISimulationSuccessResponse | IErrorResponse:
     """
     Simulation function
 
@@ -63,7 +63,7 @@ def simulate(payload: ISimulationData) -> ISimulationResultsSuccess | ISimulatio
         )
 
         if continuity_type.type == ContinuityType.DISCONTINUOUS:
-            return ISimulationResultsError(
+            return IErrorResponse(
                 f'Equation of {compartment.name} is discontinuous by {continuity_type.discontinuity_symbol}',
                 False
             )
@@ -73,7 +73,7 @@ def simulate(payload: ISimulationData) -> ISimulationResultsSuccess | ISimulatio
     if not is_population_preserved(
         [compartment.equation.symbolic_equation for compartment in simulation_model]
     ):
-        return ISimulationResultsError(
+        return IErrorResponse(
             'Model equations do not preserve population. ' +
             'Apparently that is result of a program bug. Please reload the page and try again',
             False
@@ -96,16 +96,15 @@ def simulate(payload: ISimulationData) -> ISimulationResultsSuccess | ISimulatio
             variables_datatable
         )
 
-        return ISimulationResultsSuccess(
+        return ISimulationSuccessResponse(
             payload.simulation_parameters.time,
             payload.simulation_parameters.step,
             simulation_results,
-            None,
             True
         )
 
     except ValueError as e:
-        return ISimulationResultsError(
+        return IErrorResponse(
             str(e),
             False
         )

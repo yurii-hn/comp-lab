@@ -169,17 +169,26 @@ class ILambdaSimulatedData:
 
 
 @dataclass
-class ISimulationResultsSuccess:
+class ISimulationSuccessResponse:
     """Simulation results success"""
     time: float
     step: float
     compartments: List[ICompartmentSimulatedData]
-    interventions: List[IInterventionSimulatedData] | None
     success: True
 
 
 @dataclass
-class ISimulationResultsError:
+class IOptimalControlSuccessResponse:
+    """Simulation results success"""
+    time: float
+    step: float
+    compartments: List[ICompartmentSimulatedData]
+    interventions: List[IInterventionSimulatedData]
+    success: True
+
+
+@dataclass
+class IErrorResponse:
     """Simulation results error"""
     error: str
     success: False

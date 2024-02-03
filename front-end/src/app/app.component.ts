@@ -1,9 +1,15 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import {
+    AfterViewInit,
+    Component,
+    ElementRef,
+    OnDestroy,
+    ViewChild,
+} from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { EdgeSingular, NodeSingular, SingularElementArgument } from 'cytoscape';
-import { Observable, Subscription, filter, map, tap } from 'rxjs';
+import { Observable, Subscription, filter, map, take, tap } from 'rxjs';
 import { CompartmentCreationDialogComponent } from './components/compartment-creation-dialog/compartment-creation-dialog.component';
 import { ConfirmationDialogComponent } from './components/confirmation-dialog/confirmation-dialog.component';
 import { DefinitionsTableDialogComponent } from './components/definitions-table-dialog/definitions-table-dialog.component';
@@ -19,11 +25,13 @@ import {
     IExportModel,
     IImportModel,
     IIntervention,
+    IOptimalControlResponse,
     ISimulationParameters,
-    ISimulationResults,
-    ISimulationResultsSuccess,
+    ISimulationResponse,
+    IWorkspace,
 } from './core/interfaces';
 import { ModelService } from './services/model.service';
+import { ResultsStorageService } from './services/results-storage.service';
 import { SimulationService } from './services/simulation.service';
 import { WorkspacesService } from './services/workspaces.service';
 
@@ -38,8 +46,7 @@ interface ISimulationDialogOutput {
     templateUrl: './app.component.html',
     styleUrls: ['./app.component.scss'],
 })
-export class AppComponent {
-    public simulationResults: ISimulationResultsSuccess | null = null;
+export class AppComponent implements AfterViewInit, OnDestroy {
     public readonly workspaceControl: FormControl = new FormControl();
 
     public get elementSelected(): boolean {
@@ -50,19 +57,16 @@ export class AppComponent {
         return this.modelService.compartmentsCount;
     }
 
-    public get workspaces(): string[] {
-        return this.workspacesService.getWorkspaceNames();
-    }
-
     @ViewChild('canvas') private readonly canvas!: ElementRef<HTMLElement>;
 
     private readonly subscriptions: Subscription = new Subscription();
 
     constructor(
+        public readonly workspacesService: WorkspacesService,
+        public readonly resultsStorageService: ResultsStorageService,
         private readonly dialogService: MatDialog,
         private readonly simulationService: SimulationService,
         private readonly modelService: ModelService,
-        private readonly workspacesService: WorkspacesService,
         private readonly snackBar: MatSnackBar
     ) {}
 
@@ -94,11 +98,23 @@ export class AppComponent {
             )
             .subscribe();
 
+        const workspaceInitSub: Subscription =
+            this.workspacesService.currentWorkspace$
+                .pipe(
+                    take(2),
+                    tap((workspace: IWorkspace): void => {
+                        this.workspaceControl.setValue(workspace.name, {
+                            emitEvent: false,
+                        });
+                    })
+                )
+                .subscribe();
+
         const workspaceChangeSub: Subscription =
-            this.workspacesService.currentWorkspaceName$
+            this.workspaceControl.valueChanges
                 .pipe(
                     tap((workspaceName: string): void => {
-                        this.workspaceControl.setValue(workspaceName);
+                        this.modelService.changeWorkspace(workspaceName);
                     })
                 )
                 .subscribe();
@@ -108,11 +124,12 @@ export class AppComponent {
         this.subscriptions.add(compartmentOpeningSub);
         this.subscriptions.add(fromOpeningSub);
         this.subscriptions.add(flowAddSub);
+        this.subscriptions.add(workspaceInitSub);
         this.subscriptions.add(workspaceChangeSub);
     }
 
-    public onWorkspaceChange(workspaceName: string): void {
-        this.modelService.changeWorkspace(workspaceName);
+    public ngOnDestroy(): void {
+        this.subscriptions.unsubscribe();
     }
 
     public addNewWorkspace(): void {
@@ -282,7 +299,6 @@ export class AppComponent {
         const simulationResultsDialog: MatDialogRef<SimulationDashboardComponent> =
             this.dialogService.open(SimulationDashboardComponent, {
                 autoFocus: false,
-                data: this.simulationResults,
                 height: '95vh',
                 width: '95vw',
             });
@@ -404,9 +420,9 @@ export class AppComponent {
     }
 
     private simulateModel(simulationData: ISimulationDialogOutput): void {
-        let observable: Observable<ISimulationResults>;
-
-        this.simulationResults = null;
+        let observable: Observable<
+            ISimulationResponse | IOptimalControlResponse
+        >;
 
         if (!simulationData.isOptimalControlProblem) {
             observable = this.simulationService.simulateModel({
@@ -426,7 +442,7 @@ export class AppComponent {
                     time: simulationData.simulationParameters.time,
                 },
                 costFunction: constants.reduce(
-                    (costFunction: string, constant: IConstant) => {
+                    (costFunction: string, constant: IConstant): string => {
                         return costFunction.replace(
                             new RegExp(`\\b${constant.name}\\b`),
                             constant.value.toString()
@@ -440,12 +456,31 @@ export class AppComponent {
 
         observable
             .pipe(
-                tap((results: ISimulationResults) => {
-                    if (results.success) {
-                        this.simulationResults = results;
+                tap(
+                    (
+                        results: ISimulationResponse | IOptimalControlResponse
+                    ) => {
+                        if (results.success) {
+                            this.resultsStorageService.addResults({
+                                data: results,
+                            });
+
+                            this.snackBar.open(
+                                'Simulation completed successfully',
+                                'Dismiss',
+                                {
+                                    panelClass: 'snackbar',
+                                    horizontalPosition: 'right',
+                                    verticalPosition: 'bottom',
+                                }
+                            );
+
+                            return;
+                        }
 
                         this.snackBar.open(
-                            'Simulation completed successfully',
+                            'Simulation failed.\n\n' +
+                                `Error: ${results.error}`,
                             'Dismiss',
                             {
                                 panelClass: 'snackbar',
@@ -453,20 +488,8 @@ export class AppComponent {
                                 verticalPosition: 'bottom',
                             }
                         );
-
-                        return;
                     }
-
-                    this.snackBar.open(
-                        'Simulation failed.\n\n' + `Error: ${results.error}`,
-                        'Dismiss',
-                        {
-                            panelClass: 'snackbar',
-                            horizontalPosition: 'right',
-                            verticalPosition: 'bottom',
-                        }
-                    );
-                })
+                )
             )
             .subscribe();
     }
@@ -486,6 +509,6 @@ export class AppComponent {
     }
 
     private initWorkspace(): void {
-        this.modelService.initWorkspaceFromSamples(['default', 'default.1']);
+        this.modelService.initWorkspaceFromSamples(['default.1', 'default']);
     }
 }
