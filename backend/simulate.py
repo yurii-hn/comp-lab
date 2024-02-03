@@ -81,9 +81,11 @@ def simulate(payload: ISimulationData) -> ISimulationResultsSuccess | ISimulatio
 
     try:
         variables_datatable: IVariablesDatatable = {
-            compartment.name: [compartment.value] + [0] * int(
-                payload.simulation_parameters.time /
-                payload.simulation_parameters.step
+            compartment.name: [compartment.value] + [0] * (
+                int(
+                    payload.simulation_parameters.time /
+                    payload.simulation_parameters.step
+                ) - 1
             )
             for compartment in simulation_model
         }
@@ -98,6 +100,7 @@ def simulate(payload: ISimulationData) -> ISimulationResultsSuccess | ISimulatio
             payload.simulation_parameters.time,
             payload.simulation_parameters.step,
             simulation_results,
+            None,
             True
         )
 

@@ -47,10 +47,16 @@ export interface ICompartmentSimulatedData {
     values: number[];
 }
 
+export interface IInterventionSimulatedData {
+    name: string;
+    values: number[];
+}
+
 export interface ISimulationResultsSuccess {
     time: number;
     step: number;
     compartments: ICompartmentSimulatedData[];
+    interventions: IInterventionSimulatedData[];
     success: true;
 }
 

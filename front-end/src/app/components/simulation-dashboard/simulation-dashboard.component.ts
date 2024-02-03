@@ -3,7 +3,8 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Config, Data, Layout } from 'plotly.js';
 import {
     ICompartmentSimulatedData,
-    ISimulationResultsSuccess
+    IInterventionSimulatedData,
+    ISimulationResultsSuccess,
 } from 'src/app/core/interfaces';
 
 interface IPlot {
@@ -29,14 +30,21 @@ export class SimulationDashboardComponent implements OnInit {
 
     constructor(
         private readonly dialogRef: MatDialogRef<SimulationDashboardComponent>,
-        @Inject(MAT_DIALOG_DATA) private readonly data: ISimulationResultsSuccess
+        @Inject(MAT_DIALOG_DATA)
+        private readonly data: ISimulationResultsSuccess
     ) {}
 
     public ngOnInit(): void {
-        const xAxis: number[] = this.getXAxis(this.data.time, this.data.step);
+        this.data.compartments.forEach(
+            (compartment: ICompartmentSimulatedData): void => {
+                this.addPlot(compartment);
+            }
+        );
 
-        this.data.compartments.forEach((compartment) =>
-            this.addPlot(xAxis, compartment)
+        this.data.interventions.forEach(
+            (intervention: IInterventionSimulatedData): void => {
+                this.addPlot(intervention, 'hv', true);
+            }
         );
     }
 
@@ -45,16 +53,38 @@ export class SimulationDashboardComponent implements OnInit {
     }
 
     private addPlot(
-        xAxis: number[],
-        compartment: ICompartmentSimulatedData
+        compartment: ICompartmentSimulatedData,
+        lineShape?:
+            | 'linear'
+            | 'spline'
+            | 'hv'
+            | 'vh'
+            | 'hvh'
+            | 'vhv'
+            | undefined,
+        isIntervention: boolean = false
     ): void {
+        const xAxis: number[] = this.getXAxis(
+            this.data.time,
+            compartment.values.length,
+            isIntervention
+        );
+
         this.plotsData.push({
             data: [
                 {
                     x: xAxis,
-                    y: compartment.values,
+                    y: isIntervention
+                        ? [
+                              ...compartment.values,
+                              compartment.values.at(-1) as number,
+                          ]
+                        : compartment.values,
                     type: 'scatter',
                     name: compartment.name,
+                    line: {
+                        shape: lineShape,
+                    },
                 },
             ],
             layout: {
@@ -76,11 +106,20 @@ export class SimulationDashboardComponent implements OnInit {
         });
     }
 
-    private getXAxis(time: number, step: number): number[] {
+    private getXAxis(
+        time: number,
+        nodesAmount: number,
+        isIntervention: boolean = false
+    ): number[] {
         const xAxis: number[] = [];
+        const step: number = time / nodesAmount;
 
         for (let i = 0; i <= time; i += step) {
             xAxis.push(i);
+        }
+
+        if (isIntervention) {
+            xAxis.push(time);
         }
 
         return xAxis;

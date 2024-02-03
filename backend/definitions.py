@@ -174,6 +174,7 @@ class ISimulationResultsSuccess:
     time: float
     step: float
     compartments: List[ICompartmentSimulatedData]
+    interventions: List[IInterventionSimulatedData] | None
     success: True
 
 
