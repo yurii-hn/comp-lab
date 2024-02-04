@@ -2,6 +2,19 @@
     <p class="title">Simulation Dashboard</p>
 
     <div class="header-controls">
+        <mat-button-toggle-group
+            *ngIf="isCurrentResultsOptimal"
+            [formControl]="viewModeControl"
+        >
+            <mat-button-toggle value="non-optimized"
+                ><mat-icon>show_chart</mat-icon>
+            </mat-button-toggle>
+
+            <mat-button-toggle value="optimized">
+                <mat-icon>trending_down</mat-icon>
+            </mat-button-toggle>
+        </mat-button-toggle-group>
+
         <mat-form-field subscriptSizing="dynamic">
             <mat-select [formControl]="resultsControl">
                 <mat-option

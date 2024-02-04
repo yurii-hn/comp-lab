@@ -5,8 +5,9 @@ import { Config, Data, Layout } from 'plotly.js';
 import { Subscription, take, tap } from 'rxjs';
 import {
     ICompartmentSimulatedData,
-    IInterventionSimulatedData,
+    IOptimalControlResults,
     IResults,
+    OptimalControlResultsViewMode,
 } from 'src/app/core/interfaces';
 import { isOptimalControlResults } from 'src/app/core/utils';
 import { ResultsStorageService } from 'src/app/services/results-storage.service';
@@ -22,6 +23,9 @@ interface IPlot {
     styleUrls: ['./simulation-dashboard.component.scss'],
 })
 export class SimulationDashboardComponent implements OnInit, OnDestroy {
+    public readonly viewModeControl: FormControl = new FormControl(
+        OptimalControlResultsViewMode.NonOptimized
+    );
     public readonly resultsControl: FormControl = new FormControl();
 
     public readonly plotsConfig: Partial<Config> = {};
@@ -31,9 +35,16 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
         width: '100%',
         height: '100%',
     };
+
     public plotsData: IPlot[] = [];
 
     private readonly subscriptions: Subscription = new Subscription();
+
+    public get isCurrentResultsOptimal(): boolean {
+        return isOptimalControlResults(
+            this.resultsStorageService.currentResults
+        );
+    }
 
     constructor(
         public readonly resultsStorageService: ResultsStorageService,
@@ -49,6 +60,26 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
                         this.resultsControl.setValue(results.name, {
                             emitEvent: false,
                         });
+
+                        if (isOptimalControlResults(results)) {
+                            this.viewModeControl.setValue(results.viewMode, {
+                                emitEvent: false,
+                            });
+                        }
+                    })
+                )
+                .subscribe();
+
+        const viewModeChangeSub: Subscription =
+            this.viewModeControl.valueChanges
+                .pipe(
+                    tap((viewMode: OptimalControlResultsViewMode): void => {
+                        (
+                            this.resultsStorageService
+                                .currentResults as IOptimalControlResults
+                        ).viewMode = viewMode;
+
+                        this.onResultsChange();
                     })
                 )
                 .subscribe();
@@ -66,6 +97,7 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
         this.onResultsChange();
 
         this.subscriptions.add(resultsInitSub);
+        this.subscriptions.add(viewModeChangeSub);
         this.subscriptions.add(resultsChangeSub);
     }
 
@@ -88,23 +120,41 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
     private onResultsChange(): void {
         this.clearPlots();
 
-        this.resultsStorageService.currentResults.data.compartments.forEach(
+        if (
+            isOptimalControlResults(this.resultsStorageService.currentResults)
+        ) {
+            const payloadIndex: 0 | 1 =
+                this.resultsStorageService.currentResults.viewMode ===
+                OptimalControlResultsViewMode.NonOptimized
+                    ? 0
+                    : 1;
+
+            this.resultsStorageService.currentResults.data.payload[
+                payloadIndex
+            ].compartments.forEach(
+                (compartment: ICompartmentSimulatedData): void => {
+                    this.addPlot(compartment);
+                }
+            );
+
+            if (payloadIndex) {
+                this.resultsStorageService.currentResults.data.payload[
+                    payloadIndex
+                ].interventions.forEach(
+                    (compartment: ICompartmentSimulatedData): void => {
+                        this.addPlot(compartment, 'hv', true);
+                    }
+                );
+            }
+
+            return;
+        }
+
+        this.resultsStorageService.currentResults.data.payload.compartments.forEach(
             (compartment: ICompartmentSimulatedData): void => {
                 this.addPlot(compartment);
             }
         );
-
-        if (
-            isOptimalControlResults(
-                this.resultsStorageService.currentResults.data
-            )
-        ) {
-            this.resultsStorageService.currentResults.data.interventions.forEach(
-                (intervention: IInterventionSimulatedData): void => {
-                    this.addPlot(intervention, 'hv', true);
-                }
-            );
-        }
     }
 
     private addPlot(
@@ -120,7 +170,7 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
         isIntervention: boolean = false
     ): void {
         const xAxis: number[] = this.getXAxis(
-            this.resultsStorageService.currentResults.data.time,
+            this.resultsStorageService.currentResults.data.parameters.time,
             compartment.values.length,
             isIntervention
         );

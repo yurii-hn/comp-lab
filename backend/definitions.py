@@ -6,7 +6,7 @@ This module contains the definitions of the interfaces used in the backend.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, TypedDict, Dict, Callable
+from typing import List, TypedDict, Dict, Callable, TypeVar, Generic, Tuple
 from sympy import Symbol, Expr
 
 
@@ -111,7 +111,7 @@ class IRawOptimalControlData(IRawSimulationData):
 class ISimulationData:
     """Simulation data"""
     model: List[ICompartment]
-    simulation_parameters: ISimulationParameters
+    parameters: ISimulationParameters
 
     def __init__(
         self,
@@ -122,7 +122,7 @@ class ISimulationData:
             ICompartment(*compartment.values())
             for compartment in model
         ]
-        self.simulation_parameters = ISimulationParameters(
+        self.parameters = ISimulationParameters(
             *simulation_parameters.values()
         )
 
@@ -169,29 +169,45 @@ class ILambdaSimulatedData:
 
 
 @dataclass
-class ISimulationSuccessResponse:
-    """Simulation results success"""
-    time: float
-    step: float
-    compartments: List[ICompartmentSimulatedData]
-    success: True
-
-
-@dataclass
-class IOptimalControlSuccessResponse:
-    """Simulation results success"""
-    time: float
-    step: float
-    compartments: List[ICompartmentSimulatedData]
-    interventions: List[IInterventionSimulatedData]
-    success: True
-
-
-@dataclass
 class IErrorResponse:
     """Simulation results error"""
     error: str
     success: False
+
+
+PayloadType = TypeVar('PayloadType')
+
+
+@dataclass
+class ISuccessResponse(Generic[PayloadType]):
+    """Success response"""
+    parameters: ISimulationParameters
+    payload: PayloadType
+    success: True
+
+
+@dataclass
+class ISimulationSuccessResponsePayload:
+    """Simulation results success"""
+    compartments: List[ICompartmentSimulatedData]
+
+
+ISimulationSuccessResponse = ISuccessResponse[ISimulationSuccessResponsePayload]
+
+
+@dataclass
+class IOptimalControlSuccessResponsePayload:
+    """Optimal control results success"""
+    compartments: List[ICompartmentSimulatedData]
+    interventions: List[IInterventionSimulatedData]
+
+
+IOptimalControlSuccessResponse = ISuccessResponse[
+    Tuple[
+        ISimulationSuccessResponsePayload,
+        IOptimalControlSuccessResponsePayload
+    ]
+]
 
 
 class IRawValidationPayload(TypedDict):

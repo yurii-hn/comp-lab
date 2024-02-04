@@ -14,9 +14,9 @@ from definitions import (
     IRawOptimalControlData,
     ISimulationData,
     IOptimalControlData,
+    IErrorResponse,
     ISimulationSuccessResponse,
     IOptimalControlSuccessResponse,
-    IErrorResponse,
     IRawValidationPayload,
     IValidationPayload,
     IValidationResult

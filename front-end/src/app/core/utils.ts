@@ -1,10 +1,12 @@
 import {
-    IOptimalControlSuccessResponse,
-    ISimulationSuccessResponse,
+    IOptimalControlResultsBase,
+    IResultsBase
 } from './interfaces';
 
 export function isOptimalControlResults(
-    response: ISimulationSuccessResponse | IOptimalControlSuccessResponse
-): response is IOptimalControlSuccessResponse {
-    return 'interventions' in response;
+    results: IResultsBase
+): results is IOptimalControlResultsBase {
+    return (
+        Array.isArray(results.data.payload) && results.data.payload.length === 2
+    );
 }

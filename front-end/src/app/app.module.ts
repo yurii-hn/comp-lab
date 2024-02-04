@@ -5,6 +5,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatOptionModule } from '@angular/material/core';
 import { MatDialogModule } from '@angular/material/dialog';
@@ -56,6 +57,7 @@ PlotlyModule.plotlyjs = PlotlyJS;
         MatChipsModule,
         MatSlideToggleModule,
         MatSnackBarModule,
+        MatButtonToggleModule,
     ],
     providers: [],
     bootstrap: [AppComponent],

@@ -26,6 +26,7 @@ import {
     IImportModel,
     IIntervention,
     IOptimalControlResponse,
+    IResultsBase,
     ISimulationParameters,
     ISimulationResponse,
     IWorkspace,
@@ -427,7 +428,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
         if (!simulationData.isOptimalControlProblem) {
             observable = this.simulationService.simulateModel({
                 model: this.getCompartments(),
-                simulationParameters: {
+                parameters: {
                     step: simulationData.simulationParameters.step,
                     time: simulationData.simulationParameters.time,
                 },
@@ -437,7 +438,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
             observable = this.simulationService.optimizeModel({
                 model: this.getCompartments(),
-                simulationParameters: {
+                parameters: {
                     step: simulationData.simulationParameters.step,
                     time: simulationData.simulationParameters.time,
                 },
@@ -463,7 +464,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
                         if (results.success) {
                             this.resultsStorageService.addResults({
                                 data: results,
-                            });
+                            } as IResultsBase);
 
                             this.snackBar.open(
                                 'Simulation completed successfully',

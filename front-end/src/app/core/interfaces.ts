@@ -34,7 +34,7 @@ export interface IIntervention {
 
 export interface ISimulationData {
     model: ICompartment[];
-    simulationParameters: ISimulationParameters;
+    parameters: ISimulationParameters;
 }
 
 export interface IOptimalControlData extends ISimulationData {
@@ -57,12 +57,18 @@ export interface IErrorResponse {
     success: false;
 }
 
-export interface ISimulationSuccessResponse {
-    time: number;
-    step: number;
-    compartments: ICompartmentSimulatedData[];
+export interface ISuccessResponse<PayloadType> {
+    parameters: ISimulationParameters;
+    payload: PayloadType;
     success: true;
 }
+
+export interface ISimulationSuccessResponsePayload {
+    compartments: ICompartmentSimulatedData[];
+}
+
+export type ISimulationSuccessResponse =
+    ISuccessResponse<ISimulationSuccessResponsePayload>;
 
 export type ISimulationErrorResponse = IErrorResponse;
 
@@ -70,13 +76,14 @@ export type ISimulationResponse =
     | ISimulationSuccessResponse
     | ISimulationErrorResponse;
 
-export interface IOptimalControlSuccessResponse {
-    time: number;
-    step: number;
+export interface IOptimalControlSuccessResponsePayload {
     compartments: ICompartmentSimulatedData[];
     interventions: IInterventionSimulatedData[];
-    success: true;
 }
+
+export type IOptimalControlSuccessResponse = ISuccessResponse<
+    [ISimulationSuccessResponsePayload, IOptimalControlSuccessResponsePayload]
+>;
 
 export type IOptimalControlErrorResponse = IErrorResponse;
 
@@ -84,12 +91,33 @@ export type IOptimalControlResponse =
     | IOptimalControlSuccessResponse
     | IOptimalControlErrorResponse;
 
-export interface IResultsBase {
-    data: ISimulationSuccessResponse | IOptimalControlSuccessResponse;
+export interface ISimulationResultsBase {
+    data: ISimulationSuccessResponse;
 }
 
-export interface IResults extends IResultsBase {
+export interface IOptimalControlResultsBase {
+    data: IOptimalControlSuccessResponse;
+}
+
+export type IResultsBase = ISimulationResultsBase | IOptimalControlResultsBase;
+
+export interface IResultsCore {
     name: string;
+}
+
+export type ISimulationResults = ISimulationResultsBase & IResultsCore;
+
+export interface IOptimalControlResults
+    extends IOptimalControlResultsBase,
+        IResultsCore {
+    viewMode: OptimalControlResultsViewMode;
+}
+
+export type IResults = ISimulationResults | IOptimalControlResults;
+
+export enum OptimalControlResultsViewMode {
+    NonOptimized = 'non-optimized',
+    Optimized = 'optimized',
 }
 
 export enum DefinitionType {

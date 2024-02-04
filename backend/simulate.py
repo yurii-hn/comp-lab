@@ -13,8 +13,9 @@ from definitions import (
     ISimulationCompartment,
     ISimulationData,
     ICompartmentSimulatedData,
-    ISimulationSuccessResponse,
     IErrorResponse,
+    ISimulationSuccessResponsePayload,
+    ISimulationSuccessResponse,
     ContinuityType,
     IContinuityCheckResult
 )
@@ -83,8 +84,8 @@ def simulate(payload: ISimulationData) -> ISimulationSuccessResponse | IErrorRes
         variables_datatable: IVariablesDatatable = {
             compartment.name: [compartment.value] + [0] * (
                 int(
-                    payload.simulation_parameters.time /
-                    payload.simulation_parameters.step
+                    payload.parameters.time /
+                    payload.parameters.step
                 ) - 1
             )
             for compartment in simulation_model
@@ -92,14 +93,15 @@ def simulate(payload: ISimulationData) -> ISimulationSuccessResponse | IErrorRes
 
         simulation_results: List[ICompartmentSimulatedData] = simulate_model(
             simulation_model,
-            payload.simulation_parameters,
+            payload.parameters,
             variables_datatable
         )
 
         return ISimulationSuccessResponse(
-            payload.simulation_parameters.time,
-            payload.simulation_parameters.step,
-            simulation_results,
+            payload.parameters,
+            ISimulationSuccessResponsePayload(
+                simulation_results
+            ),
             True
         )
 

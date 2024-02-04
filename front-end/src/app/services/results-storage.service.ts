@@ -2,8 +2,10 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import {
     IResults,
-    IResultsBase
+    IResultsBase,
+    OptimalControlResultsViewMode,
 } from '../core/interfaces';
+import { isOptimalControlResults } from '../core/utils';
 
 @Injectable({
     providedIn: 'root',
@@ -13,10 +15,13 @@ export class ResultsStorageService {
     private readonly currentResultSubject: BehaviorSubject<IResults> =
         new BehaviorSubject<IResults>({
             data: {
-                time: 0,
-                step: 0,
-                compartments: [],
-                interventions: [],
+                parameters: {
+                    time: 0,
+                    step: 0,
+                },
+                payload: {
+                    compartments: [],
+                },
                 success: true,
             },
             name: '',
@@ -37,10 +42,20 @@ export class ResultsStorageService {
     }
 
     public addResults(results: IResultsBase): IResults {
-        const newResults: IResults = {
-            name: `Run ${this.results.length + 1}`,
-            ...results,
-        };
+        let newResults: IResults;
+
+        if (isOptimalControlResults(results)) {
+            newResults = {
+                name: `Run ${this.results.length + 1}`,
+                viewMode: OptimalControlResultsViewMode.Optimized,
+                ...results,
+            };
+        } else {
+            newResults = {
+                name: `Run ${this.results.length + 1}`,
+                ...results,
+            };
+        }
 
         if (this.results.length === 0) {
             this.currentResultSubject.next(newResults);

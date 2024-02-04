@@ -20,8 +20,10 @@ from definitions import (
     ICompartmentSimulatedData,
     IInterventionSimulatedData,
     ILambdaSimulatedData,
-    IOptimalControlSuccessResponse,
     IErrorResponse,
+    ISimulationSuccessResponsePayload,
+    IOptimalControlSuccessResponsePayload,
+    IOptimalControlSuccessResponse,
     ContinuityType,
     IContinuityCheckResult,
 )
@@ -53,7 +55,7 @@ def optimal_control(payload: IOptimalControlData) -> (
         Simulation results
     """
 
-    optimization_parameters_amount: int = 16
+    optimization_parameters_amount: int = 4
 
     symbols_table: ISymbolsTable = {
         compartment.name: Symbol(compartment.name)
@@ -145,38 +147,38 @@ def optimal_control(payload: IOptimalControlData) -> (
                 **{
                     compartment.name: [compartment.value] + [0] * (
                         int(
-                            payload.simulation_parameters.time /
-                            payload.simulation_parameters.step
+                            payload.parameters.time /
+                            payload.parameters.step
                         ) - 1
                     )
                     for compartment in simulation_model
                 },
                 **{
                     intervention.name: [0] * int(
-                        payload.simulation_parameters.time /
-                        payload.simulation_parameters.step
+                        payload.parameters.time /
+                        payload.parameters.step
                     )
                     for intervention in payload.interventions
                 },
                 **{
                     current_lambda.name: [0] * int(
-                        payload.simulation_parameters.time /
-                        payload.simulation_parameters.step
+                        payload.parameters.time /
+                        payload.parameters.step
                     )
                     for current_lambda in simulation_lambdas_derivatives
                 }
             }
         ]
 
-        simulation_results: List[ICompartmentSimulatedData] = simulate_model(
+        no_control_simulation_results: List[ICompartmentSimulatedData] = simulate_model(
             simulation_model,
-            payload.simulation_parameters,
+            payload.parameters,
             variables_datatable[0]
         )
 
         start_cost: float = calculate_cost(
             cost_function,
-            payload.simulation_parameters,
+            payload.parameters,
             variables_datatable[0]
         )
 
@@ -190,7 +192,7 @@ def optimal_control(payload: IOptimalControlData) -> (
                 simulation_lambdas_derivatives,
                 payload.interventions,
                 hamiltonian,
-                payload.simulation_parameters,
+                payload.parameters,
                 optimization_parameters_amount,
                 variables_datatable,
                 simulation_results
@@ -203,7 +205,7 @@ def optimal_control(payload: IOptimalControlData) -> (
 
         optimized_cost: float = calculate_cost(
             cost_function,
-            payload.simulation_parameters,
+            payload.parameters,
             variables_datatable[0]
         )
 
@@ -223,10 +225,16 @@ def optimal_control(payload: IOptimalControlData) -> (
         print(start_cost, optimized_cost, start_cost - optimized_cost)
 
         return IOptimalControlSuccessResponse(
-            payload.simulation_parameters.time,
-            payload.simulation_parameters.step,
-            simulation_results[0],
-            interventions_values,
+            payload.parameters,
+            [
+                ISimulationSuccessResponsePayload(
+                    no_control_simulation_results
+                ),
+                IOptimalControlSuccessResponsePayload(
+                    simulation_results[0],
+                    interventions_values,
+                )
+            ],
             True
         )
 
