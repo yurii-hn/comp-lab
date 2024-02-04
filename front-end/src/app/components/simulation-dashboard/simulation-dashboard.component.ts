@@ -5,8 +5,10 @@ import { Config, Data, Layout } from 'plotly.js';
 import { Subscription, take, tap } from 'rxjs';
 import {
     ICompartmentSimulatedData,
+    IInterventionSimulatedData,
     IOptimalControlResults,
     IResults,
+    ISimulatedData,
     OptimalControlResultsViewMode,
 } from 'src/app/core/interfaces';
 import { isOptimalControlResults } from 'src/app/core/utils';
@@ -141,8 +143,8 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
                 this.resultsStorageService.currentResults.data.payload[
                     payloadIndex
                 ].interventions.forEach(
-                    (compartment: ICompartmentSimulatedData): void => {
-                        this.addPlot(compartment, 'hv', true);
+                    (compartment: IInterventionSimulatedData): void => {
+                        this.addPlot(compartment, 'hv');
                     }
                 );
             }
@@ -158,7 +160,7 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
     }
 
     private addPlot(
-        compartment: ICompartmentSimulatedData,
+        data: ISimulatedData,
         lineShape?:
             | 'linear'
             | 'spline'
@@ -166,27 +168,20 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
             | 'vh'
             | 'hvh'
             | 'vhv'
-            | undefined,
-        isIntervention: boolean = false
+            | undefined
     ): void {
         const xAxis: number[] = this.getXAxis(
             this.resultsStorageService.currentResults.data.parameters.time,
-            compartment.values.length,
-            isIntervention
+            data.values.length
         );
 
         this.plotsData.push({
             data: [
                 {
                     x: xAxis,
-                    y: isIntervention
-                        ? [
-                              ...compartment.values,
-                              compartment.values.at(-1) as number,
-                          ]
-                        : compartment.values,
+                    y: data.values,
                     type: 'scatter',
-                    name: compartment.name,
+                    name: data.name,
                     line: {
                         shape: lineShape,
                     },
@@ -195,7 +190,7 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
             layout: {
                 autosize: true,
                 title: {
-                    text: compartment.name,
+                    text: data.name,
                 },
                 xaxis: {
                     title: {
@@ -203,8 +198,9 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
                     },
                 },
                 yaxis: {
+                    rangemode: 'tozero',
                     title: {
-                        text: compartment.name,
+                        text: data.name,
                     },
                 },
             },
@@ -215,20 +211,12 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
         this.plotsData = [];
     }
 
-    private getXAxis(
-        time: number,
-        nodesAmount: number,
-        isIntervention: boolean = false
-    ): number[] {
+    private getXAxis(time: number, nodesAmount: number): number[] {
         const xAxis: number[] = [];
-        const step: number = time / nodesAmount;
+        const step: number = time / (nodesAmount - 1);
 
-        for (let i = 0; i <= time; i += step) {
+        for (let i: number = 0; i <= time; i += step) {
             xAxis.push(i);
-        }
-
-        if (isIntervention) {
-            xAxis.push(time);
         }
 
         return xAxis;

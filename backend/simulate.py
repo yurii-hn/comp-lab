@@ -86,7 +86,7 @@ def simulate(payload: ISimulationData) -> ISimulationSuccessResponse | IErrorRes
                 int(
                     payload.parameters.time /
                     payload.parameters.step
-                ) - 1
+                )
             )
             for compartment in simulation_model
         }

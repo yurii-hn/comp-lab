@@ -52,6 +52,8 @@ export interface IInterventionSimulatedData {
     values: number[];
 }
 
+export type ISimulatedData = ICompartmentSimulatedData | IInterventionSimulatedData;
+
 export interface IErrorResponse {
     error: string;
     success: false;

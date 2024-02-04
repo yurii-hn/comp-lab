@@ -119,21 +119,22 @@ def simulate_model(
     variables_datatable: IVariablesDatatable
 ) -> List[ICompartmentSimulatedData]:
     """Model simulation function"""
-    for t in range(int(simulation_parameters.time / simulation_parameters.step) - 1):
+    for i in range(int(simulation_parameters.time / simulation_parameters.step)):
         for compartment in model:
             values: List[float] = [
-                variables_datatable[str(var)][t]
+                variables_datatable[str(var)][i]
                 for var in compartment.equation.vars
             ]
 
-            variables_datatable[compartment.name][t + 1] = (
-                variables_datatable[compartment.name][t] +
-                compartment.equation.equation_function(*values)
+            variables_datatable[compartment.name][i + 1] = (
+                variables_datatable[compartment.name][i] +
+                compartment.equation.equation_function(*values) *
+                simulation_parameters.step
             )
 
-            if variables_datatable[compartment.name][t + 1] < 0:
+            if variables_datatable[compartment.name][i + 1] < 0:
                 raise ValueError(
-                    f'Negative value for {compartment.name} at time {t + 1}'
+                    f'Negative value for {compartment.name} at time {i + 1}'
                 )
 
     simulation_results: List[ICompartmentSimulatedData] = [
