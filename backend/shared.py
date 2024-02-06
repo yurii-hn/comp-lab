@@ -119,7 +119,10 @@ def simulate_model(
     variables_datatable: IVariablesDatatable
 ) -> List[ICompartmentSimulatedData]:
     """Model simulation function"""
-    for i in range(int(simulation_parameters.time / simulation_parameters.step)):
+    step_size: float = simulation_parameters.time / \
+        simulation_parameters.nodes_amount
+
+    for i in range(simulation_parameters.nodes_amount):
         for compartment in model:
             values: List[float] = [
                 variables_datatable[str(var)][i]
@@ -129,7 +132,7 @@ def simulate_model(
             variables_datatable[compartment.name][i + 1] = (
                 variables_datatable[compartment.name][i] +
                 compartment.equation.equation_function(*values) *
-                simulation_parameters.step
+                step_size
             )
 
             if variables_datatable[compartment.name][i + 1] < 0:

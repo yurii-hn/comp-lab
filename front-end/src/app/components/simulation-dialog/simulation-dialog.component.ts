@@ -17,7 +17,7 @@ export class SimulationDialogComponent implements OnInit {
     public readonly formGroup: FormGroup = new FormGroup({
         simulationParameters: new FormGroup({
             time: new FormControl(null, [Validators.required]),
-            step: new FormControl(null, [Validators.required]),
+            nodesAmount: new FormControl(null, [Validators.required]),
         }),
         costFunction: new FormControl(null, [Validators.required]),
         isOptimalControlProblem: new FormControl(false),

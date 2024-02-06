@@ -16,6 +16,7 @@ from definitions import (
     ISimulationCompartment,
     ISimulationLambda,
     ISimulationParameters,
+    IResponseSimulationParameters,
     IOptimalControlData,
     ICompartmentSimulatedData,
     IInterventionSimulatedData,
@@ -142,25 +143,22 @@ def optimal_control(payload: IOptimalControlData) -> (
         )
 
     try:
-        nodes_amount: int = int(
-            payload.parameters.time /
-            payload.parameters.step
-        ) + 1
-
         variables_datatable: Tuple[IVariablesDatatable] = [
             {
                 **{
                     compartment.name: [compartment.value] + [0] * (
-                        nodes_amount - 1
+                        payload.parameters.nodes_amount
                     )
                     for compartment in simulation_model
                 },
                 **{
-                    intervention.name: [0] * nodes_amount
+                    intervention.name: [0] *
+                    (payload.parameters.nodes_amount + 1)
                     for intervention in payload.interventions
                 },
                 **{
-                    current_lambda.name: [0] * nodes_amount
+                    current_lambda.name: [0] *
+                    (payload.parameters.nodes_amount + 1)
                     for current_lambda in simulation_lambdas_derivatives
                 }
             }
@@ -219,7 +217,10 @@ def optimal_control(payload: IOptimalControlData) -> (
         ]
 
         return IOptimalControlSuccessResponse(
-            payload.parameters,
+            IResponseSimulationParameters(
+                payload.parameters.time,
+                payload.parameters.nodes_amount
+            ),
             [
                 ISimulationSuccessResponsePayload(
                     no_control_simulation_results
@@ -281,32 +282,31 @@ def optimization_criteria(
     float
         Optimization result
     """
-    nodes_amount: int = int(
-        simulation_parameters.time /
-        simulation_parameters.step
-    ) + 1
+    step_size: float = simulation_parameters.time / \
+        simulation_parameters.nodes_amount
 
     variables_datatable[0] = {
         **{
-            compartment.name: [compartment.value] + [0] * (nodes_amount - 1)
+            compartment.name: [compartment.value] + [0] *
+            simulation_parameters.nodes_amount
             for compartment in simulation_model
         },
         **{
             intervention.name: [
                 constant_control_approximation(
-                    j * simulation_parameters.step,
+                    j * step_size,
                     interventions_vector[
                         i * optimization_parameters_amount:
                         (i + 1) * optimization_parameters_amount
                     ],
                     simulation_parameters.time
                 )
-                for j in range(nodes_amount)
+                for j in range(simulation_parameters.nodes_amount + 1)
             ]
             for i, intervention in enumerate(interventions)
         },
         **{
-            current_lambda.name: [0] * (nodes_amount)
+            current_lambda.name: [0] * (simulation_parameters.nodes_amount + 1)
             for current_lambda in simulation_lambdas_derivatives
         }
     }
@@ -410,16 +410,18 @@ def calculate_cost(
     variables_datatable: IVariablesDatatable
 ) -> float:
     """Cost function"""
+    step_size: float = simulation_parameters.time / \
+        simulation_parameters.nodes_amount
     cost: float = 0
 
-    for i in range(int(simulation_parameters.time / simulation_parameters.step) + 1):
+    for i in range(simulation_parameters.nodes_amount + 1):
         values: List[float] = [
             variables_datatable[str(var)][i]
             for var in cost_function.vars
         ]
 
         cost += cost_function.equation_function(*values) * \
-            simulation_parameters.step
+            step_size
 
     return cost
 
@@ -430,16 +432,18 @@ def calculate_hamiltonian(
     variables_datatable: IVariablesDatatable
 ) -> float:
     """Hamiltonian function"""
+    step_size: float = simulation_parameters.time / \
+        simulation_parameters.nodes_amount
     value: float = 0
 
-    for i in range(int(simulation_parameters.time / simulation_parameters.step) + 1):
+    for i in range(simulation_parameters.nodes_amount + 1):
         values: List[float] = [
             variables_datatable[str(var)][i]
             for var in hamiltonian.vars
         ]
 
         value += hamiltonian.equation_function(*values) * \
-            simulation_parameters.step
+            step_size
 
     return value
 
@@ -450,8 +454,11 @@ def get_lambda_values(
     variables_datatable: IVariablesDatatable,
 ) -> List[ILambdaSimulatedData]:
     """Get lambda values"""
+    step_size: float = simulation_parameters.time / \
+        simulation_parameters.nodes_amount
+
     for i in range(
-        int(simulation_parameters.time / simulation_parameters.step - 1),
+        simulation_parameters.nodes_amount - 1,
         -1,
         -1
     ):
@@ -464,7 +471,7 @@ def get_lambda_values(
             variables_datatable[current_lambda.name][i] = (
                 variables_datatable[current_lambda.name][i + 1] -
                 current_lambda.equation.equation_function(*values) *
-                simulation_parameters.step
+                step_size
             )
 
     lambdas_values: List[ILambdaSimulatedData] = [

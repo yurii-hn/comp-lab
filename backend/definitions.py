@@ -85,14 +85,20 @@ class ISimulationLambda():
 class IRawSimulationParameters(TypedDict):
     """Raw simulation parameters"""
     time: float
-    step: float
+    nodesAmount: int
 
 
 @dataclass
 class ISimulationParameters:
     """Simulation parameters"""
-    step: float
     time: float
+    nodes_amount: float
+
+@dataclass
+class IResponseSimulationParameters:
+    """Simulation parameters"""
+    time: float
+    nodesAmount: float
 
 
 class IRawSimulationData(TypedDict):
@@ -181,7 +187,7 @@ PayloadType = TypeVar('PayloadType')
 @dataclass
 class ISuccessResponse(Generic[PayloadType]):
     """Success response"""
-    parameters: ISimulationParameters
+    parameters: IResponseSimulationParameters
     payload: PayloadType
     success: True
 

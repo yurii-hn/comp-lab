@@ -172,7 +172,7 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
     ): void {
         const xAxis: number[] = this.getXAxis(
             this.resultsStorageService.currentResults.data.parameters.time,
-            data.values.length
+            this.resultsStorageService.currentResults.data.parameters.nodesAmount
         );
 
         this.plotsData.push({
@@ -213,7 +213,7 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
 
     private getXAxis(time: number, nodesAmount: number): number[] {
         const xAxis: number[] = [];
-        const step: number = time / (nodesAmount - 1);
+        const step: number = time / nodesAmount;
 
         for (let i: number = 0; i <= time; i += step) {
             xAxis.push(i);

@@ -17,7 +17,7 @@ export class ResultsStorageService {
             data: {
                 parameters: {
                     time: 0,
-                    step: 0,
+                    nodesAmount: 0,
                 },
                 payload: {
                     compartments: [],

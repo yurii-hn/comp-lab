@@ -429,8 +429,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
             observable = this.simulationService.simulateModel({
                 model: this.getCompartments(),
                 parameters: {
-                    step: simulationData.simulationParameters.step,
                     time: simulationData.simulationParameters.time,
+                    nodesAmount:
+                        simulationData.simulationParameters.nodesAmount,
                 },
             });
         } else {
@@ -439,8 +440,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
             observable = this.simulationService.optimizeModel({
                 model: this.getCompartments(),
                 parameters: {
-                    step: simulationData.simulationParameters.step,
                     time: simulationData.simulationParameters.time,
+                    nodesAmount:
+                        simulationData.simulationParameters.nodesAmount,
                 },
                 costFunction: constants.reduce(
                     (costFunction: string, constant: IConstant): string => {

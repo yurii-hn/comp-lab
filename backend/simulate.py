@@ -11,6 +11,7 @@ from definitions import (
     ISymbolsTable,
     IVariablesDatatable,
     ISimulationCompartment,
+    IResponseSimulationParameters,
     ISimulationData,
     ICompartmentSimulatedData,
     IErrorResponse,
@@ -83,10 +84,7 @@ def simulate(payload: ISimulationData) -> ISimulationSuccessResponse | IErrorRes
     try:
         variables_datatable: IVariablesDatatable = {
             compartment.name: [compartment.value] + [0] * (
-                int(
-                    payload.parameters.time /
-                    payload.parameters.step
-                )
+                payload.parameters.nodes_amount
             )
             for compartment in simulation_model
         }
@@ -98,7 +96,10 @@ def simulate(payload: ISimulationData) -> ISimulationSuccessResponse | IErrorRes
         )
 
         return ISimulationSuccessResponse(
-            payload.parameters,
+            IResponseSimulationParameters(
+                payload.parameters.time,
+                payload.parameters.nodes_amount
+            ),
             ISimulationSuccessResponsePayload(
                 simulation_results
             ),

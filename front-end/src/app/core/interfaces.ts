@@ -20,7 +20,7 @@ export interface IFlow {
 
 export interface ISimulationParameters {
     time: number;
-    step: number;
+    nodesAmount: number;
 }
 
 export interface IConstant {
