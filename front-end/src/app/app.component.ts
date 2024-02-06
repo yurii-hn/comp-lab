@@ -3,13 +3,22 @@ import {
     Component,
     ElementRef,
     OnDestroy,
+    OnInit,
     ViewChild,
 } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { EdgeSingular, NodeSingular, SingularElementArgument } from 'cytoscape';
-import { Observable, Subscription, filter, map, take, tap } from 'rxjs';
+import {
+    Observable,
+    Subscription,
+    debounceTime,
+    filter,
+    map,
+    take,
+    tap
+} from 'rxjs';
 import { CompartmentCreationDialogComponent } from './components/compartment-creation-dialog/compartment-creation-dialog.component';
 import { ConfirmationDialogComponent } from './components/confirmation-dialog/confirmation-dialog.component';
 import { DefinitionsTableDialogComponent } from './components/definitions-table-dialog/definitions-table-dialog.component';
@@ -31,6 +40,7 @@ import {
     ISimulationResponse,
     IWorkspace,
 } from './core/interfaces';
+import { fromResizeObserver } from './core/utils';
 import { ModelService } from './services/model.service';
 import { ResultsStorageService } from './services/results-storage.service';
 import { SimulationService } from './services/simulation.service';
@@ -47,7 +57,7 @@ interface ISimulationDialogOutput {
     templateUrl: './app.component.html',
     styleUrls: ['./app.component.scss'],
 })
-export class AppComponent implements AfterViewInit, OnDestroy {
+export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     public readonly workspaceControl: FormControl = new FormControl();
 
     public get elementSelected(): boolean {
@@ -60,6 +70,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
     @ViewChild('canvas') private readonly canvas!: ElementRef<HTMLElement>;
 
+    private readonly windowResize$: Observable<ResizeObserverEntry> =
+        fromResizeObserver(window.document.body);
     private readonly subscriptions: Subscription = new Subscription();
 
     constructor(
@@ -70,6 +82,39 @@ export class AppComponent implements AfterViewInit, OnDestroy {
         private readonly modelService: ModelService,
         private readonly snackBar: MatSnackBar
     ) {}
+
+    public ngOnInit(): void {
+        const workspaceInitSub: Subscription =
+            this.workspacesService.currentWorkspace$
+                .pipe(
+                    take(2),
+                    tap((workspace: IWorkspace): void => {
+                        this.workspaceControl.setValue(workspace.name, {
+                            emitEvent: false,
+                        });
+                    })
+                )
+                .subscribe();
+
+        const workspaceChangeSub: Subscription =
+            this.workspaceControl.valueChanges
+                .pipe(
+                    tap((workspaceName: string): void => {
+                        this.modelService.changeWorkspace(workspaceName);
+                    })
+                )
+                .subscribe();
+
+        this.initWorkspace();
+
+        const windowResizeSub: Subscription = this.windowResize$
+            .pipe(debounceTime(500), tap(this.onWindowResize.bind(this)))
+            .subscribe();
+
+        this.subscriptions.add(workspaceInitSub);
+        this.subscriptions.add(workspaceChangeSub);
+        this.subscriptions.add(windowResizeSub);
+    }
 
     public ngAfterViewInit(): void {
         this.modelService.initCytoscape(this.canvas.nativeElement);
@@ -99,34 +144,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
             )
             .subscribe();
 
-        const workspaceInitSub: Subscription =
-            this.workspacesService.currentWorkspace$
-                .pipe(
-                    take(2),
-                    tap((workspace: IWorkspace): void => {
-                        this.workspaceControl.setValue(workspace.name, {
-                            emitEvent: false,
-                        });
-                    })
-                )
-                .subscribe();
-
-        const workspaceChangeSub: Subscription =
-            this.workspaceControl.valueChanges
-                .pipe(
-                    tap((workspaceName: string): void => {
-                        this.modelService.changeWorkspace(workspaceName);
-                    })
-                )
-                .subscribe();
-
-        this.initWorkspace();
-
         this.subscriptions.add(compartmentOpeningSub);
         this.subscriptions.add(fromOpeningSub);
         this.subscriptions.add(flowAddSub);
-        this.subscriptions.add(workspaceInitSub);
-        this.subscriptions.add(workspaceChangeSub);
     }
 
     public ngOnDestroy(): void {
@@ -513,5 +533,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
     private initWorkspace(): void {
         this.modelService.initWorkspaceFromSamples(['default.1', 'default']);
+    }
+
+    private onWindowResize(): void {
+        this.layout();
     }
 }
