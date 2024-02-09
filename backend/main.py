@@ -10,16 +10,19 @@ from simulate import simulate
 from optimal_control import optimal_control
 from validate_expression import validate_expression
 from definitions import (
-    IRawSimulationData,
-    IRawOptimalControlData,
-    ISimulationData,
-    IOptimalControlData,
-    IErrorResponse,
-    ISimulationSuccessResponse,
-    IOptimalControlSuccessResponse,
+    IRequestSimulationParameters,
+    ISimulationRequestPayload,
+    IRawSimulationRequestData,
+    ISimulationRequestData,
+    IRawOptimalControlRequestData,
+    IOptimalControlRequestData,
+    ISimulationResponse,
+    IOptimalControlResponse,
     IRawValidationPayload,
     IValidationPayload,
-    IValidationResult
+    IValidationResult,
+    IRequestOptimalControlParameters,
+    IOptimalControlRequestPayload
 )
 
 app: Flask = Flask(__name__)
@@ -33,14 +36,18 @@ def simulate_endpoint():
     This endpoint is used for basic model simulation
     """
 
-    raw_data: IRawSimulationData = request.get_json()
+    raw_data: IRawSimulationRequestData = request.get_json()
 
-    simulation_data: ISimulationData = ISimulationData(*raw_data.values())
+    simulation_data: ISimulationRequestData = ISimulationRequestData(
+        IRequestSimulationParameters(
+            *raw_data['parameters'].values()
+        ),
+        ISimulationRequestPayload(
+            raw_data['payload']['compartments']
+        )
+    )
 
-    result: (
-        ISimulationSuccessResponse |
-        IErrorResponse
-    ) = simulate(simulation_data)
+    result: ISimulationResponse = simulate(simulation_data)
 
     return jsonify(result)
 
@@ -53,14 +60,19 @@ def optimal_control_endpoint():
     This endpoint is used for solving the optimal control problem
     """
 
-    raw_data: IRawOptimalControlData = request.get_json()
+    raw_data: IRawOptimalControlRequestData = request.get_json()
 
-    data: IOptimalControlData = IOptimalControlData(*raw_data.values())
+    data: IOptimalControlRequestData = IOptimalControlRequestData(
+        IRequestOptimalControlParameters(
+            *raw_data['parameters'].values()
+        ),
+        IOptimalControlRequestPayload(
+            raw_data['payload']['compartments'],
+            raw_data['payload']['interventions']
+        )
+    )
 
-    result: (
-        IOptimalControlSuccessResponse |
-        IErrorResponse
-    ) = optimal_control(data)
+    result: IOptimalControlResponse = optimal_control(data)
 
     return jsonify(result)
 

@@ -25,8 +25,8 @@ import { ConfirmationDialogComponent } from './components/confirmation-dialog/co
 import { DefinitionsTableDialogComponent } from './components/definitions-table-dialog/definitions-table-dialog.component';
 import { EquationInputComponent } from './components/equation-input/equation-input.component';
 import { FlowCreationDialogComponent } from './components/flow-creation-dialog/flow-creation-dialog.component';
+import { ProcessingDialogComponent } from './components/processing-dialog/processing-dialog.component';
 import { SimulationDashboardComponent } from './components/simulation-dashboard/simulation-dashboard.component';
-import { SimulationDialogComponent } from './components/simulation-dialog/simulation-dialog.component';
 
 PlotlyModule.plotlyjs = PlotlyJS;
 
@@ -35,7 +35,7 @@ PlotlyModule.plotlyjs = PlotlyJS;
         AppComponent,
         CompartmentCreationDialogComponent,
         ConfirmationDialogComponent,
-        SimulationDialogComponent,
+        ProcessingDialogComponent,
         FlowCreationDialogComponent,
         SimulationDashboardComponent,
         DefinitionsTableDialogComponent,

@@ -1,5 +1,5 @@
 <div class="header">
-    <p class="title">Model Simulation</p>
+    <p class="title">Model Processing</p>
 
     <button
         mat-mini-fab
@@ -12,13 +12,13 @@
 </div>
 
 <div class="body" [formGroup]="formGroup">
-    <div class="simulation-config" formGroupName="simulationParameters">
+    <div class="common-config" formGroupName="parameters">
         <mat-form-field>
-            <mat-label>Simulation Time</mat-label>
+            <mat-label>Time</mat-label>
 
             <input
                 matInput
-                placeholder="Enter simulation time"
+                placeholder="Enter value"
                 type="number"
                 formControlName="time"
             />
@@ -30,7 +30,7 @@
             <input
                 matInput
                 type="number"
-                placeholder="Enter nodes amount"
+                placeholder="Enter value"
                 type="number"
                 formControlName="nodesAmount"
             />
@@ -41,13 +41,29 @@
         Optimal control problem
     </mat-slide-toggle>
 
-    <app-equation-input
-        class="cost-function-input"
-        [title]="'Cost Function'"
-        [placeholder]="'Enter cost function'"
-        formControlName="costFunction"
-        (errorsChange)="onErrorsChange($event)"
-    ></app-equation-input>
+    <ng-container formGroupName="parameters">
+        <div class="optimization-config">
+            <mat-form-field floatLabel="always">
+                <mat-label>Intervention Nodes Amount</mat-label>
+
+                <input
+                    matInput
+                    placeholder="Enter value"
+                    type="number"
+                    formControlName="interventionNodesAmount"
+                />
+            </mat-form-field>
+        </div>
+
+        <app-equation-input
+            formControlName="costFunction"
+            class="cost-function-input"
+            placeholder="Enter value"
+            [noPadding]="true"
+            [title]="'Cost Function'"
+            (errorsChange)="onErrorsChange($event)"
+        ></app-equation-input>
+    </ng-container>
 </div>
 
 <div class="footer">
@@ -65,7 +81,7 @@
         class="button"
         color="primary"
         [disabled]="formGroup.errors"
-        (click)="simulate()"
+        (click)="process()"
     >
         Simulate
     </button>

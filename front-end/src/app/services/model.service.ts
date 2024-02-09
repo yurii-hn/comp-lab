@@ -29,12 +29,12 @@ import {
 } from 'rxjs';
 import { cytoscapeLayoutOptions, cytoscapeOptions } from '../core/constants';
 import {
-    Definition,
     DefinitionType,
     ICompartment,
     ICompartmentBase,
     ICompartmentDefinition,
     IConstant,
+    IDefinition,
     IDefinitionsTable,
     IEditCompartmentPayload,
     IExportModel,
@@ -42,9 +42,8 @@ import {
     IImportModel,
     IIntervention,
     IInterventionDefinition,
-    IModel,
     IWorkspace,
-    IWorkspaceBase,
+    IWorkspaceBase
 } from '../core/interfaces';
 import { SamplesService } from './model-samples.service';
 import { ValidationService } from './validation.service';
@@ -151,7 +150,7 @@ export class ModelService {
     public initWorkspaceFromSamples(sampleNames: string[]): void {
         combineLatest(
             sampleNames.map(
-                (name: string): Observable<IModel> =>
+                (name: string): Observable<IImportModel> =>
                     this.samplesService.getSample(name)
             )
         )
@@ -448,7 +447,7 @@ export class ModelService {
         );
     }
 
-    public addDefinition(definition: Definition): void {
+    public addDefinition(definition: IDefinition): void {
         const newDefinitionFormGroup: FormGroup =
             this.getNewDefinitionFormGroup();
 
@@ -515,7 +514,7 @@ export class ModelService {
         };
 
         this.definitionsFormArray.value.forEach(
-            (definition: Definition): void => {
+            (definition: IDefinition): void => {
                 switch (definition.type) {
                     case 'compartment':
                         table.compartments.push(definition);
@@ -542,7 +541,7 @@ export class ModelService {
         const availableSymbols: string[] = [];
 
         this.definitionsFormArray.value.forEach(
-            (definition: Definition): void => {
+            (definition: IDefinition): void => {
                 if (!definition.name) {
                     return;
                 }

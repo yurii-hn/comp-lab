@@ -17,14 +17,14 @@ import {
     filter,
     map,
     take,
-    tap
+    tap,
 } from 'rxjs';
 import { CompartmentCreationDialogComponent } from './components/compartment-creation-dialog/compartment-creation-dialog.component';
 import { ConfirmationDialogComponent } from './components/confirmation-dialog/confirmation-dialog.component';
 import { DefinitionsTableDialogComponent } from './components/definitions-table-dialog/definitions-table-dialog.component';
 import { FlowCreationDialogComponent } from './components/flow-creation-dialog/flow-creation-dialog.component';
+import { ProcessingDialogComponent } from './components/processing-dialog/processing-dialog.component';
 import { SimulationDashboardComponent } from './components/simulation-dashboard/simulation-dashboard.component';
-import { SimulationDialogComponent } from './components/simulation-dialog/simulation-dialog.component';
 import {
     ICompartment,
     ICompartmentBase,
@@ -34,23 +34,32 @@ import {
     IExportModel,
     IImportModel,
     IIntervention,
-    IOptimalControlResponse,
+    IOptimalControlParameters,
+    IOptimalControlResponseData,
     IResultsBase,
     ISimulationParameters,
-    ISimulationResponse,
+    ISimulationResponseData,
     IWorkspace,
 } from './core/interfaces';
 import { fromResizeObserver } from './core/utils';
 import { ModelService } from './services/model.service';
+import { ProcessingService } from './services/processing.service';
 import { ResultsStorageService } from './services/results-storage.service';
-import { SimulationService } from './services/simulation.service';
 import { WorkspacesService } from './services/workspaces.service';
 
-interface ISimulationDialogOutput {
-    simulationParameters: ISimulationParameters;
-    costFunction: string;
-    isOptimalControlProblem: boolean;
+interface IProcessingDialogSimulationOutput {
+    parameters: ISimulationParameters;
+    isOptimalControlProblem: false;
 }
+
+interface IProcessingDialogOptimalControlOutput {
+    parameters: IOptimalControlParameters;
+    isOptimalControlProblem: true;
+}
+
+type IProcessingDialogOutput =
+    | IProcessingDialogSimulationOutput
+    | IProcessingDialogOptimalControlOutput;
 
 @Component({
     selector: 'app-root',
@@ -78,7 +87,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         public readonly workspacesService: WorkspacesService,
         public readonly resultsStorageService: ResultsStorageService,
         private readonly dialogService: MatDialog,
-        private readonly simulationService: SimulationService,
+        private readonly processingService: ProcessingService,
         private readonly modelService: ModelService,
         private readonly snackBar: MatSnackBar
     ) {}
@@ -326,8 +335,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     public onModelSimulateDialog(): void {
-        const simulationDialog: MatDialogRef<SimulationDialogComponent> =
-            this.dialogService.open(SimulationDialogComponent, {
+        const simulationDialog: MatDialogRef<ProcessingDialogComponent> =
+            this.dialogService.open(ProcessingDialogComponent, {
                 autoFocus: false,
             });
 
@@ -335,7 +344,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
             simulationDialog
                 .afterClosed()
                 .pipe(
-                    filter((output: ISimulationDialogOutput) =>
+                    filter((output: IProcessingDialogOutput) =>
                         Boolean(output)
                     ),
                     tap(this.simulateModel.bind(this))
@@ -440,40 +449,41 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         this.modelService.editCompartment(compartmentData);
     }
 
-    private simulateModel(simulationData: ISimulationDialogOutput): void {
+    private simulateModel(simulationData: IProcessingDialogOutput): void {
         let observable: Observable<
-            ISimulationResponse | IOptimalControlResponse
+            ISimulationResponseData | IOptimalControlResponseData
         >;
 
         if (!simulationData.isOptimalControlProblem) {
-            observable = this.simulationService.simulateModel({
-                model: this.getCompartments(),
-                parameters: {
-                    time: simulationData.simulationParameters.time,
-                    nodesAmount:
-                        simulationData.simulationParameters.nodesAmount,
+            observable = this.processingService.simulateModel({
+                payload: {
+                    compartments: this.getCompartments(),
                 },
+                parameters: simulationData.parameters,
             });
         } else {
             const constants: IConstant[] = this.getConstants();
 
-            observable = this.simulationService.optimizeModel({
-                model: this.getCompartments(),
-                parameters: {
-                    time: simulationData.simulationParameters.time,
-                    nodesAmount:
-                        simulationData.simulationParameters.nodesAmount,
+            observable = this.processingService.optimizeModel({
+                payload: {
+                    compartments: this.getCompartments(),
+                    interventions: this.getInterventions(),
                 },
-                costFunction: constants.reduce(
-                    (costFunction: string, constant: IConstant): string => {
-                        return costFunction.replace(
-                            new RegExp(`\\b${constant.name}\\b`),
-                            constant.value.toString()
-                        );
-                    },
-                    simulationData.costFunction
-                ),
-                interventions: this.getInterventions(),
+                parameters: {
+                    time: simulationData.parameters.time,
+                    nodesAmount: simulationData.parameters.nodesAmount,
+                    costFunction: constants.reduce(
+                        (costFunction: string, constant: IConstant): string => {
+                            return costFunction.replace(
+                                new RegExp(`\\b${constant.name}\\b`),
+                                constant.value.toString()
+                            );
+                        },
+                        simulationData.parameters.costFunction
+                    ),
+                    interventionNodesAmount:
+                        simulationData.parameters.interventionNodesAmount,
+                },
             });
         }
 
@@ -481,7 +491,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
             .pipe(
                 tap(
                     (
-                        results: ISimulationResponse | IOptimalControlResponse
+                        results:
+                            | ISimulationResponseData
+                            | IOptimalControlResponseData
                     ) => {
                         if (results.success) {
                             this.resultsStorageService.addResults({

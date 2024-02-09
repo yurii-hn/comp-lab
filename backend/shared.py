@@ -11,8 +11,8 @@ from definitions import (
     IEquation,
     ICompartment,
     ISimulationCompartment,
-    ISimulationParameters,
-    ICompartmentSimulatedData,
+    IRequestSimulationParameters,
+    ICompartmentResponseData,
     ContinuityType,
     IContinuityCheckResult
 )
@@ -115,14 +115,14 @@ def is_population_preserved(compartments_equations: List[Expr]) -> bool:
 
 def simulate_model(
     model: List[ISimulationCompartment],
-    simulation_parameters: ISimulationParameters,
+    parameters: IRequestSimulationParameters,
     variables_datatable: IVariablesDatatable
-) -> List[ICompartmentSimulatedData]:
+) -> List[ICompartmentResponseData]:
     """Model simulation function"""
-    step_size: float = simulation_parameters.time / \
-        simulation_parameters.nodes_amount
+    step_size: float = parameters.time / \
+        parameters.nodes_amount
 
-    for i in range(simulation_parameters.nodes_amount):
+    for i in range(parameters.nodes_amount):
         for compartment in model:
             values: List[float] = [
                 variables_datatable[str(var)][i]
@@ -140,8 +140,8 @@ def simulate_model(
                     f'Negative value for {compartment.name} at time {i + 1}'
                 )
 
-    simulation_results: List[ICompartmentSimulatedData] = [
-        ICompartmentSimulatedData(
+    simulation_results: List[ICompartmentResponseData] = [
+        ICompartmentResponseData(
             compartment.name,
             variables_datatable[compartment.name]
         )

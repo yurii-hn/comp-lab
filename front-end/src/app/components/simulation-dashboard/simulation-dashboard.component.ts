@@ -4,11 +4,11 @@ import { MatDialogRef } from '@angular/material/dialog';
 import { Config, Data, Layout } from 'plotly.js';
 import { Subscription, take, tap } from 'rxjs';
 import {
-    ICompartmentSimulatedData,
-    IInterventionSimulatedData,
+    ICompartmentResponseData,
+    IInterventionResponseData,
     IOptimalControlResults,
+    IResponseData,
     IResults,
-    ISimulatedData,
     OptimalControlResultsViewMode,
 } from 'src/app/core/interfaces';
 import { isOptimalControlResults } from 'src/app/core/utils';
@@ -134,7 +134,7 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
             this.resultsStorageService.currentResults.data.payload[
                 payloadIndex
             ].compartments.forEach(
-                (compartment: ICompartmentSimulatedData): void => {
+                (compartment: ICompartmentResponseData): void => {
                     this.addPlot(compartment);
                 }
             );
@@ -143,7 +143,7 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
                 this.resultsStorageService.currentResults.data.payload[
                     payloadIndex
                 ].interventions.forEach(
-                    (compartment: IInterventionSimulatedData): void => {
+                    (compartment: IInterventionResponseData): void => {
                         this.addPlot(compartment, 'hv');
                     }
                 );
@@ -153,14 +153,14 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
         }
 
         this.resultsStorageService.currentResults.data.payload.compartments.forEach(
-            (compartment: ICompartmentSimulatedData): void => {
+            (compartment: ICompartmentResponseData): void => {
                 this.addPlot(compartment);
             }
         );
     }
 
     private addPlot(
-        data: ISimulatedData,
+        data: IResponseData,
         lineShape?:
             | 'linear'
             | 'spline'

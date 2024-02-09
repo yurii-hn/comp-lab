@@ -3,6 +3,10 @@
     justify-content: space-between;
     padding: 20px;
 
+    &.no-padding {
+        padding: 0;
+    }
+
     .input {
         width: 47%;
         align-self: flex-start;

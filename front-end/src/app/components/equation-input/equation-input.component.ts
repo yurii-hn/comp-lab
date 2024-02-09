@@ -3,6 +3,7 @@ import {
     Component,
     ElementRef,
     EventEmitter,
+    HostBinding,
     Input,
     OnDestroy,
     Output,
@@ -47,6 +48,10 @@ export class EquationInputComponent
 {
     @Input() public title: string = '';
     @Input() public placeholder: string = '';
+
+    @HostBinding('class.no-padding')
+    @Input()
+    public noPadding: boolean = false;
 
     @Output()
     public readonly errorsChange: EventEmitter<ValidationErrors | null> =

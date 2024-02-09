@@ -9,6 +9,9 @@ from enum import Enum
 from typing import List, TypedDict, Dict, Callable, TypeVar, Generic, Tuple
 from sympy import Symbol, Expr
 
+ParametersType = TypeVar('ParametersType')
+PayloadType = TypeVar('PayloadType')
+
 
 class ISymbolsTable(Dict[str, Symbol]):
     """Table of symbols"""
@@ -70,150 +73,199 @@ class ISimulationCompartment(ICompartmentBase):
 
 
 @dataclass
-class ISimulationIntervention(IIntervention):
-    """Simulation intervention"""
-    equation: IEquation
-
-
-@dataclass
 class ISimulationLambda():
     """Simulation lambda"""
     name: str
-    equation: IEquation
+    derivative_equation: IEquation
 
 
-class IRawSimulationParameters(TypedDict):
-    """Raw simulation parameters"""
+class IRawRequestParameters(TypedDict):
+    """Raw parameters"""
     time: float
     nodesAmount: int
 
 
 @dataclass
-class ISimulationParameters:
-    """Simulation parameters"""
+class IRequestParameters:
+    """Parameters"""
     time: float
-    nodes_amount: float
-
-@dataclass
-class IResponseSimulationParameters:
-    """Simulation parameters"""
-    time: float
-    nodesAmount: float
+    nodes_amount: int
 
 
-class IRawSimulationData(TypedDict):
-    """Raw simulation data"""
-    model: List[IRawCompartment]
-    simulationParameters: IRawSimulationParameters
+IRawRequestSimulationParameters = IRawRequestParameters
+
+IRequestSimulationParameters = IRequestParameters
 
 
-class IRawOptimalControlData(IRawSimulationData):
-    """Raw optimal control data"""
-    interventions: List[IRawIntervention]
+class IRawRequestOptimalControlParameters(IRawRequestParameters):
+    """Optimal control parameters"""
     costFunction: str
+    interventionNodesAmount: int
 
 
 @dataclass
-class ISimulationData:
-    """Simulation data"""
-    model: List[ICompartment]
-    parameters: ISimulationParameters
-
-    def __init__(
-        self,
-        model: List[IRawCompartment],
-        simulation_parameters: IRawSimulationParameters
-    ):
-        self.model = [
-            ICompartment(*compartment.values())
-            for compartment in model
-        ]
-        self.parameters = ISimulationParameters(
-            *simulation_parameters.values()
-        )
-
-
-@dataclass
-class IOptimalControlData(ISimulationData):
-    """Optimal control data"""
-    interventions: List[IIntervention]
+class IRequestOptimalControlParameters(IRequestParameters):
+    """Optimal control parameters"""
     cost_function: str
+    intervention_nodes_amount: int
+
+
+class IRawRequestData(TypedDict, Generic[ParametersType, PayloadType]):
+    """Raw data"""
+    parameters: ParametersType
+    payload: PayloadType
+
+
+@dataclass
+class IRequestData(Generic[ParametersType, PayloadType]):
+    """Request data"""
+    parameters: ParametersType
+    payload: PayloadType
+
+
+class IRawSimulationRequestPayload(TypedDict):
+    """Raw simulation request payload"""
+    compartments: List[IRawCompartment]
+
+
+@dataclass
+class ISimulationRequestPayload:
+    """Simulation request payload"""
+    compartments: List[ICompartment]
+
+    def __init__(self, compartments: List[IRawCompartment]):
+        self.compartments = [
+            ICompartment(*compartment.values()) for compartment in compartments
+        ]
+
+
+IRawSimulationRequestData = IRawRequestData[
+    IRawRequestSimulationParameters,
+    IRawSimulationRequestPayload
+]
+
+ISimulationRequestData = IRequestData[
+    IRequestSimulationParameters,
+    ISimulationRequestPayload
+]
+
+
+class IRawOptimalControlRequestPayload(TypedDict):
+    """Raw optimal control request payload"""
+    compartments: List[IRawCompartment]
+    interventions: List[IRawIntervention]
+
+
+@dataclass
+class IOptimalControlRequestPayload:
+    """Optimal control request payload"""
+    compartments: List[ICompartment]
+    interventions: List[IIntervention]
 
     def __init__(
         self,
-        model: List[IRawCompartment],
-        simulation_parameters: IRawSimulationParameters,
-        cost_function: str,
+        compartments: List[IRawCompartment],
         interventions: List[IRawIntervention]
     ):
-        super().__init__(model, simulation_parameters)
+        self.compartments = [
+            ICompartment(*compartment.values()) for compartment in compartments
+        ]
         self.interventions = [
             IIntervention(*intervention.values()) for intervention in interventions
         ]
-        self.cost_function = cost_function
+
+
+IRawOptimalControlRequestData = IRawRequestData[
+    IRawRequestOptimalControlParameters,
+    IRawOptimalControlRequestPayload
+]
+
+IOptimalControlRequestData = IRequestData[
+    IRequestOptimalControlParameters,
+    IOptimalControlRequestPayload
+]
 
 
 @dataclass
-class ICompartmentSimulatedData:
-    """Compartment simulated data"""
-    name: str
-    values: List[float]
+class IResponseParameters:
+    """Parameters"""
+    time: float
+    nodesAmount: int
+
+
+IResponseSimulationParameters = IResponseParameters
 
 
 @dataclass
-class IInterventionSimulatedData:
-    """Intervention simulated data"""
-    name: str
-    values: List[float]
+class IResponseOptimalControlParameters(IResponseParameters):
+    """Optimal control parameters"""
+    cost_function: str
+    intervention_nodes_amount: int
 
 
 @dataclass
-class ILambdaSimulatedData:
-    """Lambda simulated data"""
-    name: str
-    values: List[float]
-
-
-@dataclass
-class IErrorResponse:
+class IErrorResponseData:
     """Simulation results error"""
     error: str
     success: False
 
 
-PayloadType = TypeVar('PayloadType')
+@dataclass
+class IResponseData:
+    """Response data"""
+    name: str
+    values: List[float]
+
+
+ICompartmentResponseData = IResponseData
+
+IInterventionResponseData = IResponseData
+
+ILambdaResponseData = IResponseData
 
 
 @dataclass
-class ISuccessResponse(Generic[PayloadType]):
-    """Success response"""
-    parameters: IResponseSimulationParameters
+class ISuccessResponseData(Generic[ParametersType, PayloadType]):
+    """Success response data"""
+    parameters: ParametersType
     payload: PayloadType
     success: True
 
 
 @dataclass
-class ISimulationSuccessResponsePayload:
-    """Simulation results success"""
-    compartments: List[ICompartmentSimulatedData]
+class ISimulationResponsePayload:
+    """Simulation results"""
+    compartments: List[ICompartmentResponseData]
 
 
-ISimulationSuccessResponse = ISuccessResponse[ISimulationSuccessResponsePayload]
+ISimulationSuccessResponseData = ISuccessResponseData[
+    IResponseSimulationParameters,
+    ISimulationResponsePayload
+]
+
+ISimulationErrorResponseData = IErrorResponseData
+
+ISimulationResponse = ISimulationSuccessResponseData | ISimulationErrorResponseData
 
 
 @dataclass
-class IOptimalControlSuccessResponsePayload:
+class IOptimalControlResponsePayload:
     """Optimal control results success"""
-    compartments: List[ICompartmentSimulatedData]
-    interventions: List[IInterventionSimulatedData]
+    compartments: List[ICompartmentResponseData]
+    interventions: List[IInterventionResponseData]
 
 
-IOptimalControlSuccessResponse = ISuccessResponse[
+IOptimalControlSuccessResponse = ISuccessResponseData[
+    IResponseOptimalControlParameters,
     Tuple[
-        ISimulationSuccessResponsePayload,
-        IOptimalControlSuccessResponsePayload
+        ISimulationResponsePayload,
+        IOptimalControlResponsePayload
     ]
 ]
+
+IOptimalControlErrorResponse = IErrorResponseData
+
+IOptimalControlResponse = IOptimalControlSuccessResponse | IOptimalControlErrorResponse
 
 
 class IRawValidationPayload(TypedDict):

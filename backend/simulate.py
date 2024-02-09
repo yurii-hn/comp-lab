@@ -12,11 +12,12 @@ from definitions import (
     IVariablesDatatable,
     ISimulationCompartment,
     IResponseSimulationParameters,
-    ISimulationData,
-    ICompartmentSimulatedData,
-    IErrorResponse,
-    ISimulationSuccessResponsePayload,
-    ISimulationSuccessResponse,
+    ISimulationRequestData,
+    ICompartmentResponseData,
+    ISimulationResponsePayload,
+    ISimulationSuccessResponseData,
+    ISimulationErrorResponseData,
+    ISimulationResponse,
     ContinuityType,
     IContinuityCheckResult
 )
@@ -28,7 +29,7 @@ from shared import (
 )
 
 
-def simulate(payload: ISimulationData) -> ISimulationSuccessResponse | IErrorResponse:
+def simulate(data: ISimulationRequestData) -> ISimulationResponse:
     """
     Simulation function
 
@@ -36,22 +37,22 @@ def simulate(payload: ISimulationData) -> ISimulationSuccessResponse | IErrorRes
 
     Parameters
     ----------
-    payload : ISimulationData
-        Payload
+    data : ISimulationRequestData
+        The simulation request data
 
     Returns
     -------
-    ISimulationResultsSuccess | ISimulationResultsError
-        Simulation results
+    ISimulationResponse
+        The simulation response
     """
 
     symbols_table: ISymbolsTable = {
         compartment.name: Symbol(compartment.name)
-        for compartment in payload.model
+        for compartment in data.payload.compartments
     }
     simulation_model: List[ISimulationCompartment] = []
 
-    for compartment in payload.model:
+    for compartment in data.payload.compartments:
         simulation_compartment: ISimulationCompartment = ISimulationCompartment(
             compartment.name,
             compartment.value,
@@ -65,8 +66,9 @@ def simulate(payload: ISimulationData) -> ISimulationSuccessResponse | IErrorRes
         )
 
         if continuity_type.type == ContinuityType.DISCONTINUOUS:
-            return IErrorResponse(
-                f'Equation of {compartment.name} is discontinuous by {continuity_type.discontinuity_symbol}',
+            return ISimulationErrorResponseData(
+                f'Equation of {compartment.name} is discontinuous by {
+                    continuity_type.discontinuity_symbol}',
                 False
             )
 
@@ -75,7 +77,7 @@ def simulate(payload: ISimulationData) -> ISimulationSuccessResponse | IErrorRes
     if not is_population_preserved(
         [compartment.equation.symbolic_equation for compartment in simulation_model]
     ):
-        return IErrorResponse(
+        return ISimulationErrorResponseData(
             'Model equations do not preserve population. ' +
             'Apparently that is result of a program bug. Please reload the page and try again',
             False
@@ -84,30 +86,30 @@ def simulate(payload: ISimulationData) -> ISimulationSuccessResponse | IErrorRes
     try:
         variables_datatable: IVariablesDatatable = {
             compartment.name: [compartment.value] + [0] * (
-                payload.parameters.nodes_amount
+                data.parameters.nodes_amount
             )
             for compartment in simulation_model
         }
 
-        simulation_results: List[ICompartmentSimulatedData] = simulate_model(
+        simulation_results: List[ICompartmentResponseData] = simulate_model(
             simulation_model,
-            payload.parameters,
+            data.parameters,
             variables_datatable
         )
 
-        return ISimulationSuccessResponse(
+        return ISimulationSuccessResponseData(
             IResponseSimulationParameters(
-                payload.parameters.time,
-                payload.parameters.nodes_amount
+                data.parameters.time,
+                data.parameters.nodes_amount
             ),
-            ISimulationSuccessResponsePayload(
+            ISimulationResponsePayload(
                 simulation_results
             ),
             True
         )
 
     except ValueError as e:
-        return IErrorResponse(
+        return ISimulationErrorResponseData(
             str(e),
             False
         )

@@ -15,18 +15,19 @@ from definitions import (
     IIntervention,
     ISimulationCompartment,
     ISimulationLambda,
-    ISimulationParameters,
-    IResponseSimulationParameters,
-    IOptimalControlData,
-    ICompartmentSimulatedData,
-    IInterventionSimulatedData,
-    ILambdaSimulatedData,
-    IErrorResponse,
-    ISimulationSuccessResponsePayload,
-    IOptimalControlSuccessResponsePayload,
+    IRequestOptimalControlParameters,
+    IOptimalControlRequestData,
+    IInterventionResponseData,
+    ILambdaResponseData,
+    ISimulationResponsePayload,
+    ISimulationResponse,
+    IOptimalControlResponsePayload,
     IOptimalControlSuccessResponse,
+    IOptimalControlErrorResponse,
+    IOptimalControlResponse,
     ContinuityType,
     IContinuityCheckResult,
+    IResponseOptimalControlParameters
 )
 from shared import (
     get_equation,
@@ -37,35 +38,36 @@ from shared import (
 )
 
 
-def optimal_control(payload: IOptimalControlData) -> (
-    IOptimalControlSuccessResponse | IErrorResponse
-):
+def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse:
     """
-    Optimal control solver
+    Optimal control
 
-    This function solves the optimal control problem
+    This function is used for solving the optimal control problem
 
     Parameters
     ----------
-    payload : IOptimalControlData
-        Payload
+    data : IOptimalControlRequestData
+        Optimal control request data
 
     Returns
     -------
-    ISimulationResultsSuccess | ISimulationResultsError
-        Simulation results
-    """
+    IOptimalControlResponse
+        Optimal control response
 
-    optimization_parameters_amount: int = 4
+    Raises
+    ------
+    ValueError
+        If there is an error in the optimization process
+    """
 
     symbols_table: ISymbolsTable = {
         compartment.name: Symbol(compartment.name)
-        for compartment in payload.model
+        for compartment in data.payload.compartments
     }
     simulation_model: List[ISimulationCompartment] = []
     simulation_lambdas_derivatives: List[ISimulationLambda] = []
 
-    for compartment in payload.model:
+    for compartment in data.payload.compartments:
         simulation_compartment: ISimulationCompartment = ISimulationCompartment(
             compartment.name,
             compartment.value,
@@ -101,11 +103,11 @@ def optimal_control(payload: IOptimalControlData) -> (
             'success': False
         }
 
-    for intervention in payload.interventions:
+    for intervention in data.payload.interventions:
         symbols_table[intervention.name] = Symbol(intervention.name)
 
     cost_function: IEquation = get_equation(
-        payload.cost_function,
+        data.parameters.cost_function,
         symbols_table
     )
 
@@ -147,85 +149,87 @@ def optimal_control(payload: IOptimalControlData) -> (
             {
                 **{
                     compartment.name: [compartment.value] + [0] * (
-                        payload.parameters.nodes_amount
+                        data.parameters.nodes_amount
                     )
                     for compartment in simulation_model
                 },
                 **{
                     intervention.name: [0] *
-                    (payload.parameters.nodes_amount + 1)
-                    for intervention in payload.interventions
+                    (data.parameters.nodes_amount + 1)
+                    for intervention in data.payload.interventions
                 },
                 **{
                     current_lambda.name: [0] *
-                    (payload.parameters.nodes_amount + 1)
+                    (data.parameters.nodes_amount + 1)
                     for current_lambda in simulation_lambdas_derivatives
                 }
             }
         ]
 
-        no_control_simulation_results: List[ICompartmentSimulatedData] = simulate_model(
+        no_control_simulation_results: ISimulationResponse = simulate_model(
             simulation_model,
-            payload.parameters,
+            data.parameters,
             variables_datatable[0]
         )
 
         start_cost: float = calculate_cost(
             cost_function,
-            payload.parameters,
+            data.parameters,
             variables_datatable[0]
         )
 
-        simulation_results: Tuple[List[ICompartmentSimulatedData]] = [[]]
+        simulation_results: Tuple[ISimulationResponse] = [[]]
 
         minimize_result = minimize(
             optimization_criteria,
-            [0] * optimization_parameters_amount * len(payload.interventions),
+            [0] * data.parameters.intervention_nodes_amount *
+            len(data.payload.interventions),
             args=(
                 simulation_model,
                 simulation_lambdas_derivatives,
-                payload.interventions,
+                data.payload.interventions,
                 hamiltonian,
-                payload.parameters,
-                optimization_parameters_amount,
+                data.parameters,
                 variables_datatable,
                 simulation_results
             ),
             bounds=[
-                (0, 1) for intervention in payload.interventions
-            ] * optimization_parameters_amount,
+                (0, 1) for intervention in data.payload.interventions
+            ] * data.parameters.intervention_nodes_amount,
             tol=1e-3
         )
 
         optimized_cost: float = calculate_cost(
             cost_function,
-            payload.parameters,
+            data.parameters,
             variables_datatable[0]
         )
 
-        interventions_values: List[IInterventionSimulatedData] = [
-            IInterventionSimulatedData(
+        interventions_values: List[IInterventionResponseData] = [
+            IInterventionResponseData(
                 intervention.name,
                 list(
                     minimize_result.x[
-                        i * optimization_parameters_amount:
-                        (i + 1) * optimization_parameters_amount
+                        i * data.parameters.intervention_nodes_amount:
+                        (i + 1) * data.parameters.intervention_nodes_amount
                     ]
                 ) + [0]
             )
-            for i, intervention in enumerate(payload.interventions)
+            for i, intervention in enumerate(data.payload.interventions)
         ]
 
         return IOptimalControlSuccessResponse(
-            IResponseSimulationParameters(
-                payload.parameters.time,
-                payload.parameters.nodes_amount
+            IResponseOptimalControlParameters(
+                data.parameters.time,
+                data.parameters.nodes_amount,
+                data.parameters.cost_function,
+                data.parameters.intervention_nodes_amount
             ),
             [
-                ISimulationSuccessResponsePayload(
+                ISimulationResponsePayload(
                     no_control_simulation_results
                 ),
-                IOptimalControlSuccessResponsePayload(
+                IOptimalControlResponsePayload(
                     simulation_results[0],
                     interventions_values,
                 )
@@ -234,7 +238,7 @@ def optimal_control(payload: IOptimalControlData) -> (
         )
 
     except ValueError as e:
-        return IErrorResponse(
+        return IOptimalControlErrorResponse(
             str(e),
             False
         )
@@ -246,15 +250,14 @@ def optimization_criteria(
     simulation_lambdas_derivatives: List[ISimulationLambda],
     interventions: List[IIntervention],
     hamiltonian: IEquation,
-    simulation_parameters: ISimulationParameters,
-    optimization_parameters_amount: int,
+    parameters: IRequestOptimalControlParameters,
     variables_datatable: Tuple[IVariablesDatatable],
-    simulation_results: Tuple[List[ICompartmentSimulatedData]]
+    simulation_results: Tuple[ISimulationResponse]
 ) -> float:
     """
     Optimization criteria
 
-    This function is the optimization criteria
+    This function is used for the optimization criteria
 
     Parameters
     ----------
@@ -268,27 +271,25 @@ def optimization_criteria(
         Interventions
     hamiltonian : IEquation
         Hamiltonian
-    simulation_parameters : ISimulationParameters
-        Simulation parameters
-    optimization_parameters_amount : int
-        Optimization parameters amount
+    parameters : IRequestOptimalControlParameters
+        Optimal control parameters
     variables_datatable : Tuple[IVariablesDatatable]
         Variables datatable
-    simulation_results : Tuple[List[ICompartmentSimulatedData]]
+    simulation_results : Tuple[ISimulationResponse]
         Simulation results
 
     Returns
     -------
     float
-        Optimization result
+        Optimization criteria value
     """
-    step_size: float = simulation_parameters.time / \
-        simulation_parameters.nodes_amount
+    step_size: float = parameters.time / \
+        parameters.nodes_amount
 
     variables_datatable[0] = {
         **{
             compartment.name: [compartment.value] + [0] *
-            simulation_parameters.nodes_amount
+            parameters.nodes_amount
             for compartment in simulation_model
         },
         **{
@@ -296,36 +297,36 @@ def optimization_criteria(
                 constant_control_approximation(
                     j * step_size,
                     interventions_vector[
-                        i * optimization_parameters_amount:
-                        (i + 1) * optimization_parameters_amount
+                        i * parameters.intervention_nodes_amount:
+                        (i + 1) * parameters.intervention_nodes_amount
                     ],
-                    simulation_parameters.time
+                    parameters.time
                 )
-                for j in range(simulation_parameters.nodes_amount + 1)
+                for j in range(parameters.nodes_amount + 1)
             ]
             for i, intervention in enumerate(interventions)
         },
         **{
-            current_lambda.name: [0] * (simulation_parameters.nodes_amount + 1)
+            current_lambda.name: [0] * (parameters.nodes_amount + 1)
             for current_lambda in simulation_lambdas_derivatives
         }
     }
 
     simulation_results[0] = simulate_model(
         simulation_model,
-        simulation_parameters,
+        parameters,
         variables_datatable[0]
     )
 
     get_lambda_values(
         simulation_lambdas_derivatives,
-        simulation_parameters,
+        parameters,
         variables_datatable[0]
     )
 
     return calculate_hamiltonian(
         hamiltonian,
-        simulation_parameters,
+        parameters,
         variables_datatable[0]
     )
 
@@ -406,15 +407,15 @@ def get_lambda_derivative(hamiltonian: Expr, compartment: Symbol) -> IEquation:
 
 def calculate_cost(
     cost_function: IEquation,
-    simulation_parameters: ISimulationParameters,
+    parameters: IRequestOptimalControlParameters,
     variables_datatable: IVariablesDatatable
 ) -> float:
     """Cost function"""
-    step_size: float = simulation_parameters.time / \
-        simulation_parameters.nodes_amount
+    step_size: float = parameters.time / \
+        parameters.nodes_amount
     cost: float = 0
 
-    for i in range(simulation_parameters.nodes_amount + 1):
+    for i in range(parameters.nodes_amount + 1):
         values: List[float] = [
             variables_datatable[str(var)][i]
             for var in cost_function.vars
@@ -428,15 +429,15 @@ def calculate_cost(
 
 def calculate_hamiltonian(
     hamiltonian: IEquation,
-    simulation_parameters: ISimulationParameters,
+    parameters: IRequestOptimalControlParameters,
     variables_datatable: IVariablesDatatable
 ) -> float:
     """Hamiltonian function"""
-    step_size: float = simulation_parameters.time / \
-        simulation_parameters.nodes_amount
+    step_size: float = parameters.time / \
+        parameters.nodes_amount
     value: float = 0
 
-    for i in range(simulation_parameters.nodes_amount + 1):
+    for i in range(parameters.nodes_amount + 1):
         values: List[float] = [
             variables_datatable[str(var)][i]
             for var in hamiltonian.vars
@@ -450,32 +451,32 @@ def calculate_hamiltonian(
 
 def get_lambda_values(
     lambdas: List[ISimulationLambda],
-    simulation_parameters: ISimulationParameters,
+    parameters: IRequestOptimalControlParameters,
     variables_datatable: IVariablesDatatable,
-) -> List[ILambdaSimulatedData]:
+) -> List[ILambdaResponseData]:
     """Get lambda values"""
-    step_size: float = simulation_parameters.time / \
-        simulation_parameters.nodes_amount
+    step_size: float = parameters.time / \
+        parameters.nodes_amount
 
     for i in range(
-        simulation_parameters.nodes_amount - 1,
+        parameters.nodes_amount - 1,
         -1,
         -1
     ):
         for current_lambda in lambdas:
             values: List[float] = [
                 variables_datatable[str(var)][i + 1]
-                for var in current_lambda.equation.vars
+                for var in current_lambda.derivative_equation.vars
             ]
 
             variables_datatable[current_lambda.name][i] = (
                 variables_datatable[current_lambda.name][i + 1] -
-                current_lambda.equation.equation_function(*values) *
+                current_lambda.derivative_equation.equation_function(*values) *
                 step_size
             )
 
-    lambdas_values: List[ILambdaSimulatedData] = [
-        ILambdaSimulatedData(
+    lambdas_values: List[ILambdaResponseData] = [
+        ILambdaResponseData(
             current_lambda.name,
             variables_datatable[current_lambda.name]
         )
