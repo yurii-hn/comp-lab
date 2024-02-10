@@ -5,7 +5,7 @@ This module contains the expression validation function
 """
 
 
-from typing import List, Set, Dict
+from typing import List, Set, Dict, cast
 from sympy import sympify, symbols, Expr, Symbol
 from sympy.core.sympify import SympifyError
 from sympy.abc import _clash
@@ -41,7 +41,12 @@ def validate_expression(payload: IValidationPayload) -> IValidationResult:
             evaluate=False,
             locals=_clash
         )
-        symbols_in_expression: List[Symbol] = symbolic_expression.free_symbols
+        symbols_in_expression: List[Symbol] = list(
+            cast(
+                Set[Symbol],
+                symbolic_expression.free_symbols
+            )
+        )
 
         allowed_symbols_set: Set[Symbol] = set(
             symbols(payload.allowed_symbols)

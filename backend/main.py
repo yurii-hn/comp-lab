@@ -40,7 +40,8 @@ def simulate_endpoint():
 
     simulation_data: ISimulationRequestData = ISimulationRequestData(
         IRequestSimulationParameters(
-            *raw_data['parameters'].values()
+            raw_data['parameters']['time'],
+            raw_data['parameters']['nodesAmount']
         ),
         ISimulationRequestPayload(
             raw_data['payload']['compartments']
@@ -64,7 +65,12 @@ def optimal_control_endpoint():
 
     data: IOptimalControlRequestData = IOptimalControlRequestData(
         IRequestOptimalControlParameters(
-            *raw_data['parameters'].values()
+            raw_data['parameters']['time'],
+            raw_data['parameters']['nodesAmount'],
+            raw_data['parameters']['costFunction'],
+            raw_data['parameters']['interventionNodesAmount'],
+            raw_data['parameters']['interventionUpperBoundary'],
+            raw_data['parameters']['interventionLowerBoundary']
         ),
         IOptimalControlRequestPayload(
             raw_data['payload']['compartments'],
@@ -87,7 +93,10 @@ def validate_expression_endpoint():
 
     raw_data: IRawValidationPayload = request.get_json()
 
-    data: IValidationPayload = IValidationPayload(*raw_data.values())
+    data: IValidationPayload = IValidationPayload(
+        raw_data['expression'],
+        raw_data['allowedSymbols'],
+    )
 
     result: IValidationResult = validate_expression(data)
 

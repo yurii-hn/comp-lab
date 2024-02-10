@@ -4,7 +4,7 @@ Optimal control module
 This module contains the optimal control logic
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, cast, Set
 from scipy.optimize import minimize
 from sympy import Symbol, Interval, oo, Expr, diff, lambdify
 
@@ -27,7 +27,8 @@ from definitions import (
     IOptimalControlResponse,
     ContinuityType,
     IContinuityCheckResult,
-    IResponseOptimalControlParameters
+    IResponseOptimalControlParameters,
+    ICompartmentResponseData
 )
 from shared import (
     get_equation,
@@ -60,10 +61,10 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
         If there is an error in the optimization process
     """
 
-    symbols_table: ISymbolsTable = {
+    symbols_table: ISymbolsTable = ISymbolsTable({
         compartment.name: Symbol(compartment.name)
         for compartment in data.payload.compartments
-    }
+    })
     simulation_model: List[ISimulationCompartment] = []
     simulation_lambdas_derivatives: List[ISimulationLambda] = []
 
@@ -82,26 +83,26 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
         )
 
         if continuity_type.type == ContinuityType.DISCONTINUOUS:
-            return {
-                'error': f'Equation of {compartment.name} is discontinuous by {continuity_type.discontinuity_symbol}',
-                'success': False
-            }
+            return IOptimalControlErrorResponse(
+                f'Equation of {compartment.name} is discontinuous by {continuity_type.discontinuity_symbol}',
+                False
+            )
         elif continuity_type.type == ContinuityType.CONTINUOUS:
-            return {
-                'error': f'Equation derivative for {compartment.name} is not continuous by {continuity_type.discontinuity_symbol}',
-                'success': False
-            }
+            return IOptimalControlErrorResponse(
+                f'Equation derivative for {compartment.name} is not continuous by {continuity_type.discontinuity_symbol}',
+                False
+            )
 
         simulation_model.append(simulation_compartment)
 
     if not is_population_preserved(
         [compartment.equation.symbolic_equation for compartment in simulation_model]
     ):
-        return {
-            'error': 'Model equations do not preserve population' +
+        return IOptimalControlErrorResponse(
+            'Model equations do not preserve population' +
             'Apparently that is result of a program bug. Please reload the page and try again',
-            'success': False
-        }
+            False
+        )
 
     for intervention in data.payload.interventions:
         symbols_table[intervention.name] = Symbol(intervention.name)
@@ -118,15 +119,15 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
     )
 
     if cost_function_continuity_check_result.type == ContinuityType.DISCONTINUOUS:
-        return {
-            'error': f'Equation for cost function is not continuous by {cost_function_continuity_check_result.discontinuity_symbol}',
-            'success': False
-        }
+        return IOptimalControlErrorResponse(
+            f'Equation for cost function is not continuous by {cost_function_continuity_check_result.discontinuity_symbol}',
+            False
+        )
     elif cost_function_continuity_check_result.type == ContinuityType.CONTINUOUS:
-        return {
-            'error': f'Equation for cost function derivative is not continuous by {cost_function_continuity_check_result.discontinuity_symbol}',
-            'success': False
-        }
+        return IOptimalControlErrorResponse(
+            f'Equation for cost function derivative is not continuous by {cost_function_continuity_check_result.discontinuity_symbol}',
+            False
+        )
 
     hamiltonian: IEquation = get_hamiltonian_equation(
         simulation_model,
@@ -145,8 +146,8 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
         )
 
     try:
-        variables_datatable: Tuple[IVariablesDatatable] = [
-            {
+        variables_datatable: List[IVariablesDatatable] = [
+            IVariablesDatatable({
                 **{
                     compartment.name: [compartment.value] + [0] * (
                         data.parameters.nodes_amount
@@ -163,10 +164,10 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
                     (data.parameters.nodes_amount + 1)
                     for current_lambda in simulation_lambdas_derivatives
                 }
-            }
+            })
         ]
 
-        no_control_simulation_results: ISimulationResponse = simulate_model(
+        no_control_simulation_results: List[ICompartmentResponseData] = simulate_model(
             simulation_model,
             data.parameters,
             variables_datatable[0]
@@ -178,7 +179,12 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
             variables_datatable[0]
         )
 
-        simulation_results: Tuple[ISimulationResponse] = [[]]
+        simulation_results: List[List[ICompartmentResponseData]] = [
+            cast(
+                List[ICompartmentResponseData],
+                []
+            ),
+        ]
 
         minimize_result = minimize(
             optimization_criteria,
@@ -194,7 +200,11 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
                 simulation_results
             ),
             bounds=[
-                (0, 1) for intervention in data.payload.interventions
+                (
+                    data.parameters.intervention_lower_boundary,
+                    data.parameters.intervention_upper_boundary
+                )
+                for intervention in data.payload.interventions
             ] * data.parameters.intervention_nodes_amount,
             tol=1e-3
         )
@@ -223,9 +233,11 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
                 data.parameters.time,
                 data.parameters.nodes_amount,
                 data.parameters.cost_function,
-                data.parameters.intervention_nodes_amount
+                data.parameters.intervention_nodes_amount,
+                data.parameters.intervention_upper_boundary,
+                data.parameters.intervention_lower_boundary
             ),
-            [
+            (
                 ISimulationResponsePayload(
                     no_control_simulation_results
                 ),
@@ -233,7 +245,7 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
                     simulation_results[0],
                     interventions_values,
                 )
-            ],
+            ),
             True
         )
 
@@ -251,8 +263,8 @@ def optimization_criteria(
     interventions: List[IIntervention],
     hamiltonian: IEquation,
     parameters: IRequestOptimalControlParameters,
-    variables_datatable: Tuple[IVariablesDatatable],
-    simulation_results: Tuple[ISimulationResponse]
+    variables_datatable: List[IVariablesDatatable],
+    simulation_results: List[List[ICompartmentResponseData]]
 ) -> float:
     """
     Optimization criteria
@@ -275,7 +287,7 @@ def optimization_criteria(
         Optimal control parameters
     variables_datatable : Tuple[IVariablesDatatable]
         Variables datatable
-    simulation_results : Tuple[ISimulationResponse]
+    simulation_results : Tuple[List[ICompartmentResponseData]]
         Simulation results
 
     Returns
@@ -286,7 +298,7 @@ def optimization_criteria(
     step_size: float = parameters.time / \
         parameters.nodes_amount
 
-    variables_datatable[0] = {
+    variables_datatable[0] = IVariablesDatatable({
         **{
             compartment.name: [compartment.value] + [0] *
             parameters.nodes_amount
@@ -310,7 +322,7 @@ def optimization_criteria(
             current_lambda.name: [0] * (parameters.nodes_amount + 1)
             for current_lambda in simulation_lambdas_derivatives
         }
-    }
+    })
 
     simulation_results[0] = simulate_model(
         simulation_model,
@@ -376,10 +388,15 @@ def get_hamiltonian_equation(
 
     for i, compartment in enumerate(model):
         hamiltonian_equation += Symbol('lambda' + str(i)) * \
-            compartment.equation.symbolic_equation
+            compartment.equation.symbolic_equation  # type: ignore
 
     return IEquation(
-        list(hamiltonian_equation.free_symbols),
+        list(
+            cast(
+                Set[Symbol],
+                hamiltonian_equation.free_symbols
+            )
+        ),
         lambdify(
             list(hamiltonian_equation.free_symbols),
             hamiltonian_equation
@@ -396,7 +413,12 @@ def get_lambda_derivative(hamiltonian: Expr, compartment: Symbol) -> IEquation:
     )
 
     return IEquation(
-        list(lambda_derivative_symbolic_equation.free_symbols),
+        list(
+            cast(
+                Set[Symbol],
+                lambda_derivative_symbolic_equation.free_symbols
+            )
+        ),
         lambdify(
             list(lambda_derivative_symbolic_equation.free_symbols),
             lambda_derivative_symbolic_equation

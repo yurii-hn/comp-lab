@@ -22,6 +22,12 @@ export class ProcessingDialogComponent implements OnInit {
             interventionNodesAmount: new FormControl(null, [
                 Validators.required,
             ]),
+            interventionUpperBoundary: new FormControl(null, [
+                Validators.required,
+            ]),
+            interventionLowerBoundary: new FormControl(null, [
+                Validators.required,
+            ]),
         }),
         isOptimalControlProblem: new FormControl(false),
     });
@@ -35,6 +41,8 @@ export class ProcessingDialogComponent implements OnInit {
     ) {
         this.getParameterControl('costFunction').disable();
         this.getParameterControl('interventionNodesAmount').disable();
+        this.getParameterControl('interventionUpperBoundary').disable();
+        this.getParameterControl('interventionLowerBoundary').disable();
     }
 
     public ngOnInit(): void {
@@ -47,11 +55,15 @@ export class ProcessingDialogComponent implements OnInit {
                         this.getParameterControl(
                             'interventionNodesAmount'
                         ).enable();
+                        this.getParameterControl('interventionUpperBoundary').enable();
+                        this.getParameterControl('interventionLowerBoundary').enable();
                     } else {
                         this.getParameterControl('costFunction').disable();
                         this.getParameterControl(
                             'interventionNodesAmount'
                         ).disable();
+                        this.getParameterControl('interventionUpperBoundary').disable();
+                        this.getParameterControl('interventionLowerBoundary').disable();
                     }
                 })
             )
@@ -76,6 +88,8 @@ export class ProcessingDialogComponent implements OnInit {
             | 'nodesAmount'
             | 'costFunction'
             | 'interventionNodesAmount'
+            | 'interventionUpperBoundary'
+            | 'interventionLowerBoundary'
     ): FormControl {
         return this.formGroup.get('parameters')!.get(name) as FormControl;
     }

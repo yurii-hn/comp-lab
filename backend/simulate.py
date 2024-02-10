@@ -46,10 +46,13 @@ def simulate(data: ISimulationRequestData) -> ISimulationResponse:
         The simulation response
     """
 
-    symbols_table: ISymbolsTable = {
-        compartment.name: Symbol(compartment.name)
-        for compartment in data.payload.compartments
-    }
+    symbols_table: ISymbolsTable = ISymbolsTable(
+        {
+            compartment.name: Symbol(compartment.name)
+            for compartment in data.payload.compartments
+        }
+    )
+
     simulation_model: List[ISimulationCompartment] = []
 
     for compartment in data.payload.compartments:
@@ -67,8 +70,7 @@ def simulate(data: ISimulationRequestData) -> ISimulationResponse:
 
         if continuity_type.type == ContinuityType.DISCONTINUOUS:
             return ISimulationErrorResponseData(
-                f'Equation of {compartment.name} is discontinuous by {
-                    continuity_type.discontinuity_symbol}',
+                f'Equation of {compartment.name} is discontinuous by {continuity_type.discontinuity_symbol}',
                 False
             )
 
@@ -84,12 +86,12 @@ def simulate(data: ISimulationRequestData) -> ISimulationResponse:
         )
 
     try:
-        variables_datatable: IVariablesDatatable = {
+        variables_datatable: IVariablesDatatable = IVariablesDatatable({
             compartment.name: [compartment.value] + [0] * (
                 data.parameters.nodes_amount
             )
             for compartment in simulation_model
-        }
+        })
 
         simulation_results: List[ICompartmentResponseData] = simulate_model(
             simulation_model,

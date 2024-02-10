@@ -1,7 +1,7 @@
 """Shared functions for the backend"""
 
-from typing import List
-from sympy import sympify, lambdify, diff, Interval, nsimplify, Expr
+from typing import List, cast, Set
+from sympy import sympify, lambdify, diff, Interval, nsimplify, Expr, FiniteSet, Symbol
 from sympy.calculus.util import continuous_domain
 from sympy.sets import Reals
 
@@ -26,7 +26,12 @@ def get_equation(function_string: str, symbols_table: ISymbolsTable) -> IEquatio
     )
 
     return IEquation(
-        list(symbolic_equation.free_symbols),
+        list(
+            cast(
+                Set[Symbol],
+                symbolic_equation.free_symbols
+            )
+        ),
         lambdify(
             list(symbolic_equation.free_symbols),
             symbolic_equation
@@ -41,7 +46,7 @@ def get_compartment_equation(
 ) -> IEquation:
     """Get the equations for each compartment"""
 
-    compartment_symbolic_equation: Expr = 0
+    compartment_symbolic_equation: Expr = cast(Expr, 0)
 
     for inflow in compartment.inflows:
         compartment_symbolic_equation += sympify(
@@ -56,7 +61,12 @@ def get_compartment_equation(
         )
 
     equation: IEquation = IEquation(
-        list(compartment_symbolic_equation.free_symbols),
+        list(
+            cast(
+                Set[Symbol],
+                compartment_symbolic_equation.free_symbols
+            )
+        ),
         lambdify(
             list(compartment_symbolic_equation.free_symbols),
             compartment_symbolic_equation
@@ -70,7 +80,7 @@ def get_compartment_equation(
 def check_continuity(
     equation: Expr,
     symbols_table: ISymbolsTable,
-    domain: Interval = Reals,
+    domain: FiniteSet | Interval = Reals,
     derivative: bool = False,
 ) -> IContinuityCheckResult:
     """Check if equation is continuous for all symbols"""
@@ -102,10 +112,10 @@ def check_continuity(
 def is_population_preserved(compartments_equations: List[Expr]) -> bool:
     """Check if population is preserved"""
 
-    sum_equation: Expr = 0
+    sum_equation: Expr = cast(Expr, 0)
 
     for equation in compartments_equations:
-        sum_equation += equation
+        sum_equation += equation # type: ignore
 
     if nsimplify(sum_equation, tolerance=1e-10) != 0:
         return False

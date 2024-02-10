@@ -6,7 +6,7 @@ This module contains the definitions of the interfaces used in the backend.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, TypedDict, Dict, Callable, TypeVar, Generic, Tuple
+from typing import List, TypedDict, Dict, Callable, TypeVar, Generic, Tuple, Literal
 from sympy import Symbol, Expr
 
 ParametersType = TypeVar('ParametersType')
@@ -101,6 +101,8 @@ class IRawRequestOptimalControlParameters(IRawRequestParameters):
     """Optimal control parameters"""
     costFunction: str
     interventionNodesAmount: int
+    interventionUpperBoundary: float
+    interventionLowerBoundary: float
 
 
 @dataclass
@@ -108,6 +110,8 @@ class IRequestOptimalControlParameters(IRequestParameters):
     """Optimal control parameters"""
     cost_function: str
     intervention_nodes_amount: int
+    intervention_upper_boundary: float
+    intervention_lower_boundary: float
 
 
 class IRawRequestData(TypedDict, Generic[ParametersType, PayloadType]):
@@ -135,7 +139,13 @@ class ISimulationRequestPayload:
 
     def __init__(self, compartments: List[IRawCompartment]):
         self.compartments = [
-            ICompartment(*compartment.values()) for compartment in compartments
+            ICompartment(
+                name=compartment['name'],
+                value=compartment['value'],
+                inflows=compartment['inflows'],
+                outflows=compartment['outflows']
+            )
+            for compartment in compartments
         ]
 
 
@@ -168,10 +178,19 @@ class IOptimalControlRequestPayload:
         interventions: List[IRawIntervention]
     ):
         self.compartments = [
-            ICompartment(*compartment.values()) for compartment in compartments
+            ICompartment(
+                name=compartment['name'],
+                value=compartment['value'],
+                inflows=compartment['inflows'],
+                outflows=compartment['outflows']
+            )
+            for compartment in compartments
         ]
         self.interventions = [
-            IIntervention(*intervention.values()) for intervention in interventions
+            IIntervention(
+                name=intervention['name']
+            )
+            for intervention in interventions
         ]
 
 
@@ -199,15 +218,17 @@ IResponseSimulationParameters = IResponseParameters
 @dataclass
 class IResponseOptimalControlParameters(IResponseParameters):
     """Optimal control parameters"""
-    cost_function: str
-    intervention_nodes_amount: int
+    costFunction: str
+    interventionNodesAmount: int
+    interventionUpperBoundary: float
+    interventionLowerBoundary: float
 
 
 @dataclass
 class IErrorResponseData:
     """Simulation results error"""
     error: str
-    success: False
+    success: Literal[False]
 
 
 @dataclass
@@ -229,7 +250,7 @@ class ISuccessResponseData(Generic[ParametersType, PayloadType]):
     """Success response data"""
     parameters: ParametersType
     payload: PayloadType
-    success: True
+    success: Literal[True]
 
 
 @dataclass

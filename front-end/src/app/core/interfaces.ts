@@ -37,6 +37,8 @@ export type ISimulationParameters = IParameters;
 export interface IOptimalControlParameters extends IParameters {
     costFunction: string;
     interventionNodesAmount: number;
+    interventionUpperBoundary: number;
+    interventionLowerBoundary: number;
 }
 
 export interface IRequestData<ParametersType, PayloadType> {
