@@ -53,6 +53,19 @@
                     formControlName="interventionNodesAmount"
                 />
             </mat-form-field>
+
+            <mat-form-field floatLabel="always" subscriptSizing="dynamic">
+                <mat-label>Approximation Type</mat-label>
+
+                <mat-select formControlName="interventionApproximationType">
+                    <mat-option
+                        *ngFor="let approximationType of approximationTypes"
+                        [value]="approximationType.value"
+                    >
+                        {{ approximationType.text }}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
         </div>
 
         <div class="config-row">

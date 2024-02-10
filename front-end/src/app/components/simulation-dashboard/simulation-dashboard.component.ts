@@ -9,6 +9,7 @@ import {
     IOptimalControlResults,
     IResponseData,
     IResults,
+    InterventionApproximationType,
     OptimalControlResultsViewMode,
 } from 'src/app/core/interfaces';
 import { isOptimalControlResults } from 'src/app/core/utils';
@@ -144,7 +145,16 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
                     payloadIndex
                 ].interventions.forEach(
                     (compartment: IInterventionResponseData): void => {
-                        this.addPlot(compartment, 'hv');
+                        const lineShape: 'linear' | 'hv' =
+                            (
+                                this.resultsStorageService
+                                    .currentResults as IOptimalControlResults
+                            ).data.parameters.interventionApproximationType ===
+                            InterventionApproximationType.PiecewiseConstant
+                                ? 'hv'
+                                : 'linear';
+
+                        this.addPlot(compartment, lineShape);
                     }
                 );
             }
@@ -172,7 +182,7 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
     ): void {
         const xAxis: number[] = this.getXAxis(
             this.resultsStorageService.currentResults.data.parameters.time,
-            this.resultsStorageService.currentResults.data.parameters.nodesAmount
+            data.values.length
         );
 
         this.plotsData.push({

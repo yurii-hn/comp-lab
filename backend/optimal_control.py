@@ -20,7 +20,6 @@ from definitions import (
     IInterventionResponseData,
     ILambdaResponseData,
     ISimulationResponsePayload,
-    ISimulationResponse,
     IOptimalControlResponsePayload,
     IOptimalControlSuccessResponse,
     IOptimalControlErrorResponse,
@@ -28,7 +27,8 @@ from definitions import (
     ContinuityType,
     IContinuityCheckResult,
     IResponseOptimalControlParameters,
-    ICompartmentResponseData
+    ICompartmentResponseData,
+    InterventionApproximationType
 )
 from shared import (
     get_equation,
@@ -186,6 +186,9 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
             ),
         ]
 
+        if data.parameters.intervention_approximation_type == InterventionApproximationType.PIECEWISE_LINEAR.value:
+            data.parameters.intervention_nodes_amount += 1
+
         minimize_result = minimize(
             optimization_criteria,
             [0] * data.parameters.intervention_nodes_amount *
@@ -204,8 +207,8 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
                     data.parameters.intervention_lower_boundary,
                     data.parameters.intervention_upper_boundary
                 )
-                for intervention in data.payload.interventions
-            ] * data.parameters.intervention_nodes_amount,
+                for i in range(data.parameters.intervention_nodes_amount)
+            ] * len(data.payload.interventions),
             tol=1e-3
         )
 
@@ -223,7 +226,11 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
                         i * data.parameters.intervention_nodes_amount:
                         (i + 1) * data.parameters.intervention_nodes_amount
                     ]
-                ) + [0]
+                ) + (
+                    [0]
+                    if data.parameters.intervention_approximation_type == InterventionApproximationType.PIECEWISE_CONSTANT.value
+                    else []
+                )
             )
             for i, intervention in enumerate(data.payload.interventions)
         ]
@@ -235,7 +242,8 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
                 data.parameters.cost_function,
                 data.parameters.intervention_nodes_amount,
                 data.parameters.intervention_upper_boundary,
-                data.parameters.intervention_lower_boundary
+                data.parameters.intervention_lower_boundary,
+                data.parameters.intervention_approximation_type
             ),
             (
                 ISimulationResponsePayload(
@@ -298,6 +306,12 @@ def optimization_criteria(
     step_size: float = parameters.time / \
         parameters.nodes_amount
 
+    approximation_function = (
+        piecewise_constant_control_approximation
+        if parameters.intervention_approximation_type == InterventionApproximationType.PIECEWISE_CONSTANT.value
+        else piecewise_linear_control_approximation
+    )
+
     variables_datatable[0] = IVariablesDatatable({
         **{
             compartment.name: [compartment.value] + [0] *
@@ -306,7 +320,7 @@ def optimization_criteria(
         },
         **{
             intervention.name: [
-                constant_control_approximation(
+                approximation_function(
                     j * step_size,
                     interventions_vector[
                         i * parameters.intervention_nodes_amount:
@@ -343,7 +357,7 @@ def optimization_criteria(
     )
 
 
-def constant_control_approximation(
+def piecewise_constant_control_approximation(
     t: float,
     interventions_vector: List[float],
     simulation_time: float,
@@ -377,6 +391,48 @@ def constant_control_approximation(
     return interventions_vector[
         int(t / intervention_nodes_step)
     ]
+
+
+def piecewise_linear_control_approximation(
+    t: float,
+    interventions_vector: List[float],
+    simulation_time: float,
+) -> float:
+    """
+    Linear control approximation
+
+    This function returns the linear control approximation
+
+    Parameters
+    ----------
+    t : float
+        Time
+    interventions_vector : List[float]
+        Interventions vector
+    simulation_time : float
+        Simulation time
+
+    Returns
+    -------
+    float
+        Linear control approximation
+    """
+
+    if t >= simulation_time:
+        return interventions_vector[-1]
+
+    intervention_nodes_step: float = simulation_time / \
+        (len(interventions_vector) - 1)
+
+    i: int = int(t / intervention_nodes_step)
+
+    t_right: float = (i + 1) * intervention_nodes_step
+    t_left: float = i * intervention_nodes_step
+
+    return (
+        (t_right - t) / (t_right - t_left) * interventions_vector[i] +
+        (t - t_left) / (t_right - t_left) * interventions_vector[i + 1]
+    )
 
 
 def get_hamiltonian_equation(

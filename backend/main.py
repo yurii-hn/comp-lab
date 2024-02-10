@@ -70,7 +70,8 @@ def optimal_control_endpoint():
             raw_data['parameters']['costFunction'],
             raw_data['parameters']['interventionNodesAmount'],
             raw_data['parameters']['interventionUpperBoundary'],
-            raw_data['parameters']['interventionLowerBoundary']
+            raw_data['parameters']['interventionLowerBoundary'],
+            raw_data['parameters']['interventionApproximationType']
         ),
         IOptimalControlRequestPayload(
             raw_data['payload']['compartments'],

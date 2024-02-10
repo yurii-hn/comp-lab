@@ -34,11 +34,17 @@ export interface IParameters {
 
 export type ISimulationParameters = IParameters;
 
+export enum InterventionApproximationType {
+    PiecewiseConstant = 'piecewise-constant',
+    PiecewiseLinear = 'piecewise-linear',
+}
+
 export interface IOptimalControlParameters extends IParameters {
     costFunction: string;
     interventionNodesAmount: number;
     interventionUpperBoundary: number;
     interventionLowerBoundary: number;
+    interventionApproximationType: InterventionApproximationType;
 }
 
 export interface IRequestData<ParametersType, PayloadType> {

@@ -7,6 +7,7 @@ import {
 } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { tap } from 'rxjs';
+import { InterventionApproximationType } from 'src/app/core/interfaces';
 
 @Component({
     selector: 'app-processing-dialog',
@@ -14,6 +15,17 @@ import { tap } from 'rxjs';
     styleUrls: ['./processing-dialog.component.scss'],
 })
 export class ProcessingDialogComponent implements OnInit {
+    public readonly approximationTypes: { text: string; value: string }[] = [
+        {
+            text: 'Piecewise constant',
+            value: InterventionApproximationType.PiecewiseConstant,
+        },
+        {
+            text: 'Piecewise linear',
+            value: InterventionApproximationType.PiecewiseLinear,
+        },
+    ];
+
     public readonly formGroup: FormGroup = new FormGroup({
         parameters: new FormGroup({
             time: new FormControl(null, [Validators.required]),
@@ -28,6 +40,10 @@ export class ProcessingDialogComponent implements OnInit {
             interventionLowerBoundary: new FormControl(null, [
                 Validators.required,
             ]),
+            interventionApproximationType: new FormControl(
+                this.approximationTypes[0].value,
+                [Validators.required]
+            ),
         }),
         isOptimalControlProblem: new FormControl(false),
     });
@@ -43,6 +59,7 @@ export class ProcessingDialogComponent implements OnInit {
         this.getParameterControl('interventionNodesAmount').disable();
         this.getParameterControl('interventionUpperBoundary').disable();
         this.getParameterControl('interventionLowerBoundary').disable();
+        this.getParameterControl('interventionApproximationType').disable();
     }
 
     public ngOnInit(): void {
@@ -55,15 +72,29 @@ export class ProcessingDialogComponent implements OnInit {
                         this.getParameterControl(
                             'interventionNodesAmount'
                         ).enable();
-                        this.getParameterControl('interventionUpperBoundary').enable();
-                        this.getParameterControl('interventionLowerBoundary').enable();
+                        this.getParameterControl(
+                            'interventionUpperBoundary'
+                        ).enable();
+                        this.getParameterControl(
+                            'interventionLowerBoundary'
+                        ).enable();
+                        this.getParameterControl(
+                            'interventionApproximationType'
+                        ).enable();
                     } else {
                         this.getParameterControl('costFunction').disable();
                         this.getParameterControl(
                             'interventionNodesAmount'
                         ).disable();
-                        this.getParameterControl('interventionUpperBoundary').disable();
-                        this.getParameterControl('interventionLowerBoundary').disable();
+                        this.getParameterControl(
+                            'interventionUpperBoundary'
+                        ).disable();
+                        this.getParameterControl(
+                            'interventionLowerBoundary'
+                        ).disable();
+                        this.getParameterControl(
+                            'interventionApproximationType'
+                        ).disable();
                     }
                 })
             )
@@ -90,6 +121,7 @@ export class ProcessingDialogComponent implements OnInit {
             | 'interventionNodesAmount'
             | 'interventionUpperBoundary'
             | 'interventionLowerBoundary'
+            | 'interventionApproximationType'
     ): FormControl {
         return this.formGroup.get('parameters')!.get(name) as FormControl;
     }

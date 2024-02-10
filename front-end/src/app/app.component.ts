@@ -487,6 +487,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
                         simulationData.parameters.interventionUpperBoundary,
                     interventionLowerBoundary:
                         simulationData.parameters.interventionLowerBoundary,
+                    interventionApproximationType:
+                        simulationData.parameters.interventionApproximationType,
                 },
             });
         }

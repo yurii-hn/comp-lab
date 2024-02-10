@@ -97,12 +97,20 @@ IRawRequestSimulationParameters = IRawRequestParameters
 IRequestSimulationParameters = IRequestParameters
 
 
+class InterventionApproximationType(Enum):
+    """Intervention approximation type"""
+
+    PIECEWISE_CONSTANT = 'piecewise-constant'
+    PIECEWISE_LINEAR = 'piecewise-linear'
+
+
 class IRawRequestOptimalControlParameters(IRawRequestParameters):
     """Optimal control parameters"""
     costFunction: str
     interventionNodesAmount: int
     interventionUpperBoundary: float
     interventionLowerBoundary: float
+    interventionApproximationType: InterventionApproximationType
 
 
 @dataclass
@@ -112,6 +120,7 @@ class IRequestOptimalControlParameters(IRequestParameters):
     intervention_nodes_amount: int
     intervention_upper_boundary: float
     intervention_lower_boundary: float
+    intervention_approximation_type: InterventionApproximationType
 
 
 class IRawRequestData(TypedDict, Generic[ParametersType, PayloadType]):
@@ -222,6 +231,7 @@ class IResponseOptimalControlParameters(IResponseParameters):
     interventionNodesAmount: int
     interventionUpperBoundary: float
     interventionLowerBoundary: float
+    interventionApproximationType: InterventionApproximationType
 
 
 @dataclass
