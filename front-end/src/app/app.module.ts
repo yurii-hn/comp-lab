@@ -22,11 +22,11 @@ import PlotlyJS from 'plotly.js-dist-min';
 import { AppComponent } from './app.component';
 import { CompartmentCreationDialogComponent } from './components/compartment-creation-dialog/compartment-creation-dialog.component';
 import { ConfirmationDialogComponent } from './components/confirmation-dialog/confirmation-dialog.component';
+import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { DefinitionsTableDialogComponent } from './components/definitions-table-dialog/definitions-table-dialog.component';
 import { EquationInputComponent } from './components/equation-input/equation-input.component';
 import { FlowCreationDialogComponent } from './components/flow-creation-dialog/flow-creation-dialog.component';
 import { ProcessingDialogComponent } from './components/processing-dialog/processing-dialog.component';
-import { SimulationDashboardComponent } from './components/simulation-dashboard/simulation-dashboard.component';
 
 PlotlyModule.plotlyjs = PlotlyJS;
 
@@ -37,7 +37,7 @@ PlotlyModule.plotlyjs = PlotlyJS;
         ConfirmationDialogComponent,
         ProcessingDialogComponent,
         FlowCreationDialogComponent,
-        SimulationDashboardComponent,
+        DashboardComponent,
         DefinitionsTableDialogComponent,
         EquationInputComponent,
     ],

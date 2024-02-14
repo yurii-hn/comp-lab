@@ -1,5 +1,5 @@
 <div class="header">
-    <p class="title">Simulation Dashboard</p>
+    <p class="title">Dashboard</p>
 
     <div class="header-controls">
         <mat-button-toggle-group
@@ -33,10 +33,29 @@
             mat-mini-fab
             class="button"
             color="primary"
-            [disabled]="resultsStorageService.resultsNames.length === 1"
+            [disabled]="resultsStorageService.resultsNames.length === 0"
             (click)="removeCurrentResults()"
         >
             <mat-icon>delete</mat-icon>
+        </button>
+
+        <button
+            mat-mini-fab
+            class="button"
+            color="primary"
+            (click)="onResultsImport()"
+        >
+            <mat-icon>upload</mat-icon>
+        </button>
+
+        <button
+            mat-mini-fab
+            class="button"
+            color="primary"
+            [disabled]="resultsStorageService.resultsNames.length === 0"
+            (click)="onResultsExport()"
+        >
+            <mat-icon>download</mat-icon>
         </button>
 
         <button

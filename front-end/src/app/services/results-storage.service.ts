@@ -1,11 +1,25 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import {
+    IExportResults,
     IResults,
     IResultsBase,
     OptimalControlResultsViewMode,
 } from '../core/interfaces';
 import { isOptimalControlResults } from '../core/utils';
+
+const emptyResults: IResults = {
+    data: {
+        parameters: {
+            time: 0,
+            nodesAmount: 0,
+        },
+        payload: {
+            compartments: [],
+        },
+    },
+    name: '',
+};
 
 @Injectable({
     providedIn: 'root',
@@ -13,19 +27,7 @@ import { isOptimalControlResults } from '../core/utils';
 export class ResultsStorageService {
     private readonly results: IResults[] = [];
     private readonly currentResultSubject: BehaviorSubject<IResults> =
-        new BehaviorSubject<IResults>({
-            data: {
-                parameters: {
-                    time: 0,
-                    nodesAmount: 0,
-                },
-                payload: {
-                    compartments: [],
-                },
-                success: true,
-            },
-            name: '',
-        });
+        new BehaviorSubject<IResults>(emptyResults);
     private readonly resultsNamesSubject: BehaviorSubject<string[]> =
         new BehaviorSubject<string[]>([]);
 
@@ -81,17 +83,32 @@ export class ResultsStorageService {
             (results: IResults): boolean => results.name === resultsName
         );
 
+        if (resultsIndex === -1) {
+            return;
+        }
+
+        const isDeletingLastItem: boolean = this.results.length === 1;
+
         this.results.splice(resultsIndex, 1);
 
         this.updateResultsNames();
 
         this.resultsNamesSubject.next(this.getWorkspaceNames());
 
+        if (isDeletingLastItem) {
+            this.currentResultSubject.next(emptyResults);
+            return;
+        }
+
         if (this.currentResults.name === resultsName) {
             this.currentResultSubject.next(
                 this.results[Math.max(resultsIndex - 1, 0)]
             );
         }
+    }
+
+    public getCurrentResultsExport(): IExportResults {
+        return this.currentResults.data;
     }
 
     private getWorkspaceNames(): string[] {

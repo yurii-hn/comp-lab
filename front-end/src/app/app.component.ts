@@ -21,10 +21,10 @@ import {
 } from 'rxjs';
 import { CompartmentCreationDialogComponent } from './components/compartment-creation-dialog/compartment-creation-dialog.component';
 import { ConfirmationDialogComponent } from './components/confirmation-dialog/confirmation-dialog.component';
+import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { DefinitionsTableDialogComponent } from './components/definitions-table-dialog/definitions-table-dialog.component';
 import { FlowCreationDialogComponent } from './components/flow-creation-dialog/flow-creation-dialog.component';
 import { ProcessingDialogComponent } from './components/processing-dialog/processing-dialog.component';
-import { SimulationDashboardComponent } from './components/simulation-dashboard/simulation-dashboard.component';
 import {
     ICompartment,
     ICompartmentBase,
@@ -267,7 +267,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     public onModelImport(): void {
         const fileInput: HTMLInputElement = document.createElement('input');
         fileInput.type = 'file';
-        fileInput.accept = '.sc, .json';
+        fileInput.accept = '.scm';
 
         fileInput.onchange = (): void => {
             const file: File = fileInput.files![0];
@@ -300,7 +300,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
     public onModelExport(): void {
         const model: IExportModel = this.modelService.getModelExport();
-        const modelString: string = JSON.stringify(model);
+        const modelString: string = JSON.stringify(model, null, 4);
 
         const blob: Blob = new Blob([modelString], {
             type: 'application/json',
@@ -310,7 +310,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
         const anchor: HTMLAnchorElement = document.createElement('a');
         anchor.href = url;
-        anchor.download = 'model.sc';
+        anchor.download = `${this.workspacesService.currentWorkspace.name}.scm`;
 
         anchor.click();
 
@@ -325,16 +325,16 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         });
     }
 
-    public onSimulationResultsDialog(): void {
-        const simulationResultsDialog: MatDialogRef<SimulationDashboardComponent> =
-            this.dialogService.open(SimulationDashboardComponent, {
+    public onDashboardDialog(): void {
+        const simulationResultsDialog: MatDialogRef<DashboardComponent> =
+            this.dialogService.open(DashboardComponent, {
                 autoFocus: false,
                 height: '95vh',
                 width: '95vw',
             });
     }
 
-    public onModelSimulateDialog(): void {
+    public onProcessModelDialog(): void {
         const simulationDialog: MatDialogRef<ProcessingDialogComponent> =
             this.dialogService.open(ProcessingDialogComponent, {
                 autoFocus: false,
@@ -507,7 +507,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
                             } as IResultsBase);
 
                             this.snackBar.open(
-                                'Simulation completed successfully',
+                                'Processing completed successfully',
                                 'Dismiss',
                                 {
                                     panelClass: 'snackbar',
@@ -520,7 +520,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
                         }
 
                         this.snackBar.open(
-                            'Simulation failed.\n\n' +
+                            'Processing failed.\n\n' +
                                 `Error: ${results.error}`,
                             'Dismiss',
                             {

@@ -102,8 +102,7 @@
         mat-mini-fab
         class="button"
         color="primary"
-        [disabled]="resultsStorageService.resultsNames.length === 0"
-        (click)="onSimulationResultsDialog()"
+        (click)="onDashboardDialog()"
     >
         <mat-icon>query_stats</mat-icon>
     </button>
@@ -114,7 +113,7 @@
         mat-mini-fab
         class="button"
         color="primary"
-        (click)="onModelSimulateDialog()"
+        (click)="onProcessModelDialog()"
     >
         <mat-icon>memory</mat-icon>
     </button>

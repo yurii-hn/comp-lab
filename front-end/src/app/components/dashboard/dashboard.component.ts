@@ -1,19 +1,24 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Config, Data, Layout } from 'plotly.js';
 import { Subscription, take, tap } from 'rxjs';
 import {
     ICompartmentResponseData,
+    IExportResults,
+    IImportResults,
     IInterventionResponseData,
     IOptimalControlResults,
     IResponseData,
     IResults,
+    IResultsBase,
     InterventionApproximationType,
     OptimalControlResultsViewMode,
 } from 'src/app/core/interfaces';
 import { isOptimalControlResults } from 'src/app/core/utils';
 import { ResultsStorageService } from 'src/app/services/results-storage.service';
+import { WorkspacesService } from 'src/app/services/workspaces.service';
 
 interface IPlot {
     data: Data[];
@@ -21,11 +26,11 @@ interface IPlot {
 }
 
 @Component({
-    selector: 'app-simulation-dashboard',
-    templateUrl: './simulation-dashboard.component.html',
-    styleUrls: ['./simulation-dashboard.component.scss'],
+    selector: 'app-dashboard',
+    templateUrl: './dashboard.component.html',
+    styleUrls: ['./dashboard.component.scss'],
 })
-export class SimulationDashboardComponent implements OnInit, OnDestroy {
+export class DashboardComponent implements OnInit, OnDestroy {
     public readonly viewModeControl: FormControl = new FormControl(
         OptimalControlResultsViewMode.NonOptimized
     );
@@ -50,8 +55,10 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
     }
 
     constructor(
+        public readonly workspacesService: WorkspacesService,
         public readonly resultsStorageService: ResultsStorageService,
-        private readonly dialogRef: MatDialogRef<SimulationDashboardComponent>
+        private readonly dialogRef: MatDialogRef<DashboardComponent>,
+        private readonly snackBar: MatSnackBar
     ) {}
 
     public ngOnInit(): void {
@@ -66,6 +73,23 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
 
                         if (isOptimalControlResults(results)) {
                             this.viewModeControl.setValue(results.viewMode, {
+                                emitEvent: false,
+                            });
+                        }
+                    })
+                )
+                .subscribe();
+
+        const resultsNamesSub: Subscription =
+            this.resultsStorageService.resultsNames$
+                .pipe(
+                    tap((resultsNames: string[]): void => {
+                        if (resultsNames.length === 0) {
+                            this.resultsControl.disable({
+                                emitEvent: false,
+                            });
+                        } else {
+                            this.resultsControl.enable({
                                 emitEvent: false,
                             });
                         }
@@ -100,6 +124,7 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
         this.onResultsChange();
 
         this.subscriptions.add(resultsInitSub);
+        this.subscriptions.add(resultsNamesSub);
         this.subscriptions.add(viewModeChangeSub);
         this.subscriptions.add(resultsChangeSub);
     }
@@ -114,6 +139,76 @@ export class SimulationDashboardComponent implements OnInit, OnDestroy {
         );
 
         this.onResultsChange();
+    }
+
+    public onResultsImport(): void {
+        const fileInput: HTMLInputElement = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.scr';
+
+        fileInput.onchange = (): void => {
+            const file: File = fileInput.files![0];
+
+            const fileReader: FileReader = new FileReader();
+
+            fileReader.onload = (): void => {
+                const resultsData: IImportResults = JSON.parse(
+                    fileReader.result as string
+                );
+
+                this.resultsStorageService.addResults({
+                    data: resultsData,
+                } as IResultsBase);
+
+                if (this.resultsStorageService.resultsNames.length === 1) {
+                    this.onResultsChange();
+                }
+
+                this.snackBar.open('Results imported successfully', 'Dismiss', {
+                    panelClass: 'snackbar',
+                    horizontalPosition: 'right',
+                    verticalPosition: 'bottom',
+                });
+            };
+
+            fileReader.readAsText(file);
+        };
+
+        fileInput.click();
+
+        fileInput.remove();
+    }
+
+    public onResultsExport(): void {
+        const results: IExportResults =
+            this.resultsStorageService.getCurrentResultsExport();
+        const resultsString: string = JSON.stringify(results, null, 4);
+
+        const blob: Blob = new Blob([resultsString], {
+            type: 'application/json',
+        });
+
+        const url: string = URL.createObjectURL(blob);
+
+        const anchor: HTMLAnchorElement = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `${this.workspacesService.currentWorkspace.name}-${this.resultsStorageService.currentResults.name}.scr`;
+
+        anchor.click();
+
+        URL.revokeObjectURL(url);
+
+        anchor.remove();
+
+        this.snackBar.open(
+            'Results export is ready for downloading',
+            'Dismiss',
+            {
+                panelClass: 'snackbar',
+                horizontalPosition: 'right',
+                verticalPosition: 'bottom',
+            }
+        );
     }
 
     public closeDialog(): void {

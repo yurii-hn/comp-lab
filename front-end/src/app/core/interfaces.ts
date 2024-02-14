@@ -128,11 +128,11 @@ export interface IValidationResponse {
 }
 
 export interface ISimulationResultsBase {
-    data: ISimulationSuccessResponseData;
+    data: Omit<ISimulationSuccessResponseData, 'success'>;
 }
 
 export interface IOptimalControlResultsBase {
-    data: IOptimalControlSuccessResponseData;
+    data: Omit<IOptimalControlSuccessResponseData, 'success'>;
 }
 
 export type IResultsBase = ISimulationResultsBase | IOptimalControlResultsBase;
@@ -149,6 +149,34 @@ export type IOptimalControlResults = IOptimalControlResultsBase &
     };
 
 export type IResults = ISimulationResults | IOptimalControlResults;
+
+export type IImportSimulationResults = Omit<
+    ISimulationSuccessResponseData,
+    'success'
+>;
+
+export type IImportOptimalControlResults = Omit<
+    IOptimalControlSuccessResponseData,
+    'success'
+>;
+
+export type IImportResults =
+    | IImportSimulationResults
+    | IImportOptimalControlResults;
+
+export type IExportSimulationResults = Omit<
+    ISimulationSuccessResponseData,
+    'success'
+>;
+
+export type IExportOptimalControlResults = Omit<
+    IOptimalControlSuccessResponseData,
+    'success'
+>;
+
+export type IExportResults =
+    | IExportSimulationResults
+    | IExportOptimalControlResults;
 
 export enum OptimalControlResultsViewMode {
     NonOptimized = 'non-optimized',
