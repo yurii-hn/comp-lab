@@ -48,8 +48,14 @@ def simulate(data: ISimulationRequestData) -> ISimulationResponse:
 
     symbols_table: ISymbolsTable = ISymbolsTable(
         {
-            compartment.name: Symbol(compartment.name)
-            for compartment in data.payload.compartments
+            **{
+                compartment.name: Symbol(compartment.name)
+                for compartment in data.payload.compartments
+            },
+            **{
+                constant.name: Symbol(constant.name)
+                for constant in data.payload.constants
+            },
         }
     )
 
@@ -59,7 +65,11 @@ def simulate(data: ISimulationRequestData) -> ISimulationResponse:
         simulation_compartment: ISimulationCompartment = ISimulationCompartment(
             compartment.name,
             compartment.value,
-            get_compartment_equation(compartment, symbols_table)
+            get_compartment_equation(
+                compartment,
+                data.payload.constants,
+                symbols_table
+            )
         )
 
         continuity_type: IContinuityCheckResult = check_continuity(
@@ -95,7 +105,8 @@ def simulate(data: ISimulationRequestData) -> ISimulationResponse:
 
         simulation_results: List[ICompartmentResponseData] = simulate_model(
             simulation_model,
-            data.parameters,
+            data.parameters.time / data.parameters.nodes_amount,
+            data.parameters.nodes_amount,
             variables_datatable
         )
 

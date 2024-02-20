@@ -6,7 +6,7 @@ This module contains the definitions of the interfaces used in the backend.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, TypedDict, Dict, Callable, TypeVar, Generic, Tuple, Literal
+from typing import List, TypedDict, Dict, Callable, TypeVar, Generic, Tuple, Literal, TypeGuard
 from sympy import Symbol, Expr
 
 ParametersType = TypeVar('ParametersType')
@@ -55,6 +55,19 @@ class ICompartment(ICompartmentBase):
     outflows: List[str]
 
 
+class IRawConstant(TypedDict):
+    """Raw constant"""
+    name: str
+    value: float
+
+
+@dataclass
+class IConstant():
+    """Constant"""
+    name: str
+    value: float
+
+
 class IRawIntervention(TypedDict):
     """Raw intervention"""
     name: str
@@ -64,6 +77,67 @@ class IRawIntervention(TypedDict):
 class IIntervention():
     """Intervention"""
     name: str
+
+
+class IRawModel(TypedDict):
+    """Raw model"""
+    compartments: List[IRawCompartment]
+    constants: List[IRawConstant]
+
+
+@dataclass
+class IModel:
+    """Model"""
+    compartments: List[ICompartment]
+    constants: List[IConstant]
+
+    def __init__(
+        self,
+        compartments: List[IRawCompartment],
+        constants: List[IRawConstant]
+    ):
+        self.compartments = [
+            ICompartment(
+                name=compartment['name'],
+                value=compartment['value'],
+                inflows=compartment['inflows'],
+                outflows=compartment['outflows']
+            )
+            for compartment in compartments
+        ]
+
+        self.constants = [
+            IConstant(
+                name=constant['name'],
+                value=constant['value']
+            )
+            for constant in constants
+        ]
+
+
+class IRawModelWithInterventions(IRawModel):
+    """Raw model with interventions"""
+    interventions: List[IRawIntervention]
+
+
+@dataclass
+class IModelWithInterventions(IModel):
+    """Model with interventions"""
+    interventions: List[IIntervention]
+
+    def __init__(
+        self,
+        compartments: List[IRawCompartment],
+        constants: List[IRawConstant],
+        interventions: List[IRawIntervention]
+    ):
+        super().__init__(compartments, constants)
+        self.interventions = [
+            IIntervention(
+                name=intervention['name']
+            )
+            for intervention in interventions
+        ]
 
 
 @dataclass
@@ -79,22 +153,17 @@ class ISimulationLambda():
     derivative_equation: IEquation
 
 
-class IRawRequestParameters(TypedDict):
+class IRawRequestSimulationParameters(TypedDict):
     """Raw parameters"""
     time: float
     nodesAmount: int
 
 
 @dataclass
-class IRequestParameters:
+class IRequestSimulationParameters:
     """Parameters"""
     time: float
     nodes_amount: int
-
-
-IRawRequestSimulationParameters = IRawRequestParameters
-
-IRequestSimulationParameters = IRequestParameters
 
 
 class InterventionApproximationType(Enum):
@@ -104,7 +173,7 @@ class InterventionApproximationType(Enum):
     PIECEWISE_LINEAR = 'piecewise-linear'
 
 
-class IRawRequestOptimalControlParameters(IRawRequestParameters):
+class IRawRequestOptimalControlParameters(IRawRequestSimulationParameters):
     """Optimal control parameters"""
     costFunction: str
     interventionNodesAmount: int
@@ -114,13 +183,43 @@ class IRawRequestOptimalControlParameters(IRawRequestParameters):
 
 
 @dataclass
-class IRequestOptimalControlParameters(IRequestParameters):
+class IRequestOptimalControlParameters(IRequestSimulationParameters):
     """Optimal control parameters"""
     cost_function: str
     intervention_nodes_amount: int
     intervention_upper_boundary: float
     intervention_lower_boundary: float
     intervention_approximation_type: InterventionApproximationType
+
+
+class IRawPISelectedConstant(TypedDict):
+    """Raw selected constants"""
+    name: str
+    value: float
+    upperBoundary: float
+    lowerBoundary: float
+
+
+@dataclass
+class IPISelectedConstant():
+    """Selected constants"""
+    name: str
+    value: float
+    upper_boundary: float
+    lower_boundary: float
+
+
+class IRawRequestPIParameters(TypedDict):
+    """Parameter identification parameters"""
+    selectedConstants: List[IRawPISelectedConstant]
+    timeStep: float
+
+
+@dataclass
+class IRequestPIParameters:
+    """Parameter identification parameters"""
+    selected_constants: List[IPISelectedConstant]
+    time_step: float
 
 
 class IRawRequestData(TypedDict, Generic[ParametersType, PayloadType]):
@@ -136,26 +235,9 @@ class IRequestData(Generic[ParametersType, PayloadType]):
     payload: PayloadType
 
 
-class IRawSimulationRequestPayload(TypedDict):
-    """Raw simulation request payload"""
-    compartments: List[IRawCompartment]
+IRawSimulationRequestPayload = IRawModel
 
-
-@dataclass
-class ISimulationRequestPayload:
-    """Simulation request payload"""
-    compartments: List[ICompartment]
-
-    def __init__(self, compartments: List[IRawCompartment]):
-        self.compartments = [
-            ICompartment(
-                name=compartment['name'],
-                value=compartment['value'],
-                inflows=compartment['inflows'],
-                outflows=compartment['outflows']
-            )
-            for compartment in compartments
-        ]
+ISimulationRequestPayload = IModel
 
 
 IRawSimulationRequestData = IRawRequestData[
@@ -169,38 +251,9 @@ ISimulationRequestData = IRequestData[
 ]
 
 
-class IRawOptimalControlRequestPayload(TypedDict):
-    """Raw optimal control request payload"""
-    compartments: List[IRawCompartment]
-    interventions: List[IRawIntervention]
+IRawOptimalControlRequestPayload = IRawModelWithInterventions
 
-
-@dataclass
-class IOptimalControlRequestPayload:
-    """Optimal control request payload"""
-    compartments: List[ICompartment]
-    interventions: List[IIntervention]
-
-    def __init__(
-        self,
-        compartments: List[IRawCompartment],
-        interventions: List[IRawIntervention]
-    ):
-        self.compartments = [
-            ICompartment(
-                name=compartment['name'],
-                value=compartment['value'],
-                inflows=compartment['inflows'],
-                outflows=compartment['outflows']
-            )
-            for compartment in compartments
-        ]
-        self.interventions = [
-            IIntervention(
-                name=intervention['name']
-            )
-            for intervention in interventions
-        ]
+IOptimalControlRequestPayload = IModelWithInterventions
 
 
 IRawOptimalControlRequestData = IRawRequestData[
@@ -212,6 +265,130 @@ IOptimalControlRequestData = IRequestData[
     IRequestOptimalControlParameters,
     IOptimalControlRequestPayload
 ]
+
+
+class IRawSolutionData(TypedDict):
+    """Response data"""
+    name: str
+    values: List[float]
+
+
+@dataclass
+class ISolutionData:
+    """Response data"""
+    name: str
+    values: List[float]
+
+
+class IRawSolutionWithoutInterventions(TypedDict):
+    """Raw parameter identification solution data"""
+    compartments: List[IRawSolutionData]
+
+
+@dataclass
+class ISolutionWithoutInterventions:
+    """Parameter identification solution data"""
+    compartments: List[ISolutionData]
+
+
+class IRawSolutionWithInterventions(IRawSolutionWithoutInterventions):
+    """Raw parameter identification solution data"""
+    interventions: List[IRawSolutionData]
+
+
+@dataclass
+class ISolutionWithInterventions(ISolutionWithoutInterventions):
+    """Parameter identification solution data"""
+    interventions: List[ISolutionData]
+
+
+class IRawPIRequestPayloadBaseWithoutInterventions(TypedDict):
+    """Raw optimal control request payload"""
+    solution: IRawSolutionWithoutInterventions
+
+
+@dataclass
+class IPIRequestPayloadBaseWithoutInterventions:
+    """Optimal control request payload"""
+    solution: ISolutionWithoutInterventions
+
+
+class IRawPIRequestPayloadBaseWithInterventions(TypedDict):
+    """Raw optimal control request payload"""
+    solution: IRawSolutionWithInterventions
+
+
+@dataclass
+class IPIRequestPayloadBaseWithInterventions:
+    """Optimal control request payload"""
+    solution: ISolutionWithInterventions
+
+
+class IRawPIRequestPayloadWithoutInterventions(IRawPIRequestPayloadBaseWithoutInterventions):
+    """Raw optimal control request payload"""
+    model: IRawModel
+
+
+@dataclass
+class IPIRequestPayloadWithoutInterventions(IPIRequestPayloadBaseWithoutInterventions):
+    """Optimal control request payload"""
+    model: IModel
+
+    def __init__(
+        self,
+        solution: ISolutionWithoutInterventions,
+        model: IModel
+    ):
+        super().__init__(solution)
+        self.model = model
+
+
+class IRawPIRequestPayloadWithInterventions(
+    IRawPIRequestPayloadBaseWithInterventions
+):
+    """Raw optimal control request payload"""
+    model: IRawModelWithInterventions
+
+
+@dataclass
+class IPIRequestPayloadWithInterventions(
+    IPIRequestPayloadBaseWithInterventions
+):
+    """Optimal control request payload"""
+    model: IModelWithInterventions
+
+    def __init__(
+        self,
+        solution: ISolutionWithInterventions,
+        model: IModelWithInterventions
+    ):
+        super().__init__(solution)
+        self.model = model
+
+
+IRawPIRequestDataWithoutInterventions = IRawRequestData[
+    IRawRequestPIParameters,
+    IRawPIRequestPayloadWithoutInterventions
+]
+
+IPIRequestDataWithoutInterventions = IRequestData[
+    IRequestPIParameters,
+    IPIRequestPayloadWithoutInterventions
+]
+
+IRawPIRequestDataWithInterventions = IRawRequestData[
+    IRawRequestPIParameters,
+    IRawPIRequestPayloadWithInterventions
+]
+
+IPIRequestDataWithInterventions = IRequestData[
+    IRequestPIParameters,
+    IPIRequestPayloadWithInterventions
+]
+
+IRawPIRequestData = IRawPIRequestDataWithoutInterventions | IRawPIRequestDataWithInterventions
+
+IPIRequestData = IPIRequestDataWithoutInterventions | IPIRequestDataWithInterventions
 
 
 @dataclass
@@ -232,6 +409,13 @@ class IResponseOptimalControlParameters(IResponseParameters):
     interventionUpperBoundary: float
     interventionLowerBoundary: float
     interventionApproximationType: InterventionApproximationType
+
+
+@dataclass
+class IResponsePIParameters:
+    """Parameter identification parameters"""
+    selected_constants: List[IPISelectedConstant]
+    timeStep: float
 
 
 @dataclass
@@ -299,6 +483,34 @@ IOptimalControlErrorResponse = IErrorResponseData
 IOptimalControlResponse = IOptimalControlSuccessResponse | IOptimalControlErrorResponse
 
 
+@dataclass
+class IPIResponsePayloadWithoutInterventions:
+    """Parameter identification results"""
+    constants: List[IConstant]
+    solution: ISolutionWithoutInterventions
+    approximatedSolution: ISimulationResponsePayload
+
+
+@dataclass
+class IPIResponsePayloadWithInterventions:
+    """Parameter identification results"""
+    constants: List[IConstant]
+    solution: ISolutionWithInterventions
+    approximatedSolution: ISimulationResponsePayload
+
+
+IPIResponsePayload = IPIResponsePayloadWithoutInterventions | IPIResponsePayloadWithInterventions
+
+IPISuccessResponse = ISuccessResponseData[
+    IResponsePIParameters,
+    IPIResponsePayload
+]
+
+IPIErrorResponse = IErrorResponseData
+
+IPIResponse = IPISuccessResponse | IPIErrorResponse
+
+
 class IRawValidationPayload(TypedDict):
     """Validation payload"""
     expression: str
@@ -332,3 +544,17 @@ class IContinuityCheckResult():
     """Raw simulation parameters"""
     type: ContinuityType
     discontinuity_symbol: Symbol | None
+
+
+def is_IRawPIRequestDataWithInterventions(
+        data: IRawPIRequestData
+) -> TypeGuard[IRawPIRequestDataWithInterventions]:
+    """Check if the data is IRawPIRequestDataWithInterventions"""
+    return 'interventions' in data['payload']['model'].keys()
+
+
+def is_IPIRequestDataWithInterventions(
+        data: IPIRequestData
+) -> TypeGuard[IPIRequestDataWithInterventions]:
+    """Check if the data is IPIRequestDataWithInterventions"""
+    return hasattr(data.payload.model, 'interventions')

@@ -5,7 +5,7 @@ This module contains the optimal control logic
 """
 
 from typing import List, Tuple, cast, Set
-from scipy.optimize import minimize
+from scipy.optimize import minimize, OptimizeResult
 from sympy import Symbol, Interval, oo, Expr, diff, lambdify
 
 from definitions import (
@@ -62,8 +62,18 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
     """
 
     symbols_table: ISymbolsTable = ISymbolsTable({
-        compartment.name: Symbol(compartment.name)
-        for compartment in data.payload.compartments
+        **{
+            compartment.name: Symbol(compartment.name)
+            for compartment in data.payload.compartments
+        },
+        **{
+            constant.name: Symbol(constant.name)
+            for constant in data.payload.constants
+        },
+        **{
+            intervention.name: Symbol(intervention.name)
+            for intervention in data.payload.interventions
+        }
     })
     simulation_model: List[ISimulationCompartment] = []
     simulation_lambdas_derivatives: List[ISimulationLambda] = []
@@ -72,7 +82,11 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
         simulation_compartment: ISimulationCompartment = ISimulationCompartment(
             compartment.name,
             compartment.value,
-            get_compartment_equation(compartment, symbols_table)
+            get_compartment_equation(
+                compartment,
+                data.payload.constants,
+                symbols_table
+            )
         )
 
         continuity_type: IContinuityCheckResult = check_continuity(
@@ -104,11 +118,9 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
             False
         )
 
-    for intervention in data.payload.interventions:
-        symbols_table[intervention.name] = Symbol(intervention.name)
-
     cost_function: IEquation = get_equation(
         data.parameters.cost_function,
+        data.payload.constants,
         symbols_table
     )
 
@@ -169,7 +181,8 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
 
         no_control_simulation_results: List[ICompartmentResponseData] = simulate_model(
             simulation_model,
-            data.parameters,
+            data.parameters.time / data.parameters.nodes_amount,
+            data.parameters.nodes_amount,
             variables_datatable[0]
         )
 
@@ -189,27 +202,31 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
         if data.parameters.intervention_approximation_type == InterventionApproximationType.PIECEWISE_LINEAR.value:
             data.parameters.intervention_nodes_amount += 1
 
-        minimize_result = minimize(
-            optimization_criteria,
-            [0] * data.parameters.intervention_nodes_amount *
-            len(data.payload.interventions),
-            args=(
-                simulation_model,
-                simulation_lambdas_derivatives,
-                data.payload.interventions,
-                hamiltonian,
-                data.parameters,
-                variables_datatable,
-                simulation_results
-            ),
-            bounds=[
-                (
-                    data.parameters.intervention_lower_boundary,
-                    data.parameters.intervention_upper_boundary
-                )
-                for i in range(data.parameters.intervention_nodes_amount)
-            ] * len(data.payload.interventions),
-            tol=1e-3
+        minimize_result: OptimizeResult = cast(
+            OptimizeResult,
+            minimize(
+                optimization_criteria,
+                [0] * data.parameters.intervention_nodes_amount *
+                len(data.payload.interventions),
+                args=(
+                    simulation_model,
+                    simulation_lambdas_derivatives,
+                    data.payload.interventions,
+                    hamiltonian,
+                    data.parameters,
+                    variables_datatable,
+                    simulation_results
+                ),
+                bounds=[
+                    (
+                        data.parameters.intervention_lower_boundary,
+                        data.parameters.intervention_upper_boundary
+                    )
+                    for i in range(data.parameters.intervention_nodes_amount)
+                ] * len(data.payload.interventions),
+                method='L-BFGS-B',
+                tol=1e-3
+            )
         )
 
         optimized_cost: float = calculate_cost(
@@ -340,7 +357,8 @@ def optimization_criteria(
 
     simulation_results[0] = simulate_model(
         simulation_model,
-        parameters,
+        parameters.time / parameters.nodes_amount,
+        parameters.nodes_amount,
         variables_datatable[0]
     )
 

@@ -6,6 +6,7 @@ from sympy.calculus.util import continuous_domain
 from sympy.sets import Reals
 
 from definitions import (
+    IConstant,
     ISymbolsTable,
     IVariablesDatatable,
     IEquation,
@@ -18,12 +19,25 @@ from definitions import (
 )
 
 
-def get_equation(function_string: str, symbols_table: ISymbolsTable) -> IEquation:
+def get_equation(
+    function_string: str,
+    constants: List[IConstant],
+    symbols_table: ISymbolsTable
+) -> IEquation:
     """Get the equation from string"""
     symbolic_equation: Expr = sympify(
         function_string.replace('^', '**'),
         symbols_table
     )
+
+    for constant in constants:
+        symbolic_equation = cast(
+            Expr,
+            symbolic_equation.subs(
+                constant.name,
+                constant.value
+            )
+        )
 
     return IEquation(
         list(
@@ -42,6 +56,7 @@ def get_equation(function_string: str, symbols_table: ISymbolsTable) -> IEquatio
 
 def get_compartment_equation(
     compartment: ICompartment,
+    constants: List[IConstant],
     symbols_table: ISymbolsTable
 ) -> IEquation:
     """Get the equations for each compartment"""
@@ -58,6 +73,15 @@ def get_compartment_equation(
         compartment_symbolic_equation -= sympify(
             outflow.replace('^', '**'),
             symbols_table
+        )
+
+    for constant in constants:
+        compartment_symbolic_equation = cast(
+            Expr,
+            compartment_symbolic_equation.subs(
+                constant.name,
+                constant.value
+            )
         )
 
     equation: IEquation = IEquation(
@@ -115,7 +139,7 @@ def is_population_preserved(compartments_equations: List[Expr]) -> bool:
     sum_equation: Expr = cast(Expr, 0)
 
     for equation in compartments_equations:
-        sum_equation += equation # type: ignore
+        sum_equation += equation  # type: ignore
 
     if nsimplify(sum_equation, tolerance=1e-10) != 0:
         return False
@@ -125,14 +149,13 @@ def is_population_preserved(compartments_equations: List[Expr]) -> bool:
 
 def simulate_model(
     model: List[ISimulationCompartment],
-    parameters: IRequestSimulationParameters,
-    variables_datatable: IVariablesDatatable
+    step_size: float,
+    nodes_amount: int,
+    variables_datatable: IVariablesDatatable,
+    ignore_negative_values: bool = False
 ) -> List[ICompartmentResponseData]:
     """Model simulation function"""
-    step_size: float = parameters.time / \
-        parameters.nodes_amount
-
-    for i in range(parameters.nodes_amount):
+    for i in range(nodes_amount):
         for compartment in model:
             values: List[float] = [
                 variables_datatable[str(var)][i]
@@ -145,7 +168,7 @@ def simulate_model(
                 step_size
             )
 
-            if variables_datatable[compartment.name][i + 1] < 0:
+            if variables_datatable[compartment.name][i + 1] < 0 and not ignore_negative_values:
                 raise ValueError(
                     f'Negative value for {compartment.name} at time {i + 1}'
                 )

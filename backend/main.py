@@ -8,8 +8,10 @@ from flask import Flask, request, jsonify
 
 from simulate import simulate
 from optimal_control import optimal_control
+from parameters_identification import parameters_identification
 from validate_expression import validate_expression
 from definitions import (
+    IModelWithInterventions,
     IRequestSimulationParameters,
     ISimulationRequestPayload,
     IRawSimulationRequestData,
@@ -22,7 +24,21 @@ from definitions import (
     IValidationPayload,
     IValidationResult,
     IRequestOptimalControlParameters,
-    IOptimalControlRequestPayload
+    IOptimalControlRequestPayload,
+    IRawPIRequestData,
+    IPIRequestData,
+    is_IRawPIRequestDataWithInterventions,
+    IPIRequestDataWithInterventions,
+    IPIRequestDataWithoutInterventions,
+    IRequestPIParameters,
+    IPISelectedConstant,
+    IPIResponse,
+    ISolutionWithoutInterventions,
+    ISolutionWithInterventions,
+    IPIRequestPayloadWithoutInterventions,
+    IPIRequestPayloadWithInterventions,
+    ISolutionData,
+    IModel
 )
 
 app: Flask = Flask(__name__)
@@ -44,7 +60,8 @@ def simulate_endpoint():
             raw_data['parameters']['nodesAmount']
         ),
         ISimulationRequestPayload(
-            raw_data['payload']['compartments']
+            raw_data['payload']['compartments'],
+            raw_data['payload']['constants']
         )
     )
 
@@ -75,11 +92,92 @@ def optimal_control_endpoint():
         ),
         IOptimalControlRequestPayload(
             raw_data['payload']['compartments'],
+            raw_data['payload']['constants'],
             raw_data['payload']['interventions']
         )
     )
 
     result: IOptimalControlResponse = optimal_control(data)
+
+    return jsonify(result)
+
+
+@app.route('/parameters-identification', methods=['POST'])
+def parameters_identification_endpoint():
+    """
+    Parameters identification endpoint
+
+    This endpoint is used for identifying the parameters of the model
+    """
+
+    raw_data: IRawPIRequestData = request.get_json()
+
+    is_with_interventions: bool = is_IRawPIRequestDataWithInterventions(
+        raw_data
+    )
+
+    request_parameters: IRequestPIParameters = IRequestPIParameters(
+        [
+            IPISelectedConstant(
+                constant['name'],
+                constant['value'],
+                constant['upperBoundary'],
+                constant['lowerBoundary'],
+            )
+            for constant in raw_data['parameters']['selectedConstants']
+        ],
+        raw_data['parameters']['timeStep']
+    )
+
+    data: IPIRequestData = (
+        IPIRequestDataWithoutInterventions(
+            request_parameters,
+            IPIRequestPayloadWithoutInterventions(
+                ISolutionWithoutInterventions(
+                    [
+                        ISolutionData(
+                            compartment['name'],
+                            compartment['values'],
+                        )
+                        for compartment in raw_data['payload']['solution']['compartments']
+                    ]
+                ),
+                IModel(
+                    raw_data['payload']['model']['compartments'],
+                    raw_data['payload']['model']['constants']
+                )
+            )
+        )
+        if not is_with_interventions else
+        IPIRequestDataWithInterventions(
+            request_parameters,
+            IPIRequestPayloadWithInterventions(
+                ISolutionWithInterventions(
+                    [
+                        ISolutionData(
+                            compartment['name'],
+                            compartment['values'],
+                        )
+                        for compartment in raw_data['payload']['solution']['compartments']
+                    ],
+                    [
+                        ISolutionData(
+                            intervention['name'],
+                            intervention['values'],
+                        )
+                        for intervention in raw_data['payload']['solution']['interventions']
+                    ]
+                ),
+                IModelWithInterventions(
+                    raw_data['payload']['model']['compartments'],
+                    raw_data['payload']['model']['constants'],
+                    raw_data['payload']['model']['interventions']
+                )
+            )
+        )
+    )
+
+    result: IPIResponse = parameters_identification(data)
 
     return jsonify(result)
 
