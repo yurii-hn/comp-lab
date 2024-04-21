@@ -9,6 +9,9 @@ from scipy.optimize import minimize, OptimizeResult
 from sympy import Symbol, Interval, oo
 
 from definitions import (
+    IConstant,
+    IResponsePISelectedConstant,
+    ISolutionWithInterventions,
     ISymbolsTable,
     IVariablesDatatable,
     ISimulationCompartment,
@@ -24,7 +27,6 @@ from definitions import (
     IResponsePIParameters,
     IPIResponsePayloadWithoutInterventions,
     IPIResponsePayloadWithInterventions,
-    ISimulationResponsePayload,
 )
 from shared import (
     get_compartment_equation,
@@ -55,7 +57,8 @@ def parameters_identification(data: IPIRequestData) -> IPIResponse:
     ValueError
         If the optimization fails
     """
-    is_with_interventions: bool = is_IPIRequestDataWithInterventions(data)
+    is_with_interventions: bool = is_IPIRequestDataWithInterventions(
+        data)
 
     symbols_table: ISymbolsTable = ISymbolsTable({
         **{
@@ -137,6 +140,7 @@ def parameters_identification(data: IPIRequestData) -> IPIResponse:
                 args=(
                     simulation_model,
                     data,
+                    is_with_interventions,
                     simulation_results
                 ),
                 bounds=[
@@ -151,25 +155,36 @@ def parameters_identification(data: IPIRequestData) -> IPIResponse:
             )
         )
 
+        minimized_constants: List[IConstant] = [
+            IConstant(
+                constant.name,
+                minimize_result.x[i],
+            )
+            for i, constant in enumerate(data.parameters.selected_constants)
+        ]
+
         return IPISuccessResponse(
             IResponsePIParameters(
-                data.parameters.selected_constants,
+                [
+                    IResponsePISelectedConstant(
+                        constant.name,
+                        constant.value,
+                        constant.upper_boundary,
+                        constant.lower_boundary
+                    ) for constant in data.parameters.selected_constants
+                ],
                 data.parameters.time_step,
             ),
             (
                 IPIResponsePayloadWithoutInterventions(
-                    minimize_result.x,
+                    minimized_constants,
                     data.payload.solution,
-                    ISimulationResponsePayload(
-                        simulation_results[0]
-                    )
+                    simulation_results[0]
                 ) if not is_with_interventions else
                 IPIResponsePayloadWithInterventions(
-                    minimize_result.x,
+                    minimized_constants,
                     data.payload.solution,
-                    ISimulationResponsePayload(
-                        simulation_results[0]
-                    )
+                    simulation_results[0]
                 )
             ),
             True
@@ -186,6 +201,7 @@ def optimization_criteria(
     constants_vector: List[float],
     simulation_model: List[ISimulationCompartment],
     data: IPIRequestData,
+    is_with_interventions: bool,
     simulation_results: List[List[ICompartmentResponseData]]
 ) -> float:
     """
@@ -223,6 +239,10 @@ def optimization_criteria(
             for i, constant in enumerate(data.parameters.selected_constants)
         }
     })
+
+    if is_with_interventions:
+        for intervention in cast(ISolutionWithInterventions, data.payload.solution).interventions:
+            variables_datatable[intervention.name] = intervention.values
 
     if is_IPIRequestDataWithInterventions(data):
         variables_datatable.update({

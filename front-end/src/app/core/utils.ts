@@ -1,15 +1,5 @@
 import { Observable, Subscriber } from 'rxjs';
 
-import { IOptimalControlResultsBase, IResultsBase } from './interfaces';
-
-export function isOptimalControlResults(
-    results: IResultsBase
-): results is IOptimalControlResultsBase {
-    return (
-        Array.isArray(results.data.payload) && results.data.payload.length === 2
-    );
-}
-
 export function fromResizeObserver(
     target: Element
 ): Observable<ResizeObserverEntry> {
@@ -25,7 +15,7 @@ export function fromResizeObserver(
 
             resizeObserver.observe(target);
 
-            return () => {
+            return (): void => {
                 resizeObserver.unobserve(target);
                 resizeObserver.disconnect();
             };

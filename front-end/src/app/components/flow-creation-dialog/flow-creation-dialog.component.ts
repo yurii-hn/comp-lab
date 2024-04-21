@@ -1,5 +1,5 @@
 import { Component, Inject } from '@angular/core';
-import { FormControl, ValidationErrors, Validators } from '@angular/forms';
+import { FormControl, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 @Component({
@@ -23,10 +23,6 @@ export class FlowCreationDialogComponent {
         if (data) {
             this.flowEquationFormControl.setValue(data);
         }
-    }
-
-    public onErrorsChange(validationErrors: ValidationErrors | null): void {
-        this.flowEquationFormControl.setErrors(validationErrors);
     }
 
     public closeDialog(): void {

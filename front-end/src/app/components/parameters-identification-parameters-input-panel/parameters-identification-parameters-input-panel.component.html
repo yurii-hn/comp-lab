@@ -1,0 +1,47 @@
+<ng-container [formGroup]="formGroup">
+    <div class="row" formGroupName="parameters">
+        <mat-form-field class="input" subscriptSizing="dynamic">
+            <mat-label>Time Step</mat-label>
+
+            <input
+                matInput
+                placeholder="Enter value"
+                type="number"
+                formControlName="timeStep"
+            />
+        </mat-form-field>
+    </div>
+
+    <div class="row" formGroupName="parameters">
+        <div class="input datatable-input">
+            <div class="header">
+                <div class="title">Constants to identify</div>
+            </div>
+
+            <app-datatable
+                class="datatable"
+                formControlName="selectedConstants"
+                [columnsSchemes]="constantsColumnsScheme"
+            ></app-datatable>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="input datatable-input">
+            <div class="header">
+                <div class="title">Solution Data</div>
+
+                <button mat-mini-fab (click)="onSolutionImport()">
+                    <mat-icon>upload_file</mat-icon>
+                </button>
+            </div>
+
+            <app-datatable
+                class="datatable"
+                [formControl]="solutionFormControl"
+                [columnsSchemes]="solutionColumnsScheme"
+                [enumerateRows]="true"
+            ></app-datatable>
+        </div>
+    </div>
+</ng-container>

@@ -1,128 +1,103 @@
-import { Component, OnInit } from '@angular/core';
-import {
-    FormControl,
-    FormGroup,
-    ValidationErrors,
-    Validators,
-} from '@angular/forms';
+import { Component } from '@angular/core';
+import { FormControl, FormGroup } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
-import { tap } from 'rxjs';
-import { InterventionApproximationType } from 'src/app/core/interfaces';
+import {
+    IOptimalControlParameters,
+    IPIParameters,
+    IProcessingDialogPIValue,
+    IProcessingDialogValue,
+    ISimulationParameters,
+    ProcessingType,
+} from '@core/types/processing';
 
 @Component({
     selector: 'app-processing-dialog',
     templateUrl: './processing-dialog.component.html',
     styleUrls: ['./processing-dialog.component.scss'],
 })
-export class ProcessingDialogComponent implements OnInit {
-    public readonly approximationTypes: { text: string; value: string }[] = [
-        {
-            text: 'Piecewise constant',
-            value: InterventionApproximationType.PiecewiseConstant,
-        },
-        {
-            text: 'Piecewise linear',
-            value: InterventionApproximationType.PiecewiseLinear,
-        },
-    ];
+export class ProcessingDialogComponent {
+    public selectedProcessingType: ProcessingType = ProcessingType.Simulation;
 
     public readonly formGroup: FormGroup = new FormGroup({
-        parameters: new FormGroup({
-            time: new FormControl(null, [Validators.required]),
-            nodesAmount: new FormControl(null, [Validators.required]),
-            costFunction: new FormControl(null, [Validators.required]),
-            interventionNodesAmount: new FormControl(null, [
-                Validators.required,
-            ]),
-            interventionUpperBoundary: new FormControl(null, [
-                Validators.required,
-            ]),
-            interventionLowerBoundary: new FormControl(null, [
-                Validators.required,
-            ]),
-            interventionApproximationType: new FormControl(
-                this.approximationTypes[0].value,
-                [Validators.required]
-            ),
-        }),
-        isOptimalControlProblem: new FormControl(false),
+        simulationParameters: new FormControl<ISimulationParameters | null>(
+            null
+        ),
+        optimalControlParameters:
+            new FormControl<IOptimalControlParameters | null>(null),
+        parametersIdentificationParameters:
+            new FormControl<IPIParameters | null>(null),
     });
 
-    public get isOptimalControlProblem(): boolean {
-        return this.formGroup.get('isOptimalControlProblem')!.value;
+    public get isValid(): boolean {
+        return this.getCurrentParametersControl().valid;
     }
 
     constructor(
-        private readonly dialogRef: MatDialogRef<ProcessingDialogComponent>
-    ) {
-        this.getParameterControl('costFunction').disable();
-        this.getParameterControl('interventionNodesAmount').disable();
-        this.getParameterControl('interventionUpperBoundary').disable();
-        this.getParameterControl('interventionLowerBoundary').disable();
-        this.getParameterControl('interventionApproximationType').disable();
-    }
-
-    public ngOnInit(): void {
-        this.formGroup
-            .get('isOptimalControlProblem')!
-            .valueChanges.pipe(
-                tap((isOptimalControlProblem: boolean) => {
-                    if (isOptimalControlProblem) {
-                        this.getParameterControl('costFunction').enable();
-                        this.getParameterControl(
-                            'interventionNodesAmount'
-                        ).enable();
-                        this.getParameterControl(
-                            'interventionUpperBoundary'
-                        ).enable();
-                        this.getParameterControl(
-                            'interventionLowerBoundary'
-                        ).enable();
-                        this.getParameterControl(
-                            'interventionApproximationType'
-                        ).enable();
-                    } else {
-                        this.getParameterControl('costFunction').disable();
-                        this.getParameterControl(
-                            'interventionNodesAmount'
-                        ).disable();
-                        this.getParameterControl(
-                            'interventionUpperBoundary'
-                        ).disable();
-                        this.getParameterControl(
-                            'interventionLowerBoundary'
-                        ).disable();
-                        this.getParameterControl(
-                            'interventionApproximationType'
-                        ).disable();
-                    }
-                })
-            )
-            .subscribe();
-    }
-
-    public onErrorsChange(validationErrors: ValidationErrors | null): void {
-        this.formGroup.setErrors(validationErrors);
-    }
+        private readonly dialogRef: MatDialogRef<
+            ProcessingDialogComponent,
+            IProcessingDialogValue
+        >
+    ) {}
 
     public closeDialog(): void {
         this.dialogRef.close(null);
     }
 
     public process(): void {
-        this.dialogRef.close(this.formGroup.value);
+        let output: IProcessingDialogValue;
+
+        switch (this.selectedProcessingType) {
+            case ProcessingType.Simulation:
+                output = {
+                    parameters: this.formGroup.get('simulationParameters')
+                        ?.value as ISimulationParameters,
+                };
+
+                break;
+
+            case ProcessingType.OptimalControl:
+                output = {
+                    parameters: this.formGroup.get('optimalControlParameters')
+                        ?.value as IOptimalControlParameters,
+                };
+
+                break;
+
+            case ProcessingType.ParametersIdentification:
+                const inputData: Omit<
+                    IProcessingDialogPIValue,
+                    'processingType'
+                > = this.formGroup.get(
+                    'parametersIdentificationParameters'
+                )?.value;
+
+                output = {
+                    parameters: inputData.parameters,
+                    solution: inputData.solution,
+                };
+
+                break;
+        }
+
+        this.dialogRef.close(output);
     }
 
-    private getParameterControl(
-        name:
-            | 'time'
-            | 'nodesAmount'
-            | 'costFunction'
-            | 'interventionNodesAmount'
-            | 'interventionUpperBoundary'
-            | 'interventionLowerBoundary'
-            | 'interventionApproximationType'
-    ): FormControl {
-        return this.formGroup.get('parameters')!.get(name) as FormControl;
+    private getCurrentParametersControl(): FormControl {
+        switch (this.selectedProcessingType) {
+            case ProcessingType.Simulation:
+                return this.formGroup.get(
+                    'simulationParameters'
+                ) as FormControl;
+
+            case ProcessingType.OptimalControl:
+                return this.formGroup.get(
+                    'optimalControlParameters'
+                ) as FormControl;
+
+            case ProcessingType.ParametersIdentification:
+                return this.formGroup.get(
+                    'parametersIdentificationParameters'
+                ) as FormControl;
+        }
     }
 }

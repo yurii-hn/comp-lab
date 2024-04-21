@@ -201,10 +201,8 @@ class IRawPISelectedConstant(TypedDict):
 
 
 @dataclass
-class IPISelectedConstant():
+class IPISelectedConstant(IConstant):
     """Selected constants"""
-    name: str
-    value: float
     upper_boundary: float
     lower_boundary: float
 
@@ -302,68 +300,30 @@ class ISolutionWithInterventions(ISolutionWithoutInterventions):
     interventions: List[ISolutionData]
 
 
-class IRawPIRequestPayloadBaseWithoutInterventions(TypedDict):
+class IRawPIRequestPayloadWithoutInterventions(TypedDict):
     """Raw optimal control request payload"""
     solution: IRawSolutionWithoutInterventions
-
-
-@dataclass
-class IPIRequestPayloadBaseWithoutInterventions:
-    """Optimal control request payload"""
-    solution: ISolutionWithoutInterventions
-
-
-class IRawPIRequestPayloadBaseWithInterventions(TypedDict):
-    """Raw optimal control request payload"""
-    solution: IRawSolutionWithInterventions
-
-
-@dataclass
-class IPIRequestPayloadBaseWithInterventions:
-    """Optimal control request payload"""
-    solution: ISolutionWithInterventions
-
-
-class IRawPIRequestPayloadWithoutInterventions(IRawPIRequestPayloadBaseWithoutInterventions):
-    """Raw optimal control request payload"""
     model: IRawModel
 
 
 @dataclass
-class IPIRequestPayloadWithoutInterventions(IPIRequestPayloadBaseWithoutInterventions):
+class IPIRequestPayloadWithoutInterventions():
     """Optimal control request payload"""
+    solution: ISolutionWithoutInterventions
     model: IModel
 
-    def __init__(
-        self,
-        solution: ISolutionWithoutInterventions,
-        model: IModel
-    ):
-        super().__init__(solution)
-        self.model = model
 
-
-class IRawPIRequestPayloadWithInterventions(
-    IRawPIRequestPayloadBaseWithInterventions
-):
+class IRawPIRequestPayloadWithInterventions():
     """Raw optimal control request payload"""
+    solution: IRawSolutionWithInterventions
     model: IRawModelWithInterventions
 
 
 @dataclass
-class IPIRequestPayloadWithInterventions(
-    IPIRequestPayloadBaseWithInterventions
-):
+class IPIRequestPayloadWithInterventions():
     """Optimal control request payload"""
+    solution: ISolutionWithInterventions
     model: IModelWithInterventions
-
-    def __init__(
-        self,
-        solution: ISolutionWithInterventions,
-        model: IModelWithInterventions
-    ):
-        super().__init__(solution)
-        self.model = model
 
 
 IRawPIRequestDataWithoutInterventions = IRawRequestData[
@@ -392,17 +352,14 @@ IPIRequestData = IPIRequestDataWithoutInterventions | IPIRequestDataWithInterven
 
 
 @dataclass
-class IResponseParameters:
-    """Parameters"""
+class IResponseSimulationParameters():
+    """Simulation parameters"""
     time: float
     nodesAmount: int
 
 
-IResponseSimulationParameters = IResponseParameters
-
-
 @dataclass
-class IResponseOptimalControlParameters(IResponseParameters):
+class IResponseOptimalControlParameters(IResponseSimulationParameters):
     """Optimal control parameters"""
     costFunction: str
     interventionNodesAmount: int
@@ -412,9 +369,18 @@ class IResponseOptimalControlParameters(IResponseParameters):
 
 
 @dataclass
+class IResponsePISelectedConstant():
+    """Selected constants"""
+    name: str
+    value: float
+    upperBoundary: float
+    lowerBoundary: float
+
+
+@dataclass
 class IResponsePIParameters:
     """Parameter identification parameters"""
-    selected_constants: List[IPISelectedConstant]
+    selectedConstants: List[IResponsePISelectedConstant]
     timeStep: float
 
 
@@ -467,6 +433,7 @@ ISimulationResponse = ISimulationSuccessResponseData | ISimulationErrorResponseD
 class IOptimalControlResponsePayload:
     """Optimal control results success"""
     compartments: List[ICompartmentResponseData]
+    approximatedInterventions: List[IInterventionResponseData]
     interventions: List[IInterventionResponseData]
 
 
@@ -483,12 +450,15 @@ IOptimalControlErrorResponse = IErrorResponseData
 IOptimalControlResponse = IOptimalControlSuccessResponse | IOptimalControlErrorResponse
 
 
+IApproximatedSolution = List[ICompartmentResponseData]
+
+
 @dataclass
 class IPIResponsePayloadWithoutInterventions:
     """Parameter identification results"""
     constants: List[IConstant]
     solution: ISolutionWithoutInterventions
-    approximatedSolution: ISimulationResponsePayload
+    approximatedSolution: IApproximatedSolution
 
 
 @dataclass
@@ -496,7 +466,7 @@ class IPIResponsePayloadWithInterventions:
     """Parameter identification results"""
     constants: List[IConstant]
     solution: ISolutionWithInterventions
-    approximatedSolution: ISimulationResponsePayload
+    approximatedSolution: IApproximatedSolution
 
 
 IPIResponsePayload = IPIResponsePayloadWithoutInterventions | IPIResponsePayloadWithInterventions

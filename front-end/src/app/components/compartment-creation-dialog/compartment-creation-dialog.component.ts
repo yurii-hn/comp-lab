@@ -1,7 +1,7 @@
 import { Component, Inject } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { ICompartmentBase } from 'src/app/core/interfaces';
+import { ICompartmentBase } from '@core/types/model';
 import { ModelService } from 'src/app/services/model.service';
 
 @Component({

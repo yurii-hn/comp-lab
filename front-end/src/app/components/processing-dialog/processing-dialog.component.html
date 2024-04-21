@@ -11,97 +11,50 @@
     </button>
 </div>
 
-<div class="body" [formGroup]="formGroup">
-    <div class="config-row" formGroupName="parameters">
-        <mat-form-field subscriptSizing="dynamic">
-            <mat-label>Time</mat-label>
+<mat-tab-group
+    dynamicHeight
+    class="body"
+    mat-align-tabs="center"
+    [formGroup]="formGroup"
+    [(selectedIndex)]="selectedProcessingType"
+>
+    <mat-tab>
+        <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">show_chart</mat-icon>
 
-            <input
-                matInput
-                placeholder="Enter value"
-                type="number"
-                formControlName="time"
-            />
-        </mat-form-field>
+            Simulation
+        </ng-template>
 
-        <mat-form-field subscriptSizing="dynamic">
-            <mat-label>Nodes Amount</mat-label>
+        <app-simulation-parameters-input-panel
+            formControlName="simulationParameters"
+        ></app-simulation-parameters-input-panel>
+    </mat-tab>
 
-            <input
-                matInput
-                type="number"
-                placeholder="Enter value"
-                type="number"
-                formControlName="nodesAmount"
-            />
-        </mat-form-field>
-    </div>
+    <mat-tab>
+        <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">trending_down</mat-icon>
 
-    <mat-slide-toggle formControlName="isOptimalControlProblem">
-        Optimal control problem
-    </mat-slide-toggle>
+            Optimal Control
+        </ng-template>
 
-    <ng-container formGroupName="parameters">
-        <div class="config-row">
-            <mat-form-field floatLabel="always" subscriptSizing="dynamic">
-                <mat-label>Intervention Nodes Amount</mat-label>
+        <app-optimal-control-parameters-input-panel
+            formControlName="optimalControlParameters"
+        ></app-optimal-control-parameters-input-panel>
+    </mat-tab>
 
-                <input
-                    matInput
-                    placeholder="Enter value"
-                    type="number"
-                    formControlName="interventionNodesAmount"
-                />
-            </mat-form-field>
+    <mat-tab>
+        <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">troubleshoot</mat-icon>
 
-            <mat-form-field floatLabel="always" subscriptSizing="dynamic">
-                <mat-label>Approximation Type</mat-label>
+            Parameters Identification
+        </ng-template>
 
-                <mat-select formControlName="interventionApproximationType">
-                    <mat-option
-                        *ngFor="let approximationType of approximationTypes"
-                        [value]="approximationType.value"
-                    >
-                        {{ approximationType.text }}
-                    </mat-option>
-                </mat-select>
-            </mat-form-field>
-        </div>
-
-        <div class="config-row">
-            <mat-form-field floatLabel="always" subscriptSizing="dynamic">
-                <mat-label>Intervention Lower Boundary</mat-label>
-
-                <input
-                    matInput
-                    placeholder="Enter value"
-                    type="number"
-                    formControlName="interventionLowerBoundary"
-                />
-            </mat-form-field>
-
-            <mat-form-field floatLabel="always" subscriptSizing="dynamic">
-                <mat-label>Intervention Upper Boundary</mat-label>
-
-                <input
-                    matInput
-                    placeholder="Enter value"
-                    type="number"
-                    formControlName="interventionUpperBoundary"
-                />
-            </mat-form-field>
-        </div>
-
-        <app-equation-input
-            formControlName="costFunction"
-            class="cost-function-input"
-            placeholder="Enter value"
-            [noPadding]="true"
-            [title]="'Cost Function'"
-            (errorsChange)="onErrorsChange($event)"
-        ></app-equation-input>
-    </ng-container>
-</div>
+        <app-parameters-identification-parameters-input-panel
+            formControlName="parametersIdentificationParameters"
+        >
+        </app-parameters-identification-parameters-input-panel>
+    </mat-tab>
+</mat-tab-group>
 
 <div class="footer">
     <button
@@ -117,7 +70,7 @@
         mat-raised-button
         class="button"
         color="primary"
-        [disabled]="formGroup.errors"
+        [disabled]="!isValid"
         (click)="process()"
     >
         Process

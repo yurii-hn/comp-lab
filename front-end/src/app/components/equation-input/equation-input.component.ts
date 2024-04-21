@@ -2,34 +2,38 @@ import {
     AfterViewInit,
     Component,
     ElementRef,
-    EventEmitter,
     HostBinding,
     Input,
     OnDestroy,
-    Output,
     ViewChild,
 } from '@angular/core';
 import {
+    AsyncValidator,
     ControlValueAccessor,
     FormControl,
+    NG_ASYNC_VALIDATORS,
     NG_VALUE_ACCESSOR,
     ValidationErrors,
     Validators,
 } from '@angular/forms';
+import { IDefinitionsTable } from '@core/types/definitions';
+import { IValidationResponse } from '@core/types/processing';
 import {
+    Observable,
+    Subject,
     Subscription,
     debounceTime,
     distinctUntilChanged,
     filter,
     switchMap,
+    take,
     tap,
 } from 'rxjs';
-import {
-    IDefinitionsTable,
-    IValidationResponse,
-} from 'src/app/core/interfaces';
 import { ModelService } from 'src/app/services/model.service';
 import { ValidationService } from 'src/app/services/validation.service';
+
+type OnChangeFn = (value: string | null) => void;
+type OnTouchedFn = (value: string | null) => void;
 
 @Component({
     selector: 'app-equation-input',
@@ -41,10 +45,15 @@ import { ValidationService } from 'src/app/services/validation.service';
             useExisting: EquationInputComponent,
             multi: true,
         },
+        {
+            provide: NG_ASYNC_VALIDATORS,
+            useExisting: EquationInputComponent,
+            multi: true,
+        },
     ],
 })
 export class EquationInputComponent
-    implements ControlValueAccessor, AfterViewInit, OnDestroy
+    implements ControlValueAccessor, AfterViewInit, OnDestroy, AsyncValidator
 {
     @Input() public title: string = '';
     @Input() public placeholder: string = '';
@@ -53,18 +62,14 @@ export class EquationInputComponent
     @Input()
     public noPadding: boolean = false;
 
-    @Output()
-    public readonly errorsChange: EventEmitter<ValidationErrors | null> =
-        new EventEmitter<ValidationErrors | null>();
-
-    public readonly equationFormControl: FormControl = new FormControl(null, [
-        Validators.required,
-    ]);
-
-    private onChange: () => void = () => {};
+    public readonly equationFormControl: FormControl<string | null> =
+        new FormControl<string | null>(null, [Validators.required]);
 
     public readonly definitionsTable: IDefinitionsTable;
 
+    private readonly validationRequest: Subject<string | null> = new Subject();
+    private readonly validationResult: Subject<ValidationErrors | null> =
+        new Subject();
     private readonly subscription: Subscription = new Subscription();
 
     @ViewChild('equationInput') private equationInput!: ElementRef;
@@ -80,47 +85,11 @@ export class EquationInputComponent
         const inputLength: number = this.equationFormControl.value
             ? this.equationFormControl.value.length
             : 0;
-        const validationSubscription: Subscription =
-            this.equationFormControl.valueChanges
-                .pipe(
-                    distinctUntilChanged(),
-                    filter((value: string) => !!value),
-                    tap(() => {
-                        this.errorsChange.emit({});
-                    }),
-                    debounceTime(500),
-                    switchMap((value: string) => {
-                        const allowedSymbols: string[] =
-                            this.modelService.getAvailableSymbols();
-
-                        return this.validationService.validateEquation(
-                            value,
-                            allowedSymbols
-                        );
-                    }),
-                    tap((validationResponse: IValidationResponse) => {
-                        if (!validationResponse.isValid) {
-                            this.equationFormControl.setErrors({
-                                equation: {
-                                    invalid: validationResponse.message,
-                                },
-                            });
-
-                            this.errorsChange.emit(
-                                this.equationFormControl.errors
-                            );
-                        } else {
-                            this.equationFormControl.setErrors(null);
-
-                            this.errorsChange.emit(null);
-                        }
-                    })
-                )
-                .subscribe();
 
         this.setCursorPosition(inputLength);
+        this.initValidator();
 
-        this.subscription.add(validationSubscription);
+        this.validationRequest.next(this.equationFormControl.value);
     }
 
     public ngOnDestroy(): void {
@@ -128,7 +97,7 @@ export class EquationInputComponent
     }
 
     public onChipInput(definitionName: string): void {
-        const equationValue: string = this.equationFormControl.value;
+        const equationValue: string | null = this.equationFormControl.value;
         const cursorPosition: number = this.getCursorPosition();
 
         const leftPart: string = equationValue
@@ -145,17 +114,15 @@ export class EquationInputComponent
         this.setCursorPosition(leftPart.length + definitionName.length + 2);
     }
 
-    public writeValue(equation: any): void {
+    public writeValue(equation: string | null): void {
         this.equationFormControl.setValue(equation);
     }
 
-    public registerOnChange(onChange: any): void {
-        this.onChange = onChange;
-
+    public registerOnChange(onChange: OnChangeFn): void {
         this.equationFormControl.valueChanges.subscribe(onChange);
     }
 
-    public registerOnTouched(onTouched: any): void {
+    public registerOnTouched(onTouched: OnTouchedFn): void {
         this.equationFormControl.valueChanges.subscribe(onTouched);
     }
 
@@ -165,6 +132,51 @@ export class EquationInputComponent
         } else {
             this.equationFormControl.enable();
         }
+    }
+
+    public validate(): Observable<ValidationErrors | null> {
+        this.validationRequest.next(this.equationFormControl.value);
+
+        return this.validationResult.asObservable().pipe(take(1));
+    }
+
+    private initValidator(): void {
+        const validationSubscription: Subscription = this.validationRequest
+            .pipe(
+                distinctUntilChanged(),
+                filter((value: string | null): value is string =>
+                    Boolean(value)
+                ),
+                debounceTime(500),
+                switchMap((value: string) =>
+                    this.validationService.validateEquation(
+                        value as string,
+                        this.modelService.getAvailableSymbols()
+                    )
+                ),
+                tap((validationResponse: IValidationResponse): void => {
+                    if (!validationResponse.isValid) {
+                        const validationErrors: ValidationErrors = {
+                            equation: {
+                                invalid: validationResponse.message,
+                            },
+                        };
+
+                        this.equationFormControl.setErrors(validationErrors);
+
+                        this.validationResult.next(validationErrors);
+
+                        return;
+                    }
+
+                    this.equationFormControl.setErrors(null);
+
+                    this.validationResult.next(null);
+                })
+            )
+            .subscribe();
+
+        this.subscription.add(validationSubscription);
     }
 
     private setCursorPosition(positionIndex: number): void {

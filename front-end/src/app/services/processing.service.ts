@@ -1,12 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
 import {
     IOptimalControlRequestData,
     IOptimalControlResponseData,
+    IPIRequestData,
+    IPIResponseData,
     ISimulationRequestData,
-    ISimulationResponseData
-} from '../core/interfaces';
+    ISimulationResponseData,
+} from '@core/types/processing';
+import { Observable } from 'rxjs';
 
 @Injectable({
     providedIn: 'root',
@@ -28,6 +30,15 @@ export class ProcessingService {
     ): Observable<IOptimalControlResponseData> {
         return this.httpClient.post<IOptimalControlResponseData>(
             'http://localhost:5000/optimal-control',
+            data
+        );
+    }
+
+    public identifyParameters(
+        data: IPIRequestData
+    ): Observable<IPIResponseData> {
+        return this.httpClient.post<IPIResponseData>(
+            'http://localhost:5000/parameters-identification',
             data
         );
     }

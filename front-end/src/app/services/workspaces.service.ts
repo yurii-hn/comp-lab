@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
+import { IWorkspace, IWorkspaceBase } from '@core/types/workspaces';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { IWorkspace, IWorkspaceBase } from '../core/interfaces';
 
 @Injectable({
     providedIn: 'root',

@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { IValidationResponse } from '@core/types/processing';
 import { Observable } from 'rxjs';
-import { IValidationResponse } from '../core/interfaces';
 
 @Injectable({
     providedIn: 'root',

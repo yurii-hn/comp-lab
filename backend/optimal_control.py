@@ -192,11 +192,15 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
             variables_datatable[0]
         )
 
-        simulation_results: List[List[ICompartmentResponseData]] = [
+        simulation_results: List[List[ICompartmentResponseData | IInterventionResponseData]] = [
             cast(
                 List[ICompartmentResponseData],
                 []
             ),
+            cast(
+                List[IInterventionResponseData],
+                []
+            )
         ]
 
         if data.parameters.intervention_approximation_type == InterventionApproximationType.PIECEWISE_LINEAR.value:
@@ -243,10 +247,6 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
                         i * data.parameters.intervention_nodes_amount:
                         (i + 1) * data.parameters.intervention_nodes_amount
                     ]
-                ) + (
-                    [0]
-                    if data.parameters.intervention_approximation_type == InterventionApproximationType.PIECEWISE_CONSTANT.value
-                    else []
                 )
             )
             for i, intervention in enumerate(data.payload.interventions)
@@ -268,6 +268,7 @@ def optimal_control(data: IOptimalControlRequestData) -> IOptimalControlResponse
                 ),
                 IOptimalControlResponsePayload(
                     simulation_results[0],
+                    simulation_results[1],
                     interventions_values,
                 )
             ),
@@ -329,6 +330,24 @@ def optimization_criteria(
         else piecewise_linear_control_approximation
     )
 
+    interventions_data: List[IInterventionResponseData] = [
+        IInterventionResponseData(
+            intervention.name,
+            [
+                approximation_function(
+                    j * step_size,
+                    interventions_vector[
+                        i * parameters.intervention_nodes_amount:
+                        (i + 1) *
+                        parameters.intervention_nodes_amount
+                    ],
+                    parameters.time
+                )
+                for j in range(parameters.nodes_amount + 1)
+            ])
+        for i, intervention in enumerate(interventions)
+    ]
+
     variables_datatable[0] = IVariablesDatatable({
         **{
             compartment.name: [compartment.value] + [0] *
@@ -336,18 +355,8 @@ def optimization_criteria(
             for compartment in simulation_model
         },
         **{
-            intervention.name: [
-                approximation_function(
-                    j * step_size,
-                    interventions_vector[
-                        i * parameters.intervention_nodes_amount:
-                        (i + 1) * parameters.intervention_nodes_amount
-                    ],
-                    parameters.time
-                )
-                for j in range(parameters.nodes_amount + 1)
-            ]
-            for i, intervention in enumerate(interventions)
+            intervention.name: intervention.values
+            for intervention in interventions_data
         },
         **{
             current_lambda.name: [0] * (parameters.nodes_amount + 1)
@@ -361,6 +370,7 @@ def optimization_criteria(
         parameters.nodes_amount,
         variables_datatable[0]
     )
+    simulation_results[1] = interventions_data
 
     get_lambda_values(
         simulation_lambdas_derivatives,

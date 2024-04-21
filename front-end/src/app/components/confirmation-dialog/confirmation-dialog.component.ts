@@ -39,6 +39,10 @@ export class ConfirmationDialogComponent {
         }
     }
 
+    public close(): void {
+        this.dialogRef.close();
+    }
+
     public cancel(): void {
         this.dialogRef.close(false);
     }

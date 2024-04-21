@@ -1,4 +1,3 @@
-import { DataSource } from '@angular/cdk/collections';
 import { Injectable } from '@angular/core';
 import {
     AbstractControl,
@@ -8,6 +7,10 @@ import {
     ValidationErrors,
     Validators,
 } from '@angular/forms';
+import { MatTableDataSource } from '@angular/material/table';
+import { DefinitionType, ICompartmentDefinition, IDefinition, IDefinitionsTable, IInterventionDefinition } from '@core/types/definitions';
+import { ICompartment, ICompartmentBase, IConstant, IEditCompartmentPayload, IFlow, IIntervention } from '@core/types/model';
+import { IImportModel, IWorkspace, IWorkspaceBase } from '@core/types/workspaces';
 import cytoscape, {
     EdgeCollection,
     EdgeSingular,
@@ -28,23 +31,6 @@ import {
     tap,
 } from 'rxjs';
 import { cytoscapeLayoutOptions, cytoscapeOptions } from '../core/constants';
-import {
-    DefinitionType,
-    ICompartment,
-    ICompartmentBase,
-    ICompartmentDefinition,
-    IConstant,
-    IDefinition,
-    IDefinitionsTable,
-    IEditCompartmentPayload,
-    IExportModel,
-    IFlow,
-    IImportModel,
-    IIntervention,
-    IInterventionDefinition,
-    IWorkspace,
-    IWorkspaceBase
-} from '../core/interfaces';
 import { SamplesService } from './model-samples.service';
 import { ValidationService } from './validation.service';
 import { WorkspacesService } from './workspaces.service';
@@ -174,7 +160,7 @@ export class ModelService {
         this.cytoscapeObj.layout(cytoscapeLayoutOptions).run();
     }
 
-    public getModelExport(): IExportModel {
+    public getModelExport(): IImportModel {
         return {
             compartments: this.getCompartmentsBase(),
             interventions: this.getInterventions(),
@@ -330,7 +316,7 @@ export class ModelService {
         );
     }
 
-    public getCompartments(constants: IConstant[]): ICompartment[] {
+    public getCompartments(): ICompartment[] {
         return this.getDefinitionsTable().compartments.map(
             (compartment: ICompartmentDefinition): ICompartment => {
                 const compartmentNode: NodeSingular = this.cytoscapeObj
@@ -342,28 +328,10 @@ export class ModelService {
                     value: compartment.value,
                     inflows: this.getFlowsEquations(
                         compartmentNode.incomers().edges()
-                    ).map((flow: string): string => {
-                        constants.forEach((constant: IConstant): void => {
-                            flow = flow.replace(
-                                new RegExp(`\\b${constant.name}\\b`),
-                                constant.value.toString()
-                            );
-                        });
-
-                        return flow;
-                    }),
+                    ),
                     outflows: this.getFlowsEquations(
                         compartmentNode.outgoers().edges()
-                    ).map((flow: string): string => {
-                        constants.forEach((constant: IConstant): void => {
-                            flow = flow.replace(
-                                new RegExp(`\\b${constant.name}\\b`),
-                                constant.value.toString()
-                            );
-                        });
-
-                        return flow;
-                    }),
+                    ),
                 };
             }
         );
@@ -498,12 +466,21 @@ export class ModelService {
         );
     }
 
-    public getDataSource(): DataSource<AbstractControl> {
-        return {
-            connect: (): Observable<AbstractControl[]> =>
-                this.definitionsFormArrayControlsSubject.asObservable(),
-            disconnect: (): void => {},
-        };
+    public getDataSource(): MatTableDataSource<AbstractControl> {
+        const dataSource = new MatTableDataSource<AbstractControl>(undefined);
+
+        this.definitionsFormArrayControlsSubject
+            .asObservable()
+            .pipe(
+                tap((controls: FormArray['controls']): void => {
+                    dataSource.data = controls;
+                })
+            )
+            .subscribe();
+
+        dataSource.data = this.definitionsFormArray.controls;
+
+        return dataSource;
     }
 
     public getDefinitionsTable(): IDefinitionsTable {

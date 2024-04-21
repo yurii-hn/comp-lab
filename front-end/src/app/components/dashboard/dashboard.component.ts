@@ -1,24 +1,33 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormControl } from '@angular/forms';
-import { MatDialogRef } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Config, Data, Layout } from 'plotly.js';
-import { Subscription, take, tap } from 'rxjs';
 import {
     ICompartmentResponseData,
-    IExportResults,
-    IImportResults,
     IInterventionResponseData,
-    IOptimalControlResults,
-    IResponseData,
-    IResults,
-    IResultsBase,
+    IOptimalControlParameters,
+    ISimulationParameters,
     InterventionApproximationType,
+    isPIResponsePayloadWithInterventions,
+} from '@core/types/processing';
+import {
+    IImportResults,
+    IOptimalControlResults,
+    IPIResults,
+    IResults,
+    IResultsBody,
+    ISimulationResults,
     OptimalControlResultsViewMode,
-} from 'src/app/core/interfaces';
-import { isOptimalControlResults } from 'src/app/core/utils';
+    isOptimalControlResults,
+    isPIResults,
+    isSimulationResults,
+} from '@core/types/results';
+import { Config, Data, Layout } from 'plotly.js';
+import { Subscription, filter, take, tap } from 'rxjs';
+import { FilesService } from 'src/app/services/files.service';
 import { ResultsStorageService } from 'src/app/services/results-storage.service';
 import { WorkspacesService } from 'src/app/services/workspaces.service';
+import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
 
 interface IPlot {
     data: Data[];
@@ -58,7 +67,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
         public readonly workspacesService: WorkspacesService,
         public readonly resultsStorageService: ResultsStorageService,
         private readonly dialogRef: MatDialogRef<DashboardComponent>,
-        private readonly snackBar: MatSnackBar
+        private readonly filesService: FilesService,
+        private readonly snackBar: MatSnackBar,
+        private readonly dialog: MatDialog
     ) {}
 
     public ngOnInit(): void {
@@ -88,11 +99,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
                             this.resultsControl.disable({
                                 emitEvent: false,
                             });
-                        } else {
-                            this.resultsControl.enable({
-                                emitEvent: false,
-                            });
+
+                            return;
                         }
+
+                        this.resultsControl.enable({
+                            emitEvent: false,
+                        });
                     })
                 )
                 .subscribe();
@@ -142,73 +155,82 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     public onResultsImport(): void {
-        const fileInput: HTMLInputElement = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = '.scr';
+        this.filesService
+            .readDataFromFile<IImportResults>('.scr')
+            .pipe(
+                tap((resultsData: IImportResults): void => {
+                    this.resultsStorageService.addResults({
+                        data: resultsData,
+                    } as IResultsBody);
 
-        fileInput.onchange = (): void => {
-            const file: File = fileInput.files![0];
+                    if (this.resultsStorageService.resultsNames.length === 1) {
+                        this.onResultsChange();
+                    }
 
-            const fileReader: FileReader = new FileReader();
-
-            fileReader.onload = (): void => {
-                const resultsData: IImportResults = JSON.parse(
-                    fileReader.result as string
-                );
-
-                this.resultsStorageService.addResults({
-                    data: resultsData,
-                } as IResultsBase);
-
-                if (this.resultsStorageService.resultsNames.length === 1) {
-                    this.onResultsChange();
-                }
-
-                this.snackBar.open('Results imported successfully', 'Dismiss', {
-                    panelClass: 'snackbar',
-                    horizontalPosition: 'right',
-                    verticalPosition: 'bottom',
-                });
-            };
-
-            fileReader.readAsText(file);
-        };
-
-        fileInput.click();
-
-        fileInput.remove();
+                    this.snackBar.open(
+                        'Results imported successfully',
+                        'Dismiss',
+                        {
+                            panelClass: 'snackbar',
+                            horizontalPosition: 'right',
+                            verticalPosition: 'bottom',
+                        }
+                    );
+                })
+            )
+            .subscribe();
     }
 
     public onResultsExport(): void {
-        const results: IExportResults =
-            this.resultsStorageService.getCurrentResultsExport();
-        const resultsString: string = JSON.stringify(results, null, 4);
+        const exportTypeDialogRef: MatDialogRef<ConfirmationDialogComponent> =
+            this.dialog.open(ConfirmationDialogComponent, {
+                data: {
+                    title: 'Export results',
+                    message: 'What you want to export?',
+                    confirmText: 'Solution with parameters',
+                    cancelText: 'Solution only',
+                },
+            });
 
-        const blob: Blob = new Blob([resultsString], {
-            type: 'application/json',
-        });
+        exportTypeDialogRef
+            .afterClosed()
+            .pipe(
+                filter(
+                    (
+                        isExportWithParameters?: boolean
+                    ): isExportWithParameters is boolean =>
+                        isExportWithParameters !== undefined
+                ),
+                tap((isExportWithParameters: boolean): void => {
+                    const fileBaseName: string = `${this.workspacesService.currentWorkspace.name}-${this.resultsStorageService.currentResults.name}`;
 
-        const url: string = URL.createObjectURL(blob);
+                    if (isExportWithParameters) {
+                        this.filesService.downloadFileWithData(
+                            this.resultsStorageService.getCurrentResultsExport(),
+                            `${fileBaseName}.scr`
+                        );
 
-        const anchor: HTMLAnchorElement = document.createElement('a');
-        anchor.href = url;
-        anchor.download = `${this.workspacesService.currentWorkspace.name}-${this.resultsStorageService.currentResults.name}.scr`;
+                        return;
+                    }
 
-        anchor.click();
-
-        URL.revokeObjectURL(url);
-
-        anchor.remove();
-
-        this.snackBar.open(
-            'Results export is ready for downloading',
-            'Dismiss',
-            {
-                panelClass: 'snackbar',
-                horizontalPosition: 'right',
-                verticalPosition: 'bottom',
-            }
-        );
+                    this.filesService.downloadFileWithData(
+                        this.resultsStorageService.getCurrentSolutionExport(),
+                        `${fileBaseName}.scs`
+                    );
+                }),
+                tap((): void => {
+                    this.snackBar.open(
+                        'Results export is ready for downloading',
+                        'Dismiss',
+                        {
+                            panelClass: 'snackbar',
+                            horizontalPosition: 'right',
+                            verticalPosition: 'bottom',
+                        }
+                    );
+                })
+            )
+            .subscribe();
     }
 
     public closeDialog(): void {
@@ -216,104 +238,247 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     private onResultsChange(): void {
-        this.clearPlots();
+        const currentResults: IResults =
+            this.resultsStorageService.currentResults;
 
-        if (
-            isOptimalControlResults(this.resultsStorageService.currentResults)
-        ) {
-            const payloadIndex: 0 | 1 =
-                this.resultsStorageService.currentResults.viewMode ===
-                OptimalControlResultsViewMode.NonOptimized
-                    ? 0
-                    : 1;
+        if (isSimulationResults(currentResults)) {
+            this.showSimulationResults(currentResults);
+        } else if (isOptimalControlResults(currentResults)) {
+            this.showOptimalControlResults(currentResults);
+        } else if (isPIResults(currentResults)) {
+            this.showPIResults(currentResults);
+        }
+    }
 
-            this.resultsStorageService.currentResults.data.payload[
-                payloadIndex
-            ].compartments.forEach(
-                (compartment: ICompartmentResponseData): void => {
-                    this.addPlot(compartment);
+    private showSimulationResults(results: ISimulationResults): void {
+        const resultsParameters: ISimulationParameters =
+            results.data.parameters;
+
+        const xAxis: number[] = this.getXAxis(
+            resultsParameters.time,
+            resultsParameters.nodesAmount
+        );
+
+        this.plotsData = results.data.payload.compartments.map(
+            (compartment: ICompartmentResponseData): IPlot => ({
+                data: [
+                    {
+                        x: xAxis,
+                        y: compartment.values,
+                        type: 'scatter',
+                        name: compartment.name,
+                        line: {
+                            shape: 'linear',
+                        },
+                    },
+                ],
+                layout: {
+                    autosize: true,
+                    title: {
+                        text: compartment.name,
+                    },
+                    xaxis: {
+                        title: {
+                            text: 'Time',
+                        },
+                    },
+                    yaxis: {
+                        rangemode: 'tozero',
+                        title: {
+                            text: compartment.name,
+                        },
+                    },
+                },
+            })
+        );
+    }
+
+    private showOptimalControlResults(results: IOptimalControlResults): void {
+        const resultsParameters: IOptimalControlParameters =
+            results.data.parameters;
+        const payloadIndex: 0 | 1 =
+            results.viewMode === OptimalControlResultsViewMode.NonOptimized
+                ? 0
+                : 1;
+
+        const xAxisCompartments: number[] = this.getXAxis(
+            resultsParameters.time,
+            resultsParameters.nodesAmount
+        );
+
+        this.plotsData = results.data.payload[payloadIndex].compartments.map(
+            (compartment: ICompartmentResponseData): IPlot => ({
+                data: [
+                    {
+                        x: xAxisCompartments,
+                        y: compartment.values,
+                        type: 'scatter',
+                        name: compartment.name,
+                        line: {
+                            shape: 'linear',
+                        },
+                    },
+                ],
+                layout: {
+                    autosize: true,
+                    title: {
+                        text: compartment.name,
+                    },
+                    xaxis: {
+                        title: {
+                            text: 'Time',
+                        },
+                    },
+                    yaxis: {
+                        rangemode: 'tozero',
+                        title: {
+                            text: compartment.name,
+                        },
+                    },
+                },
+            })
+        );
+
+        if (payloadIndex) {
+            const xAxisInterventions: number[] = this.getXAxis(
+                resultsParameters.time,
+                resultsParameters.interventionNodesAmount
+            );
+            const lineShape: 'linear' | 'hv' =
+                resultsParameters.interventionApproximationType ===
+                InterventionApproximationType.PiecewiseConstant
+                    ? 'hv'
+                    : 'linear';
+            const isPiecewiseConstantApproximation: boolean =
+                resultsParameters.interventionApproximationType ===
+                InterventionApproximationType.PiecewiseConstant;
+
+            results.data.payload[payloadIndex].interventions.forEach(
+                (intervention: IInterventionResponseData): void => {
+                    this.plotsData.push({
+                        data: [
+                            {
+                                x: xAxisInterventions,
+                                y: [
+                                    ...intervention.values,
+                                    ...(isPiecewiseConstantApproximation
+                                        ? [intervention.values.at(-1) as number]
+                                        : []),
+                                ],
+                                type: 'scatter',
+                                name: intervention.name,
+                                line: {
+                                    shape: lineShape,
+                                },
+                            },
+                        ],
+                        layout: {
+                            autosize: true,
+                            title: {
+                                text: intervention.name,
+                            },
+                            xaxis: {
+                                title: {
+                                    text: 'Time',
+                                },
+                            },
+                            yaxis: {
+                                rangemode: 'tozero',
+                                title: {
+                                    text: intervention.name,
+                                },
+                            },
+                        },
+                    });
                 }
             );
-
-            if (payloadIndex) {
-                this.resultsStorageService.currentResults.data.payload[
-                    payloadIndex
-                ].interventions.forEach(
-                    (compartment: IInterventionResponseData): void => {
-                        const lineShape: 'linear' | 'hv' =
-                            (
-                                this.resultsStorageService
-                                    .currentResults as IOptimalControlResults
-                            ).data.parameters.interventionApproximationType ===
-                            InterventionApproximationType.PiecewiseConstant
-                                ? 'hv'
-                                : 'linear';
-
-                        this.addPlot(compartment, lineShape);
-                    }
-                );
-            }
-
-            return;
         }
-
-        this.resultsStorageService.currentResults.data.payload.compartments.forEach(
-            (compartment: ICompartmentResponseData): void => {
-                this.addPlot(compartment);
-            }
-        );
     }
 
-    private addPlot(
-        data: IResponseData,
-        lineShape?:
-            | 'linear'
-            | 'spline'
-            | 'hv'
-            | 'vh'
-            | 'hvh'
-            | 'vhv'
-            | undefined
-    ): void {
-        const xAxis: number[] = this.getXAxis(
-            this.resultsStorageService.currentResults.data.parameters.time,
-            data.values.length
+    private showPIResults(results: IPIResults): void {
+        const nodesAmount: number =
+            results.data.payload.solution.compartments[0].values.length;
+        const time: number = results.data.parameters.timeStep * nodesAmount;
+
+        const xAxis: number[] = this.getXAxis(time, nodesAmount);
+
+        this.plotsData = results.data.payload.solution.compartments.map(
+            (compartment: ICompartmentResponseData, index: number): IPlot => ({
+                data: [
+                    {
+                        x: xAxis,
+                        y: results.data.payload.approximatedSolution[index]
+                            .values,
+                        type: 'scatter',
+                        name: 'Approximated',
+                        line: {
+                            shape: 'linear',
+                        },
+                    },
+                    {
+                        x: xAxis,
+                        y: compartment.values,
+                        type: 'scatter',
+                        name: 'Provided',
+                        mode: 'markers',
+                    },
+                ],
+                layout: {
+                    autosize: true,
+                    title: {
+                        text: compartment.name,
+                    },
+                    xaxis: {
+                        title: {
+                            text: 'Time',
+                        },
+                    },
+                    yaxis: {
+                        rangemode: 'tozero',
+                        title: {
+                            text: compartment.name,
+                        },
+                    },
+                },
+            })
         );
 
-        this.plotsData.push({
-            data: [
-                {
-                    x: xAxis,
-                    y: data.values,
-                    type: 'scatter',
-                    name: data.name,
-                    line: {
-                        shape: lineShape,
-                    },
-                },
-            ],
-            layout: {
-                autosize: true,
-                title: {
-                    text: data.name,
-                },
-                xaxis: {
-                    title: {
-                        text: 'Time',
-                    },
-                },
-                yaxis: {
-                    rangemode: 'tozero',
-                    title: {
-                        text: data.name,
-                    },
-                },
-            },
-        });
-    }
-
-    private clearPlots(): void {
-        this.plotsData = [];
+        if (isPIResponsePayloadWithInterventions(results.data.payload)) {
+            results.data.payload.solution.interventions.forEach(
+                (intervention: IInterventionResponseData): void => {
+                    this.plotsData.push({
+                        data: [
+                            {
+                                x: xAxis,
+                                y: intervention.values,
+                                type: 'scatter',
+                                name: intervention.name,
+                                line: {
+                                    shape: 'linear',
+                                },
+                            },
+                        ],
+                        layout: {
+                            autosize: true,
+                            title: {
+                                text: intervention.name,
+                            },
+                            xaxis: {
+                                title: {
+                                    text: 'Time',
+                                },
+                            },
+                            yaxis: {
+                                rangemode: 'tozero',
+                                title: {
+                                    text: intervention.name,
+                                },
+                            },
+                        },
+                    });
+                }
+            );
+        }
     }
 
     private getXAxis(time: number, nodesAmount: number): number[] {

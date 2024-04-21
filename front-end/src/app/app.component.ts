@@ -9,6 +9,26 @@ import {
 import { FormControl } from '@angular/forms';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { ICompartmentDefinition } from '@core/types/definitions';
+import {
+    ICompartment,
+    ICompartmentBase,
+    IConstant,
+    IEditCompartmentPayload,
+    IIntervention,
+} from '@core/types/model';
+import {
+    IOptimalControlResponseData,
+    IPIResponseData,
+    IPISelectedConstant,
+    IProcessingDialogValue,
+    ISimulationResponseData,
+    isProcessingDialogOptimalControlValue,
+    isProcessingDialogPIValue,
+    isProcessingDialogSimulationValue,
+} from '@core/types/processing';
+import { IResultsBody } from '@core/types/results';
+import { IExportModel, IImportModel, IWorkspace } from '@core/types/workspaces';
 import { EdgeSingular, NodeSingular, SingularElementArgument } from 'cytoscape';
 import {
     Observable,
@@ -25,41 +45,12 @@ import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { DefinitionsTableDialogComponent } from './components/definitions-table-dialog/definitions-table-dialog.component';
 import { FlowCreationDialogComponent } from './components/flow-creation-dialog/flow-creation-dialog.component';
 import { ProcessingDialogComponent } from './components/processing-dialog/processing-dialog.component';
-import {
-    ICompartment,
-    ICompartmentBase,
-    ICompartmentDefinition,
-    IConstant,
-    IEditCompartmentPayload,
-    IExportModel,
-    IImportModel,
-    IIntervention,
-    IOptimalControlParameters,
-    IOptimalControlResponseData,
-    IResultsBase,
-    ISimulationParameters,
-    ISimulationResponseData,
-    IWorkspace,
-} from './core/interfaces';
 import { fromResizeObserver } from './core/utils';
+import { FilesService } from './services/files.service';
 import { ModelService } from './services/model.service';
 import { ProcessingService } from './services/processing.service';
 import { ResultsStorageService } from './services/results-storage.service';
 import { WorkspacesService } from './services/workspaces.service';
-
-interface IProcessingDialogSimulationOutput {
-    parameters: ISimulationParameters;
-    isOptimalControlProblem: false;
-}
-
-interface IProcessingDialogOptimalControlOutput {
-    parameters: IOptimalControlParameters;
-    isOptimalControlProblem: true;
-}
-
-type IProcessingDialogOutput =
-    | IProcessingDialogSimulationOutput
-    | IProcessingDialogOptimalControlOutput;
 
 @Component({
     selector: 'app-root',
@@ -89,6 +80,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         private readonly dialogService: MatDialog,
         private readonly processingService: ProcessingService,
         private readonly modelService: ModelService,
+        private readonly filesService: FilesService,
         private readonly snackBar: MatSnackBar
     ) {}
 
@@ -265,58 +257,35 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     public onModelImport(): void {
-        const fileInput: HTMLInputElement = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = '.scm';
+        this.filesService
+            .readDataFromFile<IImportModel>('.scm')
+            .pipe(
+                tap((model: IImportModel) => {
+                    this.modelService.parseSample(model);
 
-        fileInput.onchange = (): void => {
-            const file: File = fileInput.files![0];
+                    this.layout();
 
-            const fileReader: FileReader = new FileReader();
-
-            fileReader.onload = (): void => {
-                const model: IImportModel = JSON.parse(
-                    fileReader.result as string
-                );
-
-                this.modelService.parseSample(model);
-
-                this.layout();
-
-                this.snackBar.open('Model imported successfully', 'Dismiss', {
-                    panelClass: 'snackbar',
-                    horizontalPosition: 'right',
-                    verticalPosition: 'bottom',
-                });
-            };
-
-            fileReader.readAsText(file);
-        };
-
-        fileInput.click();
-
-        fileInput.remove();
+                    this.snackBar.open(
+                        'Model imported successfully',
+                        'Dismiss',
+                        {
+                            panelClass: 'snackbar',
+                            horizontalPosition: 'right',
+                            verticalPosition: 'bottom',
+                        }
+                    );
+                })
+            )
+            .subscribe();
     }
 
     public onModelExport(): void {
         const model: IExportModel = this.modelService.getModelExport();
-        const modelString: string = JSON.stringify(model, null, 4);
 
-        const blob: Blob = new Blob([modelString], {
-            type: 'application/json',
-        });
-
-        const url: string = URL.createObjectURL(blob);
-
-        const anchor: HTMLAnchorElement = document.createElement('a');
-        anchor.href = url;
-        anchor.download = `${this.workspacesService.currentWorkspace.name}.scm`;
-
-        anchor.click();
-
-        URL.revokeObjectURL(url);
-
-        anchor.remove();
+        this.filesService.downloadFileWithData(
+            model,
+            `${this.workspacesService.currentWorkspace.name}.scm`
+        );
 
         this.snackBar.open('Model export is ready for downloading', 'Dismiss', {
             panelClass: 'snackbar',
@@ -344,10 +313,13 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
             simulationDialog
                 .afterClosed()
                 .pipe(
-                    filter((output: IProcessingDialogOutput) =>
-                        Boolean(output)
+                    filter(
+                        (
+                            output: IProcessingDialogValue
+                        ): output is NonNullable<IProcessingDialogValue> =>
+                            Boolean(output)
                     ),
-                    tap(this.simulateModel.bind(this))
+                    tap(this.processModel.bind(this))
                 )
                 .subscribe()
         );
@@ -449,48 +421,72 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         this.modelService.editCompartment(compartmentData);
     }
 
-    private simulateModel(simulationData: IProcessingDialogOutput): void {
+    private processModel(
+        dialogOutput: NonNullable<IProcessingDialogValue>
+    ): void {
         let observable: Observable<
-            ISimulationResponseData | IOptimalControlResponseData
+            | ISimulationResponseData
+            | IOptimalControlResponseData
+            | IPIResponseData
         >;
 
-        if (!simulationData.isOptimalControlProblem) {
+        if (isProcessingDialogSimulationValue(dialogOutput)) {
             observable = this.processingService.simulateModel({
                 payload: {
                     compartments: this.getCompartments(),
+                    constants: this.getConstants(),
                 },
-                parameters: simulationData.parameters,
+                parameters: dialogOutput.parameters,
             });
-        } else {
-            const constants: IConstant[] = this.getConstants();
-
+        } else if (isProcessingDialogOptimalControlValue(dialogOutput)) {
             observable = this.processingService.optimizeModel({
                 payload: {
                     compartments: this.getCompartments(),
                     interventions: this.getInterventions(),
+                    constants: this.getConstants(),
                 },
                 parameters: {
-                    time: simulationData.parameters.time,
-                    nodesAmount: simulationData.parameters.nodesAmount,
-                    costFunction: constants.reduce(
-                        (costFunction: string, constant: IConstant): string => {
-                            return costFunction.replace(
-                                new RegExp(`\\b${constant.name}\\b`),
-                                constant.value.toString()
-                            );
-                        },
-                        simulationData.parameters.costFunction
-                    ),
+                    time: dialogOutput.parameters.time,
+                    nodesAmount: dialogOutput.parameters.nodesAmount,
+                    costFunction: dialogOutput.parameters.costFunction,
                     interventionNodesAmount:
-                        simulationData.parameters.interventionNodesAmount,
+                        dialogOutput.parameters.interventionNodesAmount,
                     interventionUpperBoundary:
-                        simulationData.parameters.interventionUpperBoundary,
+                        dialogOutput.parameters.interventionUpperBoundary,
                     interventionLowerBoundary:
-                        simulationData.parameters.interventionLowerBoundary,
+                        dialogOutput.parameters.interventionLowerBoundary,
                     interventionApproximationType:
-                        simulationData.parameters.interventionApproximationType,
+                        dialogOutput.parameters.interventionApproximationType,
                 },
             });
+        } else if (isProcessingDialogPIValue(dialogOutput)) {
+            const interventions: IIntervention[] = this.getInterventions();
+
+            observable = this.processingService.identifyParameters({
+                parameters: {
+                    selectedConstants:
+                        dialogOutput.parameters.selectedConstants,
+                    timeStep: dialogOutput.parameters.timeStep,
+                },
+                payload: {
+                    model: {
+                        compartments: this.getCompartments(),
+                        constants: this.getConstants().filter(
+                            (constant: IConstant): boolean =>
+                                !dialogOutput.parameters.selectedConstants.find(
+                                    (
+                                        selectedConstant: IPISelectedConstant
+                                    ): boolean =>
+                                        selectedConstant.name === constant.name
+                                )
+                        ),
+                        ...(interventions.length && { interventions }),
+                    },
+                    solution: dialogOutput.solution,
+                },
+            });
+        } else {
+            return;
         }
 
         observable
@@ -500,11 +496,15 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
                         results:
                             | ISimulationResponseData
                             | IOptimalControlResponseData
-                    ) => {
+                            | IPIResponseData
+                    ): void => {
                         if (results.success) {
                             this.resultsStorageService.addResults({
-                                data: results,
-                            } as IResultsBase);
+                                data: {
+                                    parameters: results.parameters,
+                                    payload: results.payload,
+                                },
+                            } as IResultsBody);
 
                             this.snackBar.open(
                                 'Processing completed successfully',
@@ -536,9 +536,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     private getCompartments(): ICompartment[] {
-        const constants: IConstant[] = this.getConstants();
-
-        return this.modelService.getCompartments(constants);
+        return this.modelService.getCompartments();
     }
 
     private getConstants(): IConstant[] {

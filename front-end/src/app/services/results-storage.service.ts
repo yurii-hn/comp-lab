@@ -1,12 +1,16 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
 import {
     IExportResults,
+    IExportSolution,
     IResults,
-    IResultsBase,
+    IResultsBody,
     OptimalControlResultsViewMode,
-} from '../core/interfaces';
-import { isOptimalControlResults } from '../core/utils';
+    isOptimalControlResults,
+    isOptimalControlResultsBody,
+    isPIResults,
+    isSimulationResults,
+} from '@core/types/results';
+import { BehaviorSubject, Observable } from 'rxjs';
 
 const emptyResults: IResults = {
     data: {
@@ -43,10 +47,10 @@ export class ResultsStorageService {
         return this.resultsNamesSubject.value;
     }
 
-    public addResults(results: IResultsBase): IResults {
+    public addResults(results: IResultsBody): IResults {
         let newResults: IResults;
 
-        if (isOptimalControlResults(results)) {
+        if (isOptimalControlResultsBody(results)) {
             newResults = {
                 name: `Run ${this.results.length + 1}`,
                 viewMode: OptimalControlResultsViewMode.Optimized,
@@ -109,6 +113,28 @@ export class ResultsStorageService {
 
     public getCurrentResultsExport(): IExportResults {
         return this.currentResults.data;
+    }
+
+    public getCurrentSolutionExport(): IExportSolution {
+        if (isSimulationResults(this.currentResults)) {
+            return this.currentResults.data.payload.compartments;
+        } else if (isOptimalControlResults(this.currentResults)) {
+            if (
+                this.currentResults.viewMode ===
+                OptimalControlResultsViewMode.NonOptimized
+            ) {
+                return this.currentResults.data.payload[0].compartments;
+            }
+
+            return [
+                ...this.currentResults.data.payload[1].compartments,
+                ...this.currentResults.data.payload[1].approximatedInterventions,
+            ];
+        } else if (isPIResults(this.currentResults.data)) {
+            return this.currentResults.data.payload.approximatedSolution;
+        }
+
+        return [];
     }
 
     private getWorkspaceNames(): string[] {

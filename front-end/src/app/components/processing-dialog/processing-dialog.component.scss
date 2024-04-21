@@ -1,8 +1,8 @@
 :host {
     display: flex;
     flex-direction: column;
-    width: 700px;
-    height: 95vh;
+    max-width: 70vw;
+    max-height: 95vh;
 
     .header,
     .footer {
@@ -27,19 +27,10 @@
     }
 
     .body {
-        display: flex;
-        flex-direction: column;
         height: calc(100% - 160px);
-        gap: 20px;
-        padding: 20px;
 
-        .config-row {
-            display: flex;
-            gap: 20px;
-        }
-
-        .cost-function-input {
-            overflow: auto;
+        .tab-icon {
+            margin-right: 5px;
         }
     }
 

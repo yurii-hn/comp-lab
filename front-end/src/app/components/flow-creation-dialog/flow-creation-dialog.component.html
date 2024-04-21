@@ -17,7 +17,6 @@
         [title]="'Flow Equation'"
         [placeholder]="'Enter flow equation'"
         [formControl]="flowEquationFormControl"
-        (errorsChange)="onErrorsChange($event)"
     ></app-equation-input>
 </div>
 
@@ -35,7 +34,7 @@
         mat-raised-button
         class="button"
         color="primary"
-        [disabled]="flowEquationFormControl.errors"
+        [disabled]="!flowEquationFormControl.valid"
         (click)="addCompartment()"
     >
         {{ isEditMode ? "Update" : "Add" }}
