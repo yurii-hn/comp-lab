@@ -8,9 +8,26 @@ import {
     Validators,
 } from '@angular/forms';
 import { MatTableDataSource } from '@angular/material/table';
-import { DefinitionType, ICompartmentDefinition, IDefinition, IDefinitionsTable, IInterventionDefinition } from '@core/types/definitions';
-import { ICompartment, ICompartmentBase, IConstant, IEditCompartmentPayload, IFlow, IIntervention } from '@core/types/model';
-import { IImportModel, IWorkspace, IWorkspaceBase } from '@core/types/workspaces';
+import {
+    DefinitionType,
+    ICompartmentDefinition,
+    IDefinition,
+    IDefinitionsTable,
+    IInterventionDefinition,
+} from '@core/types/definitions';
+import {
+    ICompartment,
+    ICompartmentBase,
+    IConstant,
+    IEditCompartmentPayload,
+    IFlow,
+    IIntervention,
+} from '@core/types/model';
+import {
+    IImportModel,
+    IWorkspace,
+    IWorkspaceBase,
+} from '@core/types/workspaces';
 import cytoscape, {
     EdgeCollection,
     EdgeSingular,
@@ -48,10 +65,7 @@ export class ModelService {
 
     public get selectedElement(): SingularElementArgument {
         return (
-            this.cytoscapeObj &&
-            (this.cytoscapeObj.elements(':selected').first().data('equation') ||
-                this.cytoscapeObj.elements(':selected').first().data('name')) &&
-            this.cytoscapeObj.elements(':selected').first()
+            this.cytoscapeObj && this.cytoscapeObj.elements(':selected').first()
         );
     }
 

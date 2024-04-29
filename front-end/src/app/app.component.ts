@@ -383,6 +383,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
                     }),
                     filter((flowEquation: string) => Boolean(flowEquation)),
                     tap((flowEquation: string): void => {
+                        addedEdge.select();
+
                         this.modelService.editFlow(flowEquation);
                     })
                 )
