@@ -1,793 +1,391 @@
-import { Injectable } from '@angular/core';
-import {
-    AbstractControl,
-    FormArray,
-    FormControl,
-    FormGroup,
-    ValidationErrors,
-    Validators,
-} from '@angular/forms';
-import { MatTableDataSource } from '@angular/material/table';
-import {
-    DefinitionType,
-    ICompartmentDefinition,
-    IDefinition,
-    IDefinitionsTable,
-    IInterventionDefinition,
-} from '@core/types/definitions';
+import { EventEmitter, Injectable } from '@angular/core';
+import { ModelDefinition } from '@core/classes/model.class';
 import {
     ICompartment,
-    ICompartmentBase,
     IConstant,
-    IEditCompartmentPayload,
     IFlow,
     IIntervention,
-} from '@core/types/model';
-import {
-    IImportModel,
-    IWorkspace,
-    IWorkspaceBase,
-} from '@core/types/workspaces';
-import cytoscape, {
-    EdgeCollection,
-    EdgeSingular,
-    EventObject,
-    NodeSingular,
-    SingularElementArgument,
-} from 'cytoscape';
-import edgehandles from 'cytoscape-edgehandles';
-import klay from 'cytoscape-klay';
-import {
-    BehaviorSubject,
-    Observable,
-    Subject,
-    Subscription,
-    bufferCount,
-    combineLatest,
-    filter,
-    tap,
-} from 'rxjs';
-import { cytoscapeLayoutOptions, cytoscapeOptions } from '../core/constants';
-import { SamplesService } from './model-samples.service';
-import { ValidationService } from './validation.service';
-import { WorkspacesService } from './workspaces.service';
-
-cytoscape.use(klay);
-cytoscape.use(edgehandles);
+    IModel,
+} from '@core/types/model.types';
+import { EdgeSingular, NodeSingular, SingularElementArgument } from 'cytoscape';
+import { GraphService } from './graph.service';
 
 @Injectable({
     providedIn: 'root',
 })
 export class ModelService {
-    public readonly compartmentOpen: Observable<void>;
-    public readonly fromOpen: Observable<void>;
-    public readonly flowAdd: Observable<EdgeSingular>;
+    private _model: ModelDefinition = new ModelDefinition();
 
+    public get compartmentOpen(): EventEmitter<NodeSingular> {
+        return this.graphService.compartmentOpen;
+    }
+    public get flowAdd(): EventEmitter<EdgeSingular> {
+        return this.graphService.flowAdd;
+    }
+    public get flowOpen(): EventEmitter<EdgeSingular> {
+        return this.graphService.flowOpen;
+    }
+
+    public get graphReady(): boolean {
+        return this.graphService.graphReady;
+    }
     public get selectedElement(): SingularElementArgument {
-        return (
-            this.cytoscapeObj && this.cytoscapeObj.elements(':selected').first()
-        );
+        return this.graphService.selectedElement;
     }
 
-    public get compartmentsCount(): number {
-        return this.cytoscapeObj && this.cytoscapeObj.nodes().length;
+    public get compartments(): ICompartment[] {
+        return this._model.compartments;
+    }
+    public get constants(): IConstant[] {
+        return this._model.constants;
+    }
+    public get interventions(): IIntervention[] {
+        return this._model.interventions;
+    }
+    public get flows(): IFlow[] {
+        return this._model.flows;
+    }
+    public get model(): IModel {
+        return this._model.model;
     }
 
-    private readonly compartmentOpenSubject: Subject<void> =
-        new Subject<void>();
-    private readonly fromOpenSubject: Subject<void> = new Subject<void>();
-    private readonly flowAddSubject: Subject<EdgeSingular> =
-        new Subject<EdgeSingular>();
-
-    private cytoscapeObj!: cytoscape.Core;
-    private edgehandles!: edgehandles.EdgeHandlesInstance;
-
-    private readonly definitionsFormArray: FormArray;
-    private readonly definitionsFormArrayControlsSubject: BehaviorSubject<
-        FormArray['controls']
-    >;
-
-    private readonly subscription: Subscription = new Subscription();
-
-    public constructor(
-        private readonly validationService: ValidationService,
-        private readonly samplesService: SamplesService,
-        public readonly workspacesService: WorkspacesService
-    ) {
-        this.compartmentOpen = this.compartmentOpenSubject.asObservable();
-        this.fromOpen = this.fromOpenSubject.asObservable();
-        this.flowAdd = this.flowAddSubject.asObservable();
-
-        this.definitionsFormArray = new FormArray([
-            this.getNewDefinitionFormGroup(),
-        ]);
-
-        this.definitionsFormArrayControlsSubject = new BehaviorSubject<
-            FormArray['controls']
-        >(this.definitionsFormArray.controls);
+    public get symbols(): string[] {
+        return this._model.symbols;
     }
 
-    public initCytoscape(container: HTMLElement): void {
-        this.cytoscapeObj = cytoscape({
-            container: container,
-            ...cytoscapeOptions,
-        });
+    public constructor(private readonly graphService: GraphService) {}
 
-        this.edgehandles = this.cytoscapeObj.edgehandles();
+    public initGraph(container: HTMLElement): void {
+        this.graphService.init(container);
+    }
 
-        this.cytoscapeObj.on('dblclick', (event: EventObject): void => {
-            if (!event.target.group) {
-                return;
-            }
+    public layoutGraph(): void {
+        this.graphService.layout();
+    }
 
-            if (event.target.group() === 'nodes') {
-                this.compartmentOpenSubject.next();
-            }
+    public set(model: ModelDefinition): void {
+        this._model = model;
 
-            if (event.target.group() === 'edges') {
-                this.fromOpenSubject.next();
-            }
-        });
+        this.graphService.clear();
 
-        this.cytoscapeObj.on(
-            'cxttapend',
-            'node',
-            (event: EventObject): void => {
-                this.edgehandles.start(event.target);
-            }
+        model.compartments.forEach((compartment: ICompartment): void =>
+            this.graphService.addCompartment(compartment, false)
         );
 
-        this.cytoscapeObj.on('ehcomplete', ((
-            event: EventObject,
-            sourceNode: NodeSingular,
-            targetNode: NodeSingular,
-            addedEdge: EdgeSingular
-        ): void => {
-            this.flowAddSubject.next(addedEdge);
-        }) as any);
-    }
-
-    public initWorkspaceFromSamples(sampleNames: string[]): void {
-        combineLatest(
-            sampleNames.map(
-                (name: string): Observable<IImportModel> =>
-                    this.samplesService.getSample(name)
-            )
-        )
-            .pipe(
-                tap((sampleModels: IImportModel[]): void => {
-                    sampleModels.forEach((sampleModel: IImportModel): void => {
-                        this.workspacesService.addWorkspace({
-                            model: sampleModel,
-                        });
-                    });
-
-                    this.parseSample(sampleModels[0]);
-
-                    this.layout();
-                })
-            )
-            .subscribe();
-    }
-
-    public layout(): void {
-        this.cytoscapeObj.layout(cytoscapeLayoutOptions).run();
-    }
-
-    public getModelExport(): IImportModel {
-        return {
-            compartments: this.getCompartmentsBase(),
-            interventions: this.getInterventions(),
-            constants: this.getConstants(),
-            flows: this.getFlows(),
-        };
-    }
-
-    public parseSample(sample: IImportModel): void {
-        this.clear(true);
-
-        sample.compartments.forEach((compartment: ICompartmentBase): void => {
-            this.addCompartment(compartment);
-        });
-
-        sample.interventions.forEach((intervention: IIntervention): void => {
-            this.addDefinition({
-                name: intervention.name,
-                type: DefinitionType.Intervention,
-            });
-        });
-
-        sample.constants.forEach((constant: IConstant): void => {
-            this.addDefinition({
-                name: constant.name,
-                type: DefinitionType.Constant,
-                value: constant.value,
-            });
-        });
-
-        sample.flows.forEach((flowData: IFlow): void => {
-            this.addFlow(flowData);
-        });
-    }
-
-    public addNewWorkspace(): void {
-        const newWorkspaceBase: IWorkspaceBase = {
-            model: {
-                compartments: [],
-                constants: [],
-                interventions: [],
-                flows: [],
-            },
-        };
-        const currentWorkspace: IWorkspaceBase = {
-            model: this.getModelExport(),
-        };
-
-        this.workspacesService.updateWorkspace({
-            name: this.workspacesService.currentWorkspace.name,
-            ...currentWorkspace,
-        });
-
-        const newWorkspace: IWorkspace =
-            this.workspacesService.addWorkspace(newWorkspaceBase);
-
-        this.workspacesService.setCurrentWorkspace(newWorkspace.name);
-
-        this.parseSample(newWorkspaceBase.model);
-
-        this.layout();
-    }
-
-    public changeWorkspace(workspaceName: string): void {
-        const currentWorkspace: IWorkspaceBase = {
-            model: this.getModelExport(),
-        };
-
-        this.workspacesService.updateWorkspace({
-            name: this.workspacesService.currentWorkspace.name,
-            ...currentWorkspace,
-        });
-
-        this.workspacesService.setCurrentWorkspace(workspaceName);
-
-        this.parseSample(this.workspacesService.currentWorkspace.model);
-
-        this.layout();
-    }
-
-    public removeCurrentWorkspace(): void {
-        this.workspacesService.removeWorkspace(
-            this.workspacesService.currentWorkspace.name
+        model.flows.forEach((flow: IFlow): void =>
+            this.graphService.addFlow(flow, false)
         );
 
-        this.parseSample(this.workspacesService.currentWorkspace.model);
-
-        this.layout();
+        this.graphService.layout();
     }
 
-    public addCompartment(
-        compartmentData: ICompartmentBase,
-        withDefinition: boolean = true
-    ): void {
-        this.cytoscapeObj.add({
-            group: 'nodes',
-            data: {
-                name: compartmentData.name,
-            },
-            renderedPosition: {
-                x: this.cytoscapeObj.width() / 2,
-                y: this.cytoscapeObj.height() / 2,
-            },
-        });
+    public update(newModel: ModelDefinition): void {
+        this.updateCompartments(newModel.compartments, false);
+        this.updateConstants(newModel.constants);
+        this.updateInterventions(newModel.interventions);
+        this.updateFlows(newModel.flows, false);
 
-        if (withDefinition) {
-            this.addDefinition({
-                name: compartmentData.name,
-                type: DefinitionType.Compartment,
-                value: compartmentData.value,
-            });
-        }
-    }
-
-    public editCompartment(compartmentData: IEditCompartmentPayload): void {
-        const compartmentControl: FormGroup = this.getDefinitionControl(
-            compartmentData.previousName || compartmentData.name
-        );
-
-        compartmentControl.controls['name'].setValue(compartmentData.name);
-        compartmentControl.controls['value'].setValue(compartmentData.value);
-    }
-
-    public removeCompartment(): void {
-        this.removeDefinition(this.selectedElement.data('name'));
-    }
-
-    public getConstants(): IConstant[] {
-        return this.getDefinitionsTable().constants.map(
-            (constant: IConstant): IConstant => ({
-                name: constant.name,
-                value: constant.value,
-            })
-        );
-    }
-
-    public getInterventions(): IIntervention[] {
-        return this.getDefinitionsTable().interventions.map(
-            (intervention: IIntervention): IIntervention => ({
-                name: intervention.name,
-            })
-        );
-    }
-
-    public getCompartmentsBase(): ICompartmentBase[] {
-        return this.getDefinitionsTable().compartments.map(
-            (compartment: ICompartmentDefinition): ICompartmentBase => {
-                return {
-                    name: compartment.name,
-                    value: compartment.value,
-                };
-            }
-        );
-    }
-
-    public getCompartments(): ICompartment[] {
-        return this.getDefinitionsTable().compartments.map(
-            (compartment: ICompartmentDefinition): ICompartment => {
-                const compartmentNode: NodeSingular = this.cytoscapeObj
-                    .nodes(`[name = "${compartment.name}"]`)
-                    .first();
-
-                return {
-                    name: compartment.name,
-                    value: compartment.value,
-                    inflows: this.getFlowsEquations(
-                        compartmentNode.incomers().edges()
-                    ),
-                    outflows: this.getFlowsEquations(
-                        compartmentNode.outgoers().edges()
-                    ),
-                };
-            }
-        );
-    }
-
-    public getFlows(): IFlow[] {
-        const flowEdges: EdgeCollection = this.cytoscapeObj.edges();
-
-        return flowEdges.map(
-            (flowEdge: EdgeSingular): IFlow => ({
-                equation: flowEdge.data('equation'),
-                source: flowEdge.source().data('name'),
-                target: flowEdge.target().data('name'),
-            })
-        );
-    }
-
-    public addFlow(flowData: IFlow): void {
-        const sourceNodeId: string = this.cytoscapeObj
-            .nodes(`[name = "${flowData.source}"]`)
-            .first()
-            .id();
-        const targetNodeId: string = this.cytoscapeObj
-            .nodes(`[name = "${flowData.target}"]`)
-            .first()
-            .id();
-
-        this.cytoscapeObj.add({
-            group: 'edges',
-            data: {
-                source: sourceNodeId,
-                target: targetNodeId,
-                equation: flowData.equation,
-            },
-        });
-    }
-
-    public editFlow(flowEquation: string): void {
-        const selectedFlow: EdgeSingular = this.selectedElement as EdgeSingular;
-
-        selectedFlow.data('equation', flowEquation);
-    }
-
-    public removeFlow(): void {
-        this.selectedElement.remove();
-    }
-
-    public getFlowsEquations(flowEdges: EdgeCollection): string[] {
-        return flowEdges.map((flowEdge: EdgeSingular): string =>
-            flowEdge.data('equation')
-        );
+        this.graphService.layout();
     }
 
     public clear(removeConstants: boolean = false): void {
-        const definitionsTable: IDefinitionsTable = this.getDefinitionsTable();
-
-        definitionsTable.compartments.forEach(
-            (compartment: ICompartmentDefinition): void => {
-                this.removeDefinition(compartment.name);
-            }
-        );
-
-        definitionsTable.interventions.forEach(
-            (intervention: IInterventionDefinition): void => {
-                this.removeDefinition(intervention.name);
-            }
-        );
-
-        if (removeConstants) {
-            definitionsTable.constants.forEach((constant: IConstant): void => {
-                this.removeDefinition(constant.name);
-            });
-        }
-
-        if (this.definitionsFormArray.length === 0) {
-            this.definitionsFormArray.push(this.getNewDefinitionFormGroup());
-        }
-
-        this.definitionsFormArrayControlsSubject.next(
-            this.definitionsFormArray.controls
-        );
+        this._model.clear(removeConstants);
+        this.graphService.clear();
     }
 
-    public addDefinition(definition: IDefinition): void {
-        const newDefinitionFormGroup: FormGroup =
-            this.getNewDefinitionFormGroup();
-
-        newDefinitionFormGroup.patchValue(definition);
-
-        this.definitionsFormArray.insert(-1, newDefinitionFormGroup);
-
-        this.definitionsFormArrayControlsSubject.next(
-            this.definitionsFormArray.controls
-        );
-    }
-
-    public removeDefinition(definitionName: string): void {
-        const definitionControl: FormGroup =
-            this.getDefinitionControl(definitionName);
-        const definitionType: DefinitionType = definitionControl.value.type;
-
-        if (definitionType === DefinitionType.Compartment) {
-            const compartmentNode: NodeSingular =
-                this.getCompartmentNode(definitionName);
-
-            compartmentNode.edges().remove();
-            compartmentNode.remove();
-        }
-
-        const expressionRegExp: RegExp = new RegExp(
-            `\\b${definitionName}\\b`,
-            'g'
-        );
-        const modelFlows: EdgeCollection = this.cytoscapeObj
-            .edges()
-            .filter((edge: EdgeSingular): boolean =>
-                edge.data('equation').match(expressionRegExp)
-            );
-
-        modelFlows.remove();
-
-        this.definitionsFormArray.removeAt(
-            this.definitionsFormArray.controls.indexOf(definitionControl)
-        );
-
-        if (this.definitionsFormArray.length === 0) {
-            this.definitionsFormArray.push(this.getNewDefinitionFormGroup());
-        }
-
-        this.definitionsFormArrayControlsSubject.next(
-            this.definitionsFormArray.controls
-        );
-    }
-
-    public getDataSource(): MatTableDataSource<AbstractControl> {
-        const dataSource = new MatTableDataSource<AbstractControl>(undefined);
-
-        this.definitionsFormArrayControlsSubject
-            .asObservable()
-            .pipe(
-                tap((controls: FormArray['controls']): void => {
-                    dataSource.data = controls;
-                })
-            )
-            .subscribe();
-
-        dataSource.data = this.definitionsFormArray.controls;
-
-        return dataSource;
-    }
-
-    public getDefinitionsTable(): IDefinitionsTable {
-        const table: IDefinitionsTable = {
-            compartments: [],
-            interventions: [],
-            constants: [],
-        };
-
-        this.definitionsFormArray.value.forEach(
-            (definition: IDefinition): void => {
-                switch (definition.type) {
-                    case 'compartment':
-                        table.compartments.push(definition);
-
-                        break;
-
-                    case 'intervention':
-                        table.interventions.push(definition);
-
-                        break;
-
-                    case 'constant':
-                        table.constants.push(definition);
-
-                        break;
-                }
-            }
-        );
-
-        return table;
-    }
-
-    public getAvailableSymbols(): string[] {
-        const availableSymbols: string[] = [];
-
-        this.definitionsFormArray.value.forEach(
-            (definition: IDefinition): void => {
-                if (!definition.name) {
-                    return;
-                }
-
-                availableSymbols.push(definition.name);
-            }
-        );
-
-        return availableSymbols;
-    }
-
-    public definitionNameValidator(
-        control: AbstractControl
-    ): ValidationErrors | null {
-        if (!control.value) {
-            return null;
-        }
-
-        const existingCompartmentNames: string[] = this.getDefinitionsTable()
-            .compartments.filter(
-                (compartment: ICompartmentDefinition): boolean =>
-                    compartment.name !== control.value
-            )
-            .map(
-                (compartment: ICompartmentDefinition): string =>
-                    compartment.name
-            );
-
-        return this.validationService.validateCompartmentName(
-            control.value,
-            existingCompartmentNames
-        )
-            ? null
-            : {
-                  compartmentName: {
-                      valid: false,
-                  },
-              };
-    }
-
-    private getNewDefinitionFormGroup(): FormGroup {
-        const nameFormControl: FormControl = new FormControl(null, [
-            Validators.required,
-            this.definitionNameValidator.bind(this),
-        ]);
-        const typeFormControl: FormControl = new FormControl(null, [
-            Validators.required,
-        ]);
-        const valueFormControl: FormControl = new FormControl(null, [
-            Validators.required,
-            Validators.min(0),
-        ]);
-
-        typeFormControl.disable();
-        valueFormControl.disable();
-
-        const newDefinitionFormGroup: FormGroup = new FormGroup(
-            {
-                name: nameFormControl,
-                type: typeFormControl,
-                value: valueFormControl,
-            },
-            {
-                updateOn: 'blur',
-            }
-        );
-
-        const nameValueChangesSub: Subscription = nameFormControl.valueChanges
-            .pipe(
-                bufferCount<string>(2, 1),
-                tap(([previousName, currentName]: string[]): void => {
-                    if (currentName === '') {
-                        return;
-                    }
-
-                    if (nameFormControl.valid) {
-                        this.onDefinitionNameChange.apply(this, [
-                            previousName,
-                            currentName,
-                            typeFormControl.value ===
-                                DefinitionType.Compartment,
-                        ]);
-
-                        typeFormControl.enable({
-                            emitEvent: false,
-                        });
-
-                        if (
-                            typeFormControl.value === DefinitionType.Constant ||
-                            typeFormControl.value === DefinitionType.Compartment
-                        ) {
-                            valueFormControl.enable({
-                                emitEvent: false,
-                            });
-                        }
-
-                        return;
-                    }
-
-                    typeFormControl.disable({
-                        emitEvent: false,
-                    });
-                    valueFormControl.disable({
-                        emitEvent: false,
-                    });
-
-                    nameFormControl.setValue(previousName);
-                })
-            )
-            .subscribe();
-
-        const typeValueChangesSub: Subscription = typeFormControl.valueChanges
-            .pipe(
-                tap((currentType: DefinitionType): void => {
-                    if (currentType === DefinitionType.Intervention) {
-                        valueFormControl.setValue(null);
-                        valueFormControl.disable({
-                            emitEvent: false,
-                        });
-
-                        return;
-                    }
-
-                    if (!valueFormControl.value) {
-                        valueFormControl.setValue(0);
-                    }
-
-                    valueFormControl.enable({
-                        emitEvent: false,
-                    });
-                }),
-                bufferCount<DefinitionType>(2, 1),
-                tap(([previousType, currentType]: DefinitionType[]): void => {
-                    this.onDefinitionTypeChange.apply(this, [
-                        nameFormControl.value,
-                        previousType,
-                        currentType,
-                    ]);
-                })
-            )
-            .subscribe();
-
-        const groupValueChanges: Subscription =
-            newDefinitionFormGroup.valueChanges
-                .pipe(
-                    filter(() => newDefinitionFormGroup.valid),
-                    tap((): void => {
-                        this.onDefinitionValueChanges.apply(this, [
-                            newDefinitionFormGroup,
-                        ]);
-                    })
-                )
-                .subscribe();
-
-        nameFormControl.setValue('');
-
-        this.subscription.add(nameValueChangesSub);
-        this.subscription.add(typeValueChangesSub);
-        this.subscription.add(groupValueChanges);
-
-        return newDefinitionFormGroup;
-    }
-
-    private onDefinitionNameChange(
-        previousName: string,
-        currentName: string,
-        isCompartment: boolean = true
+    public updateCompartments(
+        newCompartments: ICompartment[],
+        layout: boolean = true
     ): void {
-        if (isCompartment) {
-            const compartmentNode: NodeSingular =
-                this.getCompartmentNode(previousName);
+        const compartments: ICompartment[] = this.compartments;
 
-            compartmentNode.data('name', currentName);
-        }
+        const {
+            addedCompartments,
+            updatedCompartments,
+        }: {
+            addedCompartments: ICompartment[];
+            updatedCompartments: ICompartment[];
+        } = newCompartments.reduce(
+            (
+                accumulator: {
+                    addedCompartments: ICompartment[];
+                    updatedCompartments: ICompartment[];
+                },
+                newCompartment: ICompartment
+            ): {
+                addedCompartments: ICompartment[];
+                updatedCompartments: ICompartment[];
+            } => {
+                if (
+                    compartments.find(
+                        (compartment: ICompartment): boolean =>
+                            compartment.id === newCompartment.id
+                    )
+                ) {
+                    accumulator.updatedCompartments.push(newCompartment);
 
-        if (!previousName) {
-            return;
-        }
+                    return accumulator;
+                }
 
-        const expressionRegExp: RegExp = new RegExp(
-            `\\b${previousName}\\b`,
-            'g'
+                accumulator.addedCompartments.push(newCompartment);
+
+                return accumulator;
+            },
+            { addedCompartments: [], updatedCompartments: [] }
         );
-        const modelFlows: EdgeCollection = this.cytoscapeObj
-            .edges()
-            .filter((edge: EdgeSingular): boolean =>
-                edge.data('equation').match(expressionRegExp)
-            );
+        const removedCompartments: ICompartment[] = compartments.filter(
+            (compartment: ICompartment): boolean =>
+                !newCompartments.find(
+                    (newCompartment: ICompartment): boolean =>
+                        newCompartment.id === compartment.id
+                )
+        );
 
-        modelFlows.forEach((flow: EdgeSingular): void => {
-            flow.data(
-                'equation',
-                flow.data('equation').replace(expressionRegExp, currentName)
-            );
+        addedCompartments.forEach((compartment: ICompartment): void => {
+            this.addCompartment(compartment, false);
+        });
+
+        updatedCompartments.forEach((compartment: ICompartment): void => {
+            this.updateCompartment(compartment);
+        });
+
+        removedCompartments.forEach((compartment: ICompartment): void => {
+            this.removeCompartment(compartment.id, false);
+        });
+
+        if (layout) {
+            this.graphService.layout();
+        }
+    }
+
+    public addCompartment(
+        compartment: ICompartment,
+        layout: boolean = true
+    ): void {
+        this._model.addCompartment(compartment);
+        this.graphService.addCompartment(compartment, layout);
+    }
+
+    public updateCompartment(newCompartment: ICompartment): void {
+        this._model.updateCompartment(newCompartment);
+        this.graphService.updateCompartment(newCompartment);
+    }
+
+    public removeCompartment(id: string, layout: boolean = true): void {
+        this._model.removeCompartment(id);
+        this.graphService.removeCompartment(id, layout);
+    }
+
+    public updateConstants(newConstants: IConstant[]): void {
+        const constants: IConstant[] = this.constants;
+
+        const {
+            addedConstants,
+            updatedConstants,
+        }: {
+            addedConstants: IConstant[];
+            updatedConstants: IConstant[];
+        } = newConstants.reduce(
+            (
+                accumulator: {
+                    addedConstants: IConstant[];
+                    updatedConstants: IConstant[];
+                },
+                newConstant: IConstant
+            ): {
+                addedConstants: IConstant[];
+                updatedConstants: IConstant[];
+            } => {
+                if (
+                    constants.find(
+                        (constant: IConstant): boolean =>
+                            constant.id === newConstant.id
+                    )
+                ) {
+                    accumulator.updatedConstants.push(newConstant);
+
+                    return accumulator;
+                }
+
+                accumulator.addedConstants.push(newConstant);
+
+                return accumulator;
+            },
+            { addedConstants: [], updatedConstants: [] }
+        );
+        const removedConstants: IConstant[] = constants.filter(
+            (constant: IConstant): boolean =>
+                !newConstants.find(
+                    (newConstant: IConstant): boolean =>
+                        newConstant.id === constant.id
+                )
+        );
+
+        addedConstants.forEach((constant: IConstant): void => {
+            this.addConstant(constant);
+        });
+
+        updatedConstants.forEach((constant: IConstant): void => {
+            this.updateConstant(constant);
+        });
+
+        removedConstants.forEach((constant: IConstant): void => {
+            this.removeConstant(constant.id);
         });
     }
 
-    private onDefinitionTypeChange(
-        definitionName: string,
-        previousType: DefinitionType,
-        currentType: DefinitionType
-    ): void {
-        if (
-            previousType === currentType ||
-            (previousType !== DefinitionType.Compartment &&
-                currentType !== DefinitionType.Compartment)
-        ) {
-            return;
-        }
-
-        if (previousType === DefinitionType.Compartment) {
-            const compartmentNode: NodeSingular =
-                this.getCompartmentNode(definitionName);
-            const modelFlows: EdgeCollection = compartmentNode.edges();
-
-            modelFlows.remove();
-            compartmentNode.remove();
-        }
-
-        if (currentType === DefinitionType.Compartment) {
-            this.addCompartment(
-                {
-                    name: definitionName,
-                    value: 0,
-                },
-                false
-            );
-        }
+    public addConstant(constant: IConstant): void {
+        this._model.addConstant(constant);
     }
 
-    private onDefinitionValueChanges(definitionFormGroup: FormGroup): void {
-        const index: number = this.definitionsFormArray.controls.findIndex(
-            (control: AbstractControl): boolean =>
-                control === definitionFormGroup
+    public updateConstant(newConstant: IConstant): void {
+        this._model.updateConstant(newConstant);
+    }
+
+    public removeConstant(id: string): void {
+        this._model.removeConstant(id);
+    }
+
+    public updateInterventions(newInterventions: IIntervention[]): void {
+        const interventions: IIntervention[] = this.interventions;
+
+        const {
+            addedInterventions,
+            updatedInterventions,
+        }: {
+            addedInterventions: IIntervention[];
+            updatedInterventions: IIntervention[];
+        } = newInterventions.reduce(
+            (
+                accumulator: {
+                    addedInterventions: IIntervention[];
+                    updatedInterventions: IIntervention[];
+                },
+                newIntervention: IIntervention
+            ): {
+                addedInterventions: IIntervention[];
+                updatedInterventions: IIntervention[];
+            } => {
+                if (
+                    interventions.find(
+                        (intervention: IIntervention): boolean =>
+                            intervention.id === newIntervention.id
+                    )
+                ) {
+                    accumulator.updatedInterventions.push(newIntervention);
+
+                    return accumulator;
+                }
+
+                accumulator.addedInterventions.push(newIntervention);
+
+                return accumulator;
+            },
+            { addedInterventions: [], updatedInterventions: [] }
+        );
+        const removedInterventions: IIntervention[] = interventions.filter(
+            (intervention: IIntervention): boolean =>
+                !newInterventions.find(
+                    (newIntervention: IIntervention): boolean =>
+                        newIntervention.id === intervention.id
+                )
         );
 
-        if (index === this.definitionsFormArray.length - 1) {
-            this.definitionsFormArray.push(
-                this.getNewDefinitionFormGroup.apply(this)
-            );
+        addedInterventions.forEach((intervention: IIntervention): void => {
+            this.addIntervention(intervention);
+        });
 
-            this.definitionsFormArrayControlsSubject.next(
-                this.definitionsFormArray.controls
-            );
+        updatedInterventions.forEach((intervention: IIntervention): void => {
+            this.updateIntervention(intervention);
+        });
+
+        removedInterventions.forEach((intervention: IIntervention): void => {
+            this.removeIntervention(intervention.id);
+        });
+    }
+
+    public addIntervention(intervention: IIntervention): void {
+        this._model.addIntervention(intervention);
+    }
+
+    public updateIntervention(newIntervention: IIntervention): void {
+        this._model.updateIntervention(newIntervention);
+    }
+
+    public removeIntervention(id: string): void {
+        this._model.removeIntervention(id);
+    }
+
+    public updateFlows(newFlows: IFlow[], layout: boolean = true): void {
+        const flows: IFlow[] = this.flows;
+
+        const {
+            addedFlows,
+            updatedFlows,
+        }: {
+            addedFlows: IFlow[];
+            updatedFlows: IFlow[];
+        } = newFlows.reduce(
+            (
+                accumulator: {
+                    addedFlows: IFlow[];
+                    updatedFlows: IFlow[];
+                },
+                newFlow: IFlow
+            ): {
+                addedFlows: IFlow[];
+                updatedFlows: IFlow[];
+            } => {
+                if (
+                    flows.find((flow: IFlow): boolean => flow.id === newFlow.id)
+                ) {
+                    accumulator.updatedFlows.push(newFlow);
+
+                    return accumulator;
+                }
+
+                accumulator.addedFlows.push(newFlow);
+
+                return accumulator;
+            },
+            { addedFlows: [], updatedFlows: [] }
+        );
+        const removedFlows: IFlow[] = flows.filter(
+            (flow: IFlow): boolean =>
+                !newFlows.find(
+                    (newFlow: IFlow): boolean => newFlow.id === flow.id
+                )
+        );
+
+        addedFlows.forEach((flow: IFlow): void => {
+            this.addFlow(flow, false);
+        });
+
+        updatedFlows.forEach((flow: IFlow): void => {
+            this.updateFlow(flow, false);
+        });
+
+        removedFlows.forEach((flow: IFlow): void => {
+            this.removeFlow(flow.id, false);
+        });
+
+        if (layout) {
+            this.graphService.layout();
         }
     }
 
-    private getDefinitionControl(definitionName: string): FormGroup {
-        return this.definitionsFormArray.controls.find(
-            (control: AbstractControl): boolean =>
-                control.value.name === definitionName
-        ) as FormGroup;
+    public addFlow(flow: IFlow, layout: boolean = true): void {
+        this._model.addFlow(flow);
+        this.graphService.addFlow(flow, layout);
     }
 
-    private getCompartmentNode(compartmentName: string): NodeSingular {
-        return this.cytoscapeObj.nodes(`[name = "${compartmentName}"]`).first();
+    public updateFlow(newFlow: IFlow, layout: boolean = true): void {
+        this._model.updateFlow(newFlow);
+        this.graphService.updateFlow(newFlow, layout);
+    }
+
+    public removeFlow(id: string, layout: boolean = true): void {
+        this._model.removeFlow(id);
+        this.graphService.removeFlow(id, layout);
     }
 }

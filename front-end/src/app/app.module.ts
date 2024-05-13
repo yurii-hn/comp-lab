@@ -22,34 +22,36 @@ import { PlotlyModule } from 'angular-plotly.js';
 import PlotlyJS from 'plotly.js-dist-min';
 
 import { AppComponent } from './app.component';
-import { CompartmentCreationDialogComponent } from './components/compartment-creation-dialog/compartment-creation-dialog.component';
-import { ConfirmationDialogComponent } from './components/confirmation-dialog/confirmation-dialog.component';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
-import { DatatableComponent } from './components/datatable/datatable.component';
 import { DefinitionsTableDialogComponent } from './components/definitions-table-dialog/definitions-table-dialog.component';
-import { EquationInputComponent } from './components/equation-input/equation-input.component';
-import { FlowCreationDialogComponent } from './components/flow-creation-dialog/flow-creation-dialog.component';
-import { OptimalControlParametersInputPanelComponent } from './components/optimal-control-parameters-input-panel/optimal-control-parameters-input-panel.component';
-import { ParametersIdentificationParametersInputPanelComponent } from './components/parameters-identification-parameters-input-panel/parameters-identification-parameters-input-panel.component';
-import { ProcessingDialogComponent } from './components/processing-dialog/processing-dialog.component';
-import { SimulationParametersInputPanelComponent } from './components/simulation-parameters-input-panel/simulation-parameters-input-panel.component';
+import { CompartmentDialogComponent } from './components/graph/compartment-dialog/compartment-dialog.component';
+import { FlowDialogComponent } from './components/graph/flow-dialog/flow-dialog.component';
+import { OptimalControlParametersInputPanelComponent } from './components/processing/optimal-control-parameters-input-panel/optimal-control-parameters-input-panel.component';
+import { ParametersIdentificationParametersInputPanelComponent } from './components/processing/parameters-identification-parameters-input-panel/parameters-identification-parameters-input-panel.component';
+import { ProcessingDialogComponent } from './components/processing/processing-dialog/processing-dialog.component';
+import { SimulationParametersInputPanelComponent } from './components/processing/simulation-parameters-input-panel/simulation-parameters-input-panel.component';
+import { ConfirmationDialogComponent } from './components/shared/confirmation-dialog/confirmation-dialog.component';
+import { DatatableComponent } from './components/shared/datatable/datatable.component';
+import { EquationInputComponent } from './components/shared/equation-input/equation-input.component';
+import { WorkspacesPanelComponent } from './components/workspaces-panel/workspaces-panel.component';
 
 PlotlyModule.plotlyjs = PlotlyJS;
 
 @NgModule({
     declarations: [
         AppComponent,
-        CompartmentCreationDialogComponent,
+        CompartmentDialogComponent,
         ConfirmationDialogComponent,
         ProcessingDialogComponent,
         SimulationParametersInputPanelComponent,
         OptimalControlParametersInputPanelComponent,
         ParametersIdentificationParametersInputPanelComponent,
-        FlowCreationDialogComponent,
+        FlowDialogComponent,
         DashboardComponent,
         DefinitionsTableDialogComponent,
         EquationInputComponent,
         DatatableComponent,
+        WorkspacesPanelComponent,
     ],
     imports: [
         BrowserModule,

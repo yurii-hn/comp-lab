@@ -5,78 +5,62 @@
         mat-mini-fab
         class="close-button"
         color="primary"
-        (click)="closeDialog()"
+        (click)="onClose()"
     >
         <mat-icon>close</mat-icon>
     </button>
 </div>
 
-<div class="body">
-    <table mat-table [dataSource]="definitionsDataSource">
-        <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>Name</th>
+<div class="body" [formGroup]="control">
+    <div class="section compartments">
+        <div class="title">Compartments</div>
 
-            <td mat-cell *matCellDef="let element" [formGroup]="element">
-                <mat-form-field>
-                    <mat-label>Name</mat-label>
+        <app-datatable
+            formControlName="compartments"
+            [rowScheme]="compartmentsRowScheme"
+        ></app-datatable>
+    </div>
 
-                    <input matInput placeholder="Name" formControlName="name" />
-                </mat-form-field>
-            </td>
-        </ng-container>
+    <div class="section constants">
+        <div class="title">Constants</div>
 
-        <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef>Type</th>
+        <app-datatable
+            formControlName="constants"
+            [rowScheme]="constantsRowScheme"
+        ></app-datatable>
+    </div>
 
-            <td mat-cell *matCellDef="let element" [formGroup]="element">
-                <mat-form-field>
-                    <mat-label>Type</mat-label>
+    <div class="section interventions">
+        <div class="title">Interventions</div>
 
-                    <mat-select formControlName="type">
-                        <mat-option
-                            *ngFor="let definitionType of definitionTypes"
-                            [value]="definitionType.value"
-                        >
-                            {{ definitionType.text }}
-                        </mat-option>
-                    </mat-select>
-                </mat-form-field>
-            </td>
-        </ng-container>
+        <app-datatable
+            formControlName="interventions"
+            [rowScheme]="interventionsRowScheme"
+        ></app-datatable>
+    </div>
 
-        <ng-container matColumnDef="value">
-            <th mat-header-cell *matHeaderCellDef>Value</th>
+    <div class="section flows">
+        <div class="title">Flows</div>
 
-            <td mat-cell *matCellDef="let element" [formGroup]="element">
-                <mat-form-field>
-                    <mat-label>Value</mat-label>
+        <app-datatable
+            formControlName="flows"
+            [rowScheme]="flowsRowScheme"
+        ></app-datatable>
+    </div>
+</div>
 
-                    <input
-                        matInput
-                        type="number"
-                        placeholder="Value"
-                        formControlName="value"
-                    />
-                </mat-form-field>
-            </td>
-        </ng-container>
+<div class="footer">
+    <button mat-raised-button class="button" color="accent" (click)="onClose()">
+        Cancel
+    </button>
 
-        <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Actions</th>
-
-            <td mat-cell *matCellDef="let element" [formGroup]="element">
-                <button
-                    mat-icon-button
-                    [disabled]="isLast(element)"
-                    (click)="removeDefinition(element.get('name').value)"
-                >
-                    <mat-icon>delete</mat-icon>
-                </button>
-            </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-
-        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-    </table>
+    <button
+        mat-raised-button
+        class="button"
+        color="primary"
+        [disabled]="control.invalid || control.pristine"
+        (click)="onSave()"
+    >
+        Process
+    </button>
 </div>

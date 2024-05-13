@@ -1,16 +1,17 @@
 :host {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    width: 80vw;
+    height: 95vh;
 
     .header {
         display: flex;
         align-items: center;
+        justify-content: space-between;
         padding: 20px;
         border-width: 0;
         border-style: solid;
         border-color: #e0e0e0;
-        justify-content: space-between;
         border-bottom-width: 1px;
 
         .title {
@@ -29,10 +30,21 @@
 
     .body {
         display: grid;
+        grid: repeat(2, calc(50% - 5px)) / auto-flow min-content;
+        gap: 10px;
         height: calc(100% - 90px);
         overflow: auto;
-        grid: repeat(2, calc(50% - 5px)) / auto-flow min-content;
         padding: 20px;
-        gap: 10px;
+
+        &.no-data {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            .message {
+                font-size: 20px;
+                color: white;
+            }
+        }
     }
 }

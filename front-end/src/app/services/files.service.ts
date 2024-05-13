@@ -21,7 +21,6 @@ export class FilesService {
         anchor.click();
 
         URL.revokeObjectURL(url);
-
         anchor.remove();
     }
 
@@ -45,7 +44,6 @@ export class FilesService {
                         );
 
                         observer.next(data);
-
                         observer.complete();
                     };
 
@@ -53,7 +51,6 @@ export class FilesService {
                 };
 
                 fileInput.click();
-
                 fileInput.remove();
             }
         );

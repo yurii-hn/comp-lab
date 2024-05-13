@@ -2,29 +2,10 @@
     <p class="title">Dashboard</p>
 
     <div class="header-controls">
-        <mat-button-toggle-group
-            *ngIf="isCurrentResultsOptimal"
-            [formControl]="viewModeControl"
-        >
-            <mat-button-toggle value="non-optimized"
-                ><mat-icon>show_chart</mat-icon>
-            </mat-button-toggle>
-
-            <mat-button-toggle value="optimized">
-                <mat-icon>trending_down</mat-icon>
-            </mat-button-toggle>
-        </mat-button-toggle-group>
-
         <mat-form-field subscriptSizing="dynamic">
-            <mat-select [formControl]="resultsControl">
-                <mat-option
-                    *ngFor="
-                        let results of resultsStorageService.resultsNames$
-                            | async
-                    "
-                    [value]="results"
-                >
-                    {{ results }}
+            <mat-select [formControl]="control">
+                <mat-option *ngFor="let run of runsService.names" [value]="run">
+                    {{ run }}
                 </mat-option>
             </mat-select>
         </mat-form-field>
@@ -33,18 +14,13 @@
             mat-mini-fab
             class="button"
             color="primary"
-            [disabled]="resultsStorageService.resultsNames.length === 0"
-            (click)="removeCurrentResults()"
+            [disabled]="runsService.names.length === 0"
+            (click)="remove()"
         >
             <mat-icon>delete</mat-icon>
         </button>
 
-        <button
-            mat-mini-fab
-            class="button"
-            color="primary"
-            (click)="onResultsImport()"
-        >
+        <button mat-mini-fab class="button" color="primary" (click)="add()">
             <mat-icon>upload</mat-icon>
         </button>
 
@@ -52,8 +28,8 @@
             mat-mini-fab
             class="button"
             color="primary"
-            [disabled]="resultsStorageService.resultsNames.length === 0"
-            (click)="onResultsExport()"
+            [disabled]="runsService.names.length === 0"
+            (click)="get()"
         >
             <mat-icon>download</mat-icon>
         </button>
@@ -62,20 +38,30 @@
             mat-mini-fab
             class="close-button"
             color="primary"
-            (click)="closeDialog()"
+            (click)="onClose()"
         >
             <mat-icon>close</mat-icon>
         </button>
     </div>
 </div>
 
-<div class="body">
-    <plotly-plot
-        *ngFor="let plotData of plotsData"
-        [data]="plotData.data"
-        [layout]="plotData.layout"
-        [config]="plotsConfig"
-        [style]="plotStyle"
-        [useResizeHandler]="true"
-    ></plotly-plot>
+<div class="body" [class.no-data]="!plotsData.length">
+    <ng-template #plots>
+        <plotly-plot
+            *ngFor="let plotData of plotsData"
+            [data]="plotData.data"
+            [layout]="plotData.layout"
+            [config]="plotsConfig"
+            [style]="plotStyle"
+            [useResizeHandler]="true"
+        ></plotly-plot>
+    </ng-template>
+
+    <ng-template #noData>
+        <p class="message">No Data</p>
+    </ng-template>
+
+    <ng-container
+        *ngIf="plotsData.length; then plots; else noData"
+    ></ng-container>
 </div>

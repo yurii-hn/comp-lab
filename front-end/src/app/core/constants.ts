@@ -5,10 +5,10 @@ export const cytoscapeOptions: cytoscape.CytoscapeOptions = {
     minZoom: 0.1,
     maxZoom: 3,
     zoom: 1,
-    wheelSensitivity: 0.2,
+    wheelSensitivity: 0.1,
     style: [
         {
-            selector: 'node',
+            selector: 'node.compartment',
             style: {
                 label: 'data(name)',
                 'font-weight': 'bold',
@@ -38,6 +38,7 @@ export const cytoscapeOptions: cytoscape.CytoscapeOptions = {
             },
         },
     ],
+    selectionType: 'single',
     boxSelectionEnabled: false,
     styleEnabled: true,
 };
@@ -48,6 +49,7 @@ export const cytoscapeLayoutOptions: klay.KlayLayoutOptions = {
     animate: true,
     animationEasing: 'ease-in-out',
     animationDuration: 300,
+    padding: 100,
     klay: {
         spacing: 100,
     },

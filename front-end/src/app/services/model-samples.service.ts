@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { IImportModel } from '@core/types/workspaces';
+import { IModel } from '@core/types/model.types';
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -9,12 +9,9 @@ import { Observable } from 'rxjs';
 export class SamplesService {
     constructor(private readonly httpClient: HttpClient) {}
 
-    public getSample(sampleName: string): Observable<IImportModel> {
-        return this.httpClient.get<IImportModel>(
-            `/assets/samples/${sampleName}.json`,
-            {
-                responseType: 'json',
-            }
-        );
+    public getSample(name: string): Observable<IModel> {
+        return this.httpClient.get<IModel>(`/assets/samples/${name}.json`, {
+            responseType: 'json',
+        });
     }
 }

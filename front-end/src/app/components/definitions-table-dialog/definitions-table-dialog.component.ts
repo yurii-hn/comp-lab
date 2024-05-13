@@ -1,84 +1,216 @@
-import { DataSource } from '@angular/cdk/collections';
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import {
-    AbstractControl,
-    FormArray,
-    FormControl
+    FormControl,
+    FormGroup,
+    ValidationErrors,
+    Validators,
 } from '@angular/forms';
-import { MatDialog, MatDialogRef } from '@angular/material/dialog';
-import { Subscription, filter, tap } from 'rxjs';
+import { MatDialogRef } from '@angular/material/dialog';
+import { ModelDefinition } from '@core/classes/model.class';
+import { InputType, RowScheme } from '@core/types/datatable.types';
+import {
+    CompartmentDefinition,
+    ConstantDefinition,
+    FlowDefinition,
+    InterventionDefinition,
+} from '@core/types/definitions.types';
+import {
+    isCompartment,
+    isConstant,
+    isFlow,
+    isIntervention,
+} from '@core/types/model.guards';
+import {
+    ICompartment,
+    IConstant,
+    IFlow,
+    IIntervention,
+    IModel,
+} from '@core/types/model.types';
+import { IOption } from '@core/types/utils.types';
 import { ModelService } from 'src/app/services/model.service';
-import { ConfirmationDialogComponent } from '../confirmation-dialog/confirmation-dialog.component';
+import { ValidationService } from 'src/app/services/validation.service';
+import { v4 as uuid } from 'uuid';
 
 @Component({
     selector: 'app-definitions-table-dialog',
     templateUrl: './definitions-table-dialog.component.html',
     styleUrls: ['./definitions-table-dialog.component.scss'],
 })
-export class DefinitionsTableDialogComponent implements OnDestroy {
-    public readonly displayedColumns: string[] = [
-        'name',
-        'type',
-        'value',
-        'actions',
-    ];
-    public readonly definitionTypes: { text: string; value: string }[] = [
-        { text: 'Compartment', value: 'compartment' },
-        { text: 'Intervention', value: 'intervention' },
-        { text: 'Constant', value: 'constant' },
-    ];
+export class DefinitionsTableDialogComponent implements OnInit {
+    public readonly compartmentsRowScheme: RowScheme<CompartmentDefinition> = {
+        name: {
+            name: 'Name',
+            type: InputType.Text,
+            editable: true,
+            validationFns: [
+                Validators.required,
+                (control: FormControl): ValidationErrors | null =>
+                    this.validationService.definitionName(control.value),
+            ],
+        },
+        value: {
+            name: 'Value',
+            type: InputType.Number,
+            editable: true,
+            validationFns: [Validators.required, Validators.min(0)],
+        },
+    };
 
-    public readonly definitionsDataSource: DataSource<AbstractControl>;
+    public readonly constantsRowScheme: RowScheme<ConstantDefinition> = {
+        name: {
+            name: 'Name',
+            type: InputType.Text,
+            editable: true,
+            validationFns: [
+                Validators.required,
+                (control: FormControl): ValidationErrors | null =>
+                    this.validationService.definitionName(control.value),
+            ],
+        },
+        value: {
+            name: 'Value',
+            type: InputType.Number,
+            editable: true,
+            validationFns: [Validators.required],
+        },
+    };
 
-    private readonly subscription: Subscription = new Subscription();
+    public readonly interventionsRowScheme: RowScheme<InterventionDefinition> =
+        {
+            name: {
+                name: 'Name',
+                type: InputType.Text,
+                editable: true,
+                validationFns: [
+                    Validators.required,
+                    (control: FormControl): ValidationErrors | null =>
+                        this.validationService.definitionName(control.value),
+                ],
+            },
+        };
+
+    public readonly flowsRowScheme: RowScheme<FlowDefinition> = {
+        source: {
+            name: 'Source',
+            type: InputType.Select,
+            exclusive: false,
+            options: this.modelService.compartments.map(
+                (compartment: ICompartment): IOption => ({
+                    value: compartment.id,
+                    label: compartment.name,
+                })
+            ),
+            editable: true,
+        },
+        target: {
+            name: 'Target',
+            type: InputType.Select,
+            exclusive: false,
+            options: this.modelService.compartments.map(
+                (compartment: ICompartment): IOption => ({
+                    value: compartment.id,
+                    label: compartment.name,
+                })
+            ),
+            editable: true,
+        },
+    };
+
+    public readonly control: FormGroup = new FormGroup({
+        compartments: new FormControl<(ICompartment | CompartmentDefinition)[]>(
+            []
+        ),
+        constants: new FormControl<(IConstant | ConstantDefinition)[]>([]),
+        interventions: new FormControl<
+            (IIntervention | InterventionDefinition)[]
+        >([]),
+        flows: new FormControl<(IFlow | FlowDefinition)[]>([]),
+    });
 
     constructor(
-        private readonly dialogRef: MatDialogRef<DefinitionsTableDialogComponent>,
+        private readonly dialogRef: MatDialogRef<
+            DefinitionsTableDialogComponent,
+            ModelDefinition
+        >,
         private readonly modelService: ModelService,
-        private readonly dialog: MatDialog
-    ) {
-        this.definitionsDataSource = this.modelService.getDataSource();
+        private readonly validationService: ValidationService
+    ) {}
+
+    public ngOnInit(): void {
+        this.init(this.modelService.model);
     }
 
-    public isLast(formControl: FormControl): boolean {
-        return (
-            (formControl.parent as FormArray)!.controls[
-                (formControl.parent as FormArray).controls.length - 1
-            ] === formControl
-        );
-    }
-
-    public closeDialog(): void {
+    public onClose(): void {
         this.dialogRef.close();
     }
 
-    public removeDefinition(definitionName: string): void {
-        const confirmationDialogRef: MatDialogRef<ConfirmationDialogComponent> =
-            this.dialog.open(ConfirmationDialogComponent, {
-                data: {
-                    title: `Removing ${definitionName}`,
-                    message:
-                        `Are you sure you want to remove "${definitionName}" definition?\n\n` +
-                        `All ${definitionName} references will be removed as well.`,
-                    confirmText: 'Remove',
-                    cancelText: 'Cancel',
-                },
-            });
+    public onSave(): void {
+        const value: {
+            compartments: (ICompartment | CompartmentDefinition)[];
+            constants: (IConstant | ConstantDefinition)[];
+            interventions: (IIntervention | InterventionDefinition)[];
+            flows: (IFlow | FlowDefinition)[];
+        } = this.control.value;
 
-        const confirmationDialogSub: Subscription = confirmationDialogRef
-            .afterClosed()
-            .pipe(
-                filter((result: boolean): boolean => result),
-                tap((): void => {
-                    this.modelService.removeDefinition(definitionName);
-                })
-            )
-            .subscribe();
+        const definition: ModelDefinition = new ModelDefinition({
+            compartments: value.compartments.map(
+                (
+                    compartment: ICompartment | CompartmentDefinition
+                ): ICompartment => {
+                    if (isCompartment(compartment)) {
+                        return compartment;
+                    }
 
-        this.subscription.add(confirmationDialogSub);
+                    return {
+                        ...compartment,
+                        id: uuid(),
+                    };
+                }
+            ),
+            constants: value.constants.map(
+                (constant: IConstant | ConstantDefinition): IConstant => {
+                    if (isConstant(constant)) {
+                        return constant;
+                    }
+
+                    return {
+                        ...constant,
+                        id: uuid(),
+                    };
+                }
+            ),
+            interventions: value.interventions.map(
+                (
+                    intervention: IIntervention | InterventionDefinition
+                ): IIntervention => {
+                    if (isIntervention(intervention)) {
+                        return intervention;
+                    }
+
+                    return {
+                        ...intervention,
+                        id: uuid(),
+                    };
+                }
+            ),
+            flows: value.flows.map((flow: IFlow | FlowDefinition): IFlow => {
+                if (isFlow(flow)) {
+                    return flow;
+                }
+
+                return {
+                    ...flow,
+                    id: uuid(),
+                    equation: '',
+                };
+            }),
+        });
+
+        this.dialogRef.close(definition);
     }
 
-    public ngOnDestroy(): void {
-        this.subscription.unsubscribe();
+    private init(model: IModel): void {
+        this.control.setValue(model);
     }
 }

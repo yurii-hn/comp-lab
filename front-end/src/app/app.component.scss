@@ -14,17 +14,6 @@
         .button:not(:last-child) {
             margin-bottom: 10px;
         }
-
-        .workspace-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-
-            .button {
-                margin: 0;
-            }
-        }
     }
 
     .top-left-buttons {

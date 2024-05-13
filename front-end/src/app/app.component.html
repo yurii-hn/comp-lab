@@ -1,44 +1,11 @@
 <div class="buttons-container top-left-buttons">
-    <div class="workspace-controls">
-        <mat-form-field subscriptSizing="dynamic">
-            <mat-select [formControl]="workspaceControl">
-                <mat-option
-                    *ngFor="
-                        let workspace of workspacesService.workspacesNames$
-                            | async
-                    "
-                    [value]="workspace"
-                >
-                    {{ workspace }}
-                </mat-option>
-            </mat-select>
-        </mat-form-field>
-
-        <button
-            mat-mini-fab
-            class="button"
-            color="primary"
-            (click)="addNewWorkspace()"
-        >
-            <mat-icon>add_box</mat-icon>
-        </button>
-
-        <button
-            mat-mini-fab
-            class="button"
-            color="primary"
-            [disabled]="workspacesService.workspacesNames.length === 1"
-            (click)="removeCurrentWorkspace()"
-        >
-            <mat-icon>close</mat-icon>
-        </button>
-    </div>
+    <app-workspaces-panel></app-workspaces-panel>
 
     <button
         mat-mini-fab
         class="button"
         color="primary"
-        (click)="openDefinitionsTableDialog()"
+        (click)="onDefinitionsTable()"
     >
         <mat-icon>tune</mat-icon>
     </button>
@@ -49,12 +16,12 @@
         mat-mini-fab
         class="button"
         color="primary"
-        (click)="openAddCompartmentDialog()"
+        (click)="onCompartmentAdd()"
     >
         <mat-icon>add</mat-icon>
     </button>
 
-    <button mat-mini-fab class="button" color="primary" (click)="layout()">
+    <button mat-mini-fab class="button" color="primary" (click)="onLayout()">
         <mat-icon>account_tree</mat-icon>
     </button>
 
@@ -62,8 +29,8 @@
         mat-mini-fab
         class="button"
         color="primary"
-        [disabled]="!elementSelected"
-        (click)="onDeleteElementDialog()"
+        [disabled]="!selected"
+        (click)="onDelete()"
     >
         <mat-icon>delete</mat-icon>
     </button>
@@ -73,48 +40,28 @@
         class="button"
         color="primary"
         [disabled]="!compartmentsCount"
-        (click)="onClearCompartmentsDialog()"
+        (click)="onClear()"
     >
         <mat-icon>delete_forever</mat-icon>
     </button>
 
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        (click)="onModelImport()"
-    >
+    <button mat-mini-fab class="button" color="primary" (click)="onImport()">
         <mat-icon>upload</mat-icon>
     </button>
 
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        (click)="onModelExport()"
-    >
+    <button mat-mini-fab class="button" color="primary" (click)="onExport()">
         <mat-icon>download</mat-icon>
     </button>
 </div>
 
 <div class="buttons-container bottom-left-buttons">
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        (click)="onDashboardDialog()"
-    >
+    <button mat-mini-fab class="button" color="primary" (click)="onDashboard()">
         <mat-icon>query_stats</mat-icon>
     </button>
 </div>
 
 <div class="buttons-container bottom-right-buttons">
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        (click)="onProcessModelDialog()"
-    >
+    <button mat-mini-fab class="button" color="primary" (click)="onProcess()">
         <mat-icon>memory</mat-icon>
     </button>
 </div>
