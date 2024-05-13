@@ -1,208 +1,72 @@
-"""
-Main module
+"""Main Module"""
 
-This module contains the main application logic.
-"""
 
-from flask import Flask, request, jsonify
+from flask import Flask, Response, request, jsonify
 
-from simulate import simulate
-from optimal_control import optimal_control
-from parameters_identification import parameters_identification
-from validate_expression import validate_expression
-from definitions import (
-    IModelWithInterventions,
-    IRequestSimulationParameters,
-    ISimulationRequestPayload,
-    IRawSimulationRequestData,
-    ISimulationRequestData,
-    IRawOptimalControlRequestData,
-    IOptimalControlRequestData,
-    ISimulationResponse,
-    IOptimalControlResponse,
-    IRawValidationPayload,
-    IValidationPayload,
-    IValidationResult,
-    IRequestOptimalControlParameters,
-    IOptimalControlRequestPayload,
-    IRawPIRequestData,
-    IPIRequestData,
-    is_IRawPIRequestDataWithInterventions,
-    IPIRequestDataWithInterventions,
-    IPIRequestDataWithoutInterventions,
-    IRequestPIParameters,
-    IPISelectedConstant,
-    IPIResponse,
-    ISolutionWithoutInterventions,
-    ISolutionWithInterventions,
-    IPIRequestPayloadWithoutInterventions,
-    IPIRequestPayloadWithInterventions,
-    ISolutionData,
-    IModel
-)
+from core.classes.common.validation_request_body import ValidationRequestBody
+from core.classes.common.validation_response import ValidationResponse
+from core.classes.optimal_control.request_body import OptimalControlRequestBody
+from core.classes.optimal_control.response import OptimalControlResponse
+from core.classes.parameters_identification.request_body import PIRequestBody
+from core.classes.parameters_identification.response import PIResponse
+from core.classes.simulation.response import SimulationResponse
+from core.classes.simulation.request_body import SimulationRequestBody
+from middleware.simulate import simulate
+from middleware.optimal_control import optimal_control
+from middleware.parameters_identification import parameters_identification
+from middleware.validate_expression import validate_expression
 
 app: Flask = Flask(__name__)
 
 
 @app.route('/simulate', methods=['POST'])
-def simulate_endpoint():
-    """
-    Simulation endpoint
+def simulate_endpoint() -> Response:
+    """Simulation endpoint"""
 
-    This endpoint is used for basic model simulation
-    """
+    body: SimulationRequestBody = SimulationRequestBody(request.get_json())
 
-    raw_data: IRawSimulationRequestData = request.get_json()
+    result: SimulationResponse = simulate(body.parameters, body.model)
 
-    simulation_data: ISimulationRequestData = ISimulationRequestData(
-        IRequestSimulationParameters(
-            raw_data['parameters']['time'],
-            raw_data['parameters']['nodesAmount']
-        ),
-        ISimulationRequestPayload(
-            raw_data['payload']['compartments'],
-            raw_data['payload']['constants']
-        )
-    )
-
-    result: ISimulationResponse = simulate(simulation_data)
-
-    return jsonify(result)
+    return jsonify(result.definition)
 
 
 @app.route('/optimal-control', methods=['POST'])
-def optimal_control_endpoint():
-    """
-    Optimal control endpoint
+def optimal_control_endpoint() -> Response:
+    """Optimal Control endpoint"""
 
-    This endpoint is used for solving the optimal control problem
-    """
-
-    raw_data: IRawOptimalControlRequestData = request.get_json()
-
-    data: IOptimalControlRequestData = IOptimalControlRequestData(
-        IRequestOptimalControlParameters(
-            raw_data['parameters']['time'],
-            raw_data['parameters']['nodesAmount'],
-            raw_data['parameters']['costFunction'],
-            raw_data['parameters']['interventionNodesAmount'],
-            raw_data['parameters']['interventionUpperBoundary'],
-            raw_data['parameters']['interventionLowerBoundary'],
-            raw_data['parameters']['interventionApproximationType']
-        ),
-        IOptimalControlRequestPayload(
-            raw_data['payload']['compartments'],
-            raw_data['payload']['constants'],
-            raw_data['payload']['interventions']
-        )
+    body: OptimalControlRequestBody = OptimalControlRequestBody(
+        request.get_json()
     )
 
-    result: IOptimalControlResponse = optimal_control(data)
+    result: OptimalControlResponse = optimal_control(
+        body.parameters, body.model
+    )
 
-    return jsonify(result)
+    return jsonify(result.definition)
 
 
 @app.route('/parameters-identification', methods=['POST'])
 def parameters_identification_endpoint():
-    """
-    Parameters identification endpoint
+    """Parameters identification endpoint"""
 
-    This endpoint is used for identifying the parameters of the model
-    """
+    body: PIRequestBody = PIRequestBody(request.get_json())
 
-    raw_data: IRawPIRequestData = request.get_json()
+    result: PIResponse = parameters_identification(body.parameters, body.model)
 
-    is_with_interventions: bool = is_IRawPIRequestDataWithInterventions(
-        raw_data
-    )
-
-    request_parameters: IRequestPIParameters = IRequestPIParameters(
-        [
-            IPISelectedConstant(
-                constant['name'],
-                constant['value'],
-                constant['upperBoundary'],
-                constant['lowerBoundary'],
-            )
-            for constant in raw_data['parameters']['selectedConstants']
-        ],
-        raw_data['parameters']['timeStep']
-    )
-
-    data: IPIRequestData = (
-        IPIRequestDataWithoutInterventions(
-            request_parameters,
-            IPIRequestPayloadWithoutInterventions(
-                ISolutionWithoutInterventions(
-                    [
-                        ISolutionData(
-                            compartment['name'],
-                            compartment['values'],
-                        )
-                        for compartment in raw_data['payload']['solution']['compartments']
-                    ]
-                ),
-                IModel(
-                    raw_data['payload']['model']['compartments'],
-                    raw_data['payload']['model']['constants']
-                )
-            )
-        )
-        if not is_with_interventions else
-        IPIRequestDataWithInterventions(
-            request_parameters,
-            IPIRequestPayloadWithInterventions(
-                ISolutionWithInterventions(
-                    [
-                        ISolutionData(
-                            compartment['name'],
-                            compartment['values'],
-                        )
-                        for compartment in raw_data['payload']['solution']['compartments']
-                    ],
-                    [
-                        ISolutionData(
-                            intervention['name'],
-                            intervention['values'],
-                        )
-                        for intervention in raw_data['payload']['solution']['interventions']
-                    ]
-                ),
-                IModelWithInterventions(
-                    raw_data['payload']['model']['compartments'],
-                    raw_data['payload']['model']['constants'],
-                    raw_data['payload']['model']['interventions']
-                )
-            )
-        )
-    )
-
-    result: IPIResponse = parameters_identification(data)
-
-    return jsonify(result)
+    return jsonify(result.definition)
 
 
 @app.route('/validate-expression', methods=['POST'])
-def validate_expression_endpoint():
-    """
-    Expression validation endpoint
+def validate_expression_endpoint() -> Response:
+    """Expression validation endpoint"""
 
-    This endpoint is used for validating the expressions
-    """
+    body: ValidationRequestBody = ValidationRequestBody(request.get_json())
 
-    raw_data: IRawValidationPayload = request.get_json()
-
-    data: IValidationPayload = IValidationPayload(
-        raw_data['expression'],
-        raw_data['allowedSymbols'],
+    result: ValidationResponse = validate_expression(
+        body.expression, body.allowed_symbols
     )
 
-    result: IValidationResult = validate_expression(data)
-
-    return jsonify({
-        'isValid': result.is_valid,
-        'message': result.message
-    })
+    return jsonify(result.definition)
 
 
 if __name__ == '__main__':
