@@ -21,8 +21,12 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { PlotlyModule } from 'angular-plotly.js';
 import PlotlyJS from 'plotly.js-dist-min';
 
+import { AngularSplitModule } from 'angular-split';
 import { AppComponent } from './app.component';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
+import { OptimalControlInfoPanelComponent } from './components/dashboard/optimal-control-info-panel/optimal-control-info-panel.component';
+import { ParametersIdentificationInfoPanelComponent } from './components/dashboard/parameters-identification-info-panel/parameters-identification-info-panel.component';
+import { SimulationInfoPanelComponent } from './components/dashboard/simulation-info-panel/simulation-info-panel.component';
 import { DefinitionsTableDialogComponent } from './components/definitions-table-dialog/definitions-table-dialog.component';
 import { CompartmentDialogComponent } from './components/graph/compartment-dialog/compartment-dialog.component';
 import { FlowDialogComponent } from './components/graph/flow-dialog/flow-dialog.component';
@@ -52,6 +56,9 @@ PlotlyModule.plotlyjs = PlotlyJS;
         EquationInputComponent,
         DatatableComponent,
         WorkspacesPanelComponent,
+        SimulationInfoPanelComponent,
+        OptimalControlInfoPanelComponent,
+        ParametersIdentificationInfoPanelComponent,
     ],
     imports: [
         BrowserModule,
@@ -72,6 +79,7 @@ PlotlyModule.plotlyjs = PlotlyJS;
         MatButtonToggleModule,
         MatTabsModule,
         MatAutocompleteModule,
+        AngularSplitModule,
     ],
     providers: [],
     bootstrap: [AppComponent],

@@ -10,6 +10,7 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ModelDefinition } from '@core/classes/model.class';
 
+import { DataDefinition } from '@core/types/definitions.types';
 import {
     ICompartment,
     IConstant,
@@ -28,7 +29,6 @@ import { isSuccessResponse } from '@core/types/processing/common.guards';
 import { isOptimalControlParameters } from '@core/types/processing/optimal-control.guards';
 import { isPIParameters } from '@core/types/processing/parameters-identification.guards';
 import { isSimulationParameters } from '@core/types/processing/simulation.guards';
-import { Data } from '@core/types/run.types';
 import { EdgeSingular, NodeSingular, SingularElementArgument } from 'cytoscape';
 import {
     Observable,
@@ -453,7 +453,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
                                 this.runsService.add({
                                     parameters: response.parameters,
                                     result: response.result,
-                                } as Data);
+                                } as DataDefinition);
 
                                 this.snackBar.open(
                                     'Processing completed successfully',
@@ -489,8 +489,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     private initWorkspaces(): void {
         this.subscriptions.add(
             concat(
-                this.workspacesService.addSample('default.1'), // ! Change order later
-                this.workspacesService.addSample('default')
+                this.workspacesService.addSample('sir.scm'),
+                this.workspacesService.addSample('interventions.scm')
             ).subscribe()
         );
     }

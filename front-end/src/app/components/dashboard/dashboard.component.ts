@@ -1,7 +1,8 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormControl } from '@angular/forms';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { DataDefinition } from '@core/types/definitions.types';
 import {
     ApproximationType,
     IOptimalControlParameters,
@@ -12,15 +13,15 @@ import { isPIParameters } from '@core/types/processing/parameters-identification
 import {
     isOptimalControlRun,
     isPIRun,
-    isSimulationRun,
+    isSimulationRun
 } from '@core/types/run.guards';
 import {
-    Data,
     OptimalControlRun,
     PIRun,
     Run,
-    SimulationRun,
+    SimulationRun
 } from '@core/types/run.types';
+import { IOutputData, SplitComponent } from 'angular-split';
 import { Config, Layout, Data as PlotData } from 'plotly.js';
 import { Subscription, filter, map, tap } from 'rxjs';
 import { FilesService } from 'src/app/services/files.service';
@@ -39,6 +40,8 @@ interface IPlot {
     styleUrls: ['./dashboard.component.scss'],
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+    @ViewChild(SplitComponent) private readonly splitComponent!: SplitComponent;
+
     private readonly subscriptions: Subscription = new Subscription();
 
     public plotsData: IPlot[] = [];
@@ -90,9 +93,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     public add(): void {
         this.subscriptions.add(
             this.filesService
-                .readDataFromFile<Data>('.scr')
+                .readDataFromFile<DataDefinition>('.scr')
                 .pipe(
-                    tap((data: Data): void => {
+                    tap((data: DataDefinition): void => {
                         this.runsService.add(data, true);
                         this.render();
 
@@ -170,6 +173,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
         );
     }
 
+    public onGutterDBClick(event: IOutputData): void {
+        this.splitComponent.setVisibleAreaSizes([70, 30]);
+    }
+
     private setName(name: string): void {
         this.control.setValue(name, {
             emitEvent: false,
@@ -183,6 +190,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     private render(): void {
         const run: Run = this.runsService.current;
+
+        this.plotsData = [];
 
         if (isSimulationRun(run)) {
             this.renderSimulationRun(run);

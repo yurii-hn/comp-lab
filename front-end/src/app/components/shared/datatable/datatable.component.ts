@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, ViewChild } from '@angular/core';
+import { Component, HostBinding, Input, ViewChild } from '@angular/core';
 import {
     ControlValueAccessor,
     FormControl,
@@ -38,9 +38,10 @@ import { IOption, OnChangeFn, OnTouchedFn } from '@core/types/utils.types';
 export class DatatableComponent<
     RowDataType extends Record<string, any>,
     DataType extends RowDataType
-> implements OnInit, ControlValueAccessor, Validator
+> implements ControlValueAccessor, Validator
 {
-    private disabled: boolean = false;
+    private _disabled: boolean = false;
+    private _rowScheme: RowScheme<RowDataType> = {} as RowScheme<RowDataType>;
 
     private onChange!: OnChangeFn<void>;
     private onTouched!: OnTouchedFn<void>;
@@ -55,8 +56,23 @@ export class DatatableComponent<
     }
 
     @Input() public enumerate: boolean = false;
-    @Input() public rowScheme: RowScheme<RowDataType> =
-        {} as RowScheme<RowDataType>;
+    @HostBinding('class.compact') @Input() public compact: boolean = false;
+    @Input() public set disabled(disabled: boolean) {
+        this.setDisabledState(disabled);
+    }
+    @Input() public set rowScheme(scheme: RowScheme<RowDataType>) {
+        this._rowScheme = scheme;
+
+        this.updateMaxRows();
+        this.updateOptionsMap();
+        this.initControl();
+    }
+    public get rowScheme(): RowScheme<RowDataType> {
+        return this._rowScheme;
+    }
+    @Input('data') public set dataInput(data: DataType[] | null) {
+        this.writeValue(data);
+    }
 
     @ViewChild(MatTable) public table!: MatTable<IRow<DataType | RowDataType>>;
 
@@ -66,10 +82,10 @@ export class DatatableComponent<
     public editing: boolean = false;
     public maxRows: number = Infinity;
 
-    public readonly control: FormGroup = new FormGroup({});
+    public control: FormGroup = new FormGroup({});
 
     public get ids(): string[] {
-        return Object.keys(this.rowScheme);
+        return Object.keys(this._rowScheme);
     }
     public get columns(): string[] {
         const columns: string[] = [];
@@ -80,9 +96,11 @@ export class DatatableComponent<
 
         columns.push(...this.ids);
 
-        columns.push('placeholder');
+        if (!this.compact) {
+            columns.push('placeholder');
+        }
 
-        if (!this.disabled) {
+        if (!this._disabled) {
             columns.push('actions');
         }
 
@@ -91,14 +109,8 @@ export class DatatableComponent<
 
     public get editable(): boolean {
         return this.ids.some(
-            (id: string): boolean => !!this.rowScheme[id].editable
+            (id: string): boolean => !!this._rowScheme[id].editable
         );
-    }
-
-    public ngOnInit(): void {
-        this.updateMaxRows();
-        this.updateOptionsMap();
-        this.initControl();
     }
 
     public writeValue(value: DataType[] | null): void {
@@ -120,7 +132,7 @@ export class DatatableComponent<
     }
 
     public setDisabledState(disabled: boolean): void {
-        this.disabled = disabled;
+        this._disabled = disabled;
     }
 
     public validate(): ValidationErrors | null {
@@ -134,7 +146,7 @@ export class DatatableComponent<
     }
 
     public getOptionLabel(id: string, value: string): string {
-        const scheme: ISelectColumnScheme = this.rowScheme[
+        const scheme: ISelectColumnScheme = this._rowScheme[
             id
         ] as ISelectColumnScheme;
 
@@ -179,7 +191,7 @@ export class DatatableComponent<
 
     public onSave(row: IRow<DataType | RowDataType>): void {
         this.ids.forEach((id: string): void => {
-            const scheme: ColumnScheme = this.rowScheme[id];
+            const scheme: ColumnScheme = this._rowScheme[id];
 
             if (!scheme.editable && !this.adding) {
                 return;
@@ -252,7 +264,7 @@ export class DatatableComponent<
     private updateMaxRows(): void {
         const optionsCounts: number[] = this.ids.reduce(
             (counts: number[], id: string): number[] => {
-                const scheme: ColumnScheme = this.rowScheme[id];
+                const scheme: ColumnScheme = this._rowScheme[id];
 
                 if (scheme.type !== InputType.Select || !scheme.exclusive) {
                     return counts;
@@ -271,7 +283,7 @@ export class DatatableComponent<
 
     private updateOptionsMap(): void {
         this.ids.forEach((id: string): void => {
-            const scheme: ColumnScheme = this.rowScheme[id];
+            const scheme: ColumnScheme = this._rowScheme[id];
 
             if (scheme.type !== InputType.Select) {
                 return;
@@ -296,8 +308,10 @@ export class DatatableComponent<
     }
 
     private initControl(): void {
+        this.control = new FormGroup({});
+
         this.ids.forEach((id: string): void => {
-            const scheme: ColumnScheme = this.rowScheme[id];
+            const scheme: ColumnScheme = this._rowScheme[id];
 
             const control: FormControl = new FormControl(
                 null,
@@ -323,7 +337,7 @@ export class DatatableComponent<
 
     private disableNonEditableColumns(disabled: boolean = true): void {
         this.ids.forEach((id: string): void => {
-            const scheme: ColumnScheme = this.rowScheme[id];
+            const scheme: ColumnScheme = this._rowScheme[id];
 
             if (!scheme.editable) {
                 const control: FormControl = this.control.get(

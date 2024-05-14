@@ -1,23 +1,23 @@
 import { Injectable } from '@angular/core';
+import {
+    isOptimalControlDataDefinition,
+    isPIDataDefinition,
+    isSimulationDataDefinition,
+} from '@core/types/definitions.guards';
+import { DataDefinition } from '@core/types/definitions.types';
 import { IValues } from '@core/types/processing';
 import {
     isOptimalControlRun,
     isPIRun,
     isSimulationRun,
 } from '@core/types/run.guards';
-import { Data, Run } from '@core/types/run.types';
+import { Data, DataType, Run } from '@core/types/run.types';
 import { BehaviorSubject, Observable } from 'rxjs';
 
 const emptyRun: Run = {
     name: '',
     data: {
-        parameters: {
-            time: 0,
-            nodesAmount: 0,
-        },
-        result: {
-            compartments: [],
-        },
+        type: DataType.None,
     },
 };
 
@@ -64,15 +64,18 @@ export class RunsService {
         return [];
     }
 
-    public add(data: Data, set: boolean = false): void {
+    public add(data: DataDefinition, set: boolean = false): void {
         const newRun: Run = {
             name: `Run ${this._runs.length + 1}`,
-            data,
+            data: {
+                ...data,
+                type: this.getDataType(data),
+            },
         } as Run;
 
         this._runs.push(newRun);
 
-        if (set) {
+        if (set || this._runs.length === 1) {
             this._currentSubject.next(newRun);
         }
     }
@@ -102,5 +105,17 @@ export class RunsService {
         this._runs.forEach((run: Run, index: number): void => {
             run.name = `Run ${index + 1}`;
         });
+    }
+
+    private getDataType(definition: DataDefinition): DataType {
+        if (isSimulationDataDefinition(definition)) {
+            return DataType.Simulation;
+        } else if (isOptimalControlDataDefinition(definition)) {
+            return DataType.OptimalControl;
+        } else if (isPIDataDefinition(definition)) {
+            return DataType.PI;
+        }
+
+        return DataType.None;
     }
 }

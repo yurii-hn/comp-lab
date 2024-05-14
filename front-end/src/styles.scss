@@ -17,3 +17,16 @@ body {
 .snackbar {
     white-space: pre;
 }
+
+as-split.as-init {
+    .as-split-gutter {
+        &:hover {
+            filter: brightness(0.8);
+        }
+
+        &.as-dragged,
+        &:active {
+            filter: brightness(0.6);
+        }
+    }
+}

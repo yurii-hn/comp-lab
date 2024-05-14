@@ -3,8 +3,14 @@ import {
     ConstantDefinition,
     FlowDefinition,
     InterventionDefinition,
+    OptimalControlDataDefinition,
+    PIDataDefinition,
     SelectedConstantDefinition,
+    SimulationDataDefinition,
 } from './definitions.types';
+import { isOptimalControlSuccessResponse } from './processing/optimal-control.guards';
+import { isPISuccessResponse } from './processing/parameters-identification.guards';
+import { isSimulationSuccessResponse } from './processing/simulation.guards';
 
 export function isCompartmentDefinition(
     compartmentDefinition: any
@@ -89,5 +95,47 @@ export function isSelectedConstantDefinition(
         isUpperBoundaryValid &&
         isValueValid &&
         isLowerBoundaryValid
+    );
+}
+
+export function isIdentifiedConstantDefinition(
+    identifiedConstantDefinition: any
+): identifiedConstantDefinition is ConstantDefinition {
+    const isKeysAmountValid: boolean =
+        Object.keys(identifiedConstantDefinition).length === 2;
+
+    const isNameValid: boolean =
+        'name' in identifiedConstantDefinition &&
+        typeof identifiedConstantDefinition.name === 'string';
+    const isValueValid: boolean =
+        'value' in identifiedConstantDefinition &&
+        typeof identifiedConstantDefinition.value === 'number';
+
+    return isKeysAmountValid && isNameValid && isValueValid;
+}
+
+export function isSimulationDataDefinition(
+    simulationDataDefinition: any
+): simulationDataDefinition is SimulationDataDefinition {
+    return isSimulationSuccessResponse(simulationDataDefinition);
+}
+
+export function isOptimalControlDataDefinition(
+    optimalControlDataDefinition: any
+): optimalControlDataDefinition is OptimalControlDataDefinition {
+    return isOptimalControlSuccessResponse(optimalControlDataDefinition);
+}
+
+export function isPIDataDefinition(
+    piDataDefinition: any
+): piDataDefinition is PIDataDefinition {
+    return isPISuccessResponse(piDataDefinition);
+}
+
+export function isDataDefinition(dataDefinition: any): boolean {
+    return (
+        isSimulationDataDefinition(dataDefinition) ||
+        isOptimalControlDataDefinition(dataDefinition) ||
+        isPIDataDefinition(dataDefinition)
     );
 }

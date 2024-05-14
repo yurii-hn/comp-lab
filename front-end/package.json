@@ -21,6 +21,7 @@
         "@angular/platform-browser-dynamic": "^15.2.0",
         "@angular/router": "^15.2.0",
         "angular-plotly.js": "^5.1.0",
+        "angular-split": "^15.0.0",
         "cytoscape": "^3.25.0",
         "cytoscape-edgehandles": "^4.0.1",
         "cytoscape-klay": "^3.1.4",

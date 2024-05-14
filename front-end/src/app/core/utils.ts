@@ -1,4 +1,5 @@
 import { Observable, Subscriber } from 'rxjs';
+import { IValues } from './types/processing';
 
 export function fromResizeObserver(
     target: Element
@@ -20,5 +21,22 @@ export function fromResizeObserver(
                 resizeObserver.disconnect();
             };
         }
+    );
+}
+
+export function valuesToRowData(values: IValues[]): Record<string, number>[] {
+    return Array.from(
+        { length: values[0].values.length },
+        (_: unknown, index: number): Record<string, number> =>
+            values.reduce(
+                (
+                    row: Record<string, number>,
+                    values: IValues
+                ): Record<string, number> => ({
+                    ...row,
+                    [values.name]: values.values[index],
+                }),
+                {}
+            )
     );
 }

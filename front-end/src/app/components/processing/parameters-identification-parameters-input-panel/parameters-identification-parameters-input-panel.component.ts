@@ -23,6 +23,7 @@ import {
     IValues,
 } from '@core/types/processing';
 import { IOption, OnChangeFn, OnTouchedFn } from '@core/types/utils.types';
+import { valuesToRowData } from '@core/utils';
 import { Subscription, tap } from 'rxjs';
 import { FilesService } from 'src/app/services/files.service';
 import { ModelService } from 'src/app/services/model.service';
@@ -200,7 +201,7 @@ export class ParametersIdentificationParametersInputPanelComponent
                 .readDataFromFile<IValues[]>('.scs')
                 .pipe(
                     tap((data: IValues[]): void => {
-                        this.dataControl.setValue(this.dataToRowData(data));
+                        this.dataControl.setValue(valuesToRowData(data));
 
                         this.snackBar.open('Imported successfully', 'Dismiss', {
                             panelClass: 'snackbar',
@@ -211,23 +212,6 @@ export class ParametersIdentificationParametersInputPanelComponent
                     })
                 )
                 .subscribe()
-        );
-    }
-
-    private dataToRowData(data: IValues[]): Record<string, number>[] {
-        return Array.from(
-            { length: data[0].values.length },
-            (_: unknown, index: number): Record<string, number> =>
-                data.reduce(
-                    (
-                        row: Record<string, number>,
-                        values: IValues
-                    ): Record<string, number> => ({
-                        ...row,
-                        [values.name]: values.values[index],
-                    }),
-                    {}
-                )
         );
     }
 

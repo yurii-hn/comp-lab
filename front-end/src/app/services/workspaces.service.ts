@@ -3,8 +3,8 @@ import { ModelDefinition } from '@core/classes/model.class';
 import { IModel } from '@core/types/model.types';
 import { IWorkspace } from '@core/types/workspaces.types';
 import { BehaviorSubject, Observable, map } from 'rxjs';
-import { SamplesService } from './model-samples.service';
 import { ModelService } from './model.service';
+import { SamplesService } from './samples.service';
 
 const emptyWorkspace: IWorkspace = {
     name: '',
@@ -56,7 +56,7 @@ export class WorkspacesService {
     }
 
     public addSample(name: string): Observable<void> {
-        return this.samplesService.getSample(name).pipe(
+        return this.samplesService.getSample<IModel>(name).pipe(
             map((definition: IModel): void => {
                 const model: ModelDefinition = new ModelDefinition(definition);
 
