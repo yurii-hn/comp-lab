@@ -73,7 +73,7 @@ export function isOptimalControlResult(
     optimalControlResult: any
 ): optimalControlResult is IOptimalControlResult {
     const isKeysAmountValid: boolean =
-        Object.keys(optimalControlResult).length === 3;
+        Object.keys(optimalControlResult).length === 5;
 
     const isCompartmentsValid: boolean =
         'compartments' in optimalControlResult &&
@@ -93,12 +93,20 @@ export function isOptimalControlResult(
         optimalControlResult.approximatedInterventions.every(
             (intervention: any): boolean => isValues(intervention)
         );
+    const isNoControlObjectiveValid: boolean =
+        'noControlObjective' in optimalControlResult &&
+        typeof optimalControlResult.noControlObjective === 'number';
+    const isOptimalObjectiveValid: boolean =
+        'optimalObjective' in optimalControlResult &&
+        typeof optimalControlResult.optimalObjective === 'number';
 
     return (
         isKeysAmountValid &&
         isCompartmentsValid &&
         isInterventionsValid &&
-        isApproximatedInterventionsValid
+        isApproximatedInterventionsValid &&
+        isNoControlObjectiveValid &&
+        isOptimalObjectiveValid
     );
 }
 

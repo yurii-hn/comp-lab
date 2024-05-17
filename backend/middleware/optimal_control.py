@@ -223,6 +223,8 @@ def optimal_control(parameters: OptimalControlParameters, model: Model) -> Optim
                 for i, intervention in enumerate(model.interventions)
             ],
             'approximatedInterventions': variables_datatable.interventions_definition,
+            'noControlObjective': no_control_cost,
+            'optimalObjective': optimal_cost,
         }
 
         return OptimalControlSuccessResponse({

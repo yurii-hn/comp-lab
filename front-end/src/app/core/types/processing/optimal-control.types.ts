@@ -24,6 +24,8 @@ export interface IOptimalControlResult {
     compartments: IValues[];
     interventions: IValues[];
     approximatedInterventions: IValues[];
+    noControlObjective: number;
+    optimalObjective: number;
 }
 
 export type OptimalControlRequestBody = IRequestBody<IOptimalControlParameters>;

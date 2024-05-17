@@ -12,3 +12,5 @@ class OptimalControlResultDefinition(TypedDict):
     compartments: list[ValuesDefinition]
     interventions: list[ValuesDefinition]
     approximatedInterventions: list[ValuesDefinition]
+    noControlObjective: float
+    optimalObjective: float

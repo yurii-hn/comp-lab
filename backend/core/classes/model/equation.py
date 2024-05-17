@@ -81,6 +81,8 @@ class Equation():
 
         self.expression += equation  # type: ignore
 
+        self.__update_function()
+
     def add_str(self, equation: str, symbols_table: SymbolsTable) -> None:
         """Add equation"""
 

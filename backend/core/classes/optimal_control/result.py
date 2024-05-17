@@ -11,6 +11,8 @@ class OptimalControlResult:
     compartments: list[Values]
     interventions: list[Values]
     approximated_interventions: list[Values]
+    no_control_objective: float
+    control_objective: float
 
     @property
     def definition(self) -> OptimalControlResultDefinition:
@@ -28,7 +30,9 @@ class OptimalControlResult:
             'approximatedInterventions': [
                 approximated_intervention.definition
                 for approximated_intervention in self.approximated_interventions
-            ]
+            ],
+            'noControlObjective': self.no_control_objective,
+            'optimalObjective': self.control_objective,
         }
 
     def __init__(self, definition: OptimalControlResultDefinition) -> None:
@@ -44,3 +48,5 @@ class OptimalControlResult:
             Values(approximated_intervention)
             for approximated_intervention in definition['approximatedInterventions']
         ]
+        self.no_control_objective = definition['noControlObjective']
+        self.control_objective = definition['optimalObjective']
