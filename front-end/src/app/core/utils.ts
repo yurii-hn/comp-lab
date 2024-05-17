@@ -25,6 +25,10 @@ export function fromResizeObserver(
 }
 
 export function valuesToRowData(values: IValues[]): Record<string, number>[] {
+    if (!values.length) {
+        return [];
+    }
+
     return Array.from(
         { length: values[0].values.length },
         (_: unknown, index: number): Record<string, number> =>
@@ -38,5 +42,31 @@ export function valuesToRowData(values: IValues[]): Record<string, number>[] {
                 }),
                 {}
             )
+    );
+}
+
+export function rowDataToValues(rowData: Record<string, number>[]): IValues[] {
+    if (!rowData.length) {
+        return [];
+    }
+
+    return Object.keys(rowData[0]).reduce(
+        (values: IValues[], name: string): IValues[] => {
+            const currentValues = rowData.map(
+                (row: Record<string, number>): number => row[name]
+            );
+
+            if (currentValues.some((value: number): boolean => !value)) {
+                return values;
+            }
+
+            values.push({
+                name,
+                values: currentValues,
+            });
+
+            return values;
+        },
+        []
     );
 }

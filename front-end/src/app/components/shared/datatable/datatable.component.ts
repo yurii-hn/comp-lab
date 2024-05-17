@@ -7,6 +7,7 @@ import {
     NG_VALUE_ACCESSOR,
     ValidationErrors,
     Validator,
+    ValidatorFn,
 } from '@angular/forms';
 import { MatTable } from '@angular/material/table';
 import {
@@ -42,6 +43,7 @@ export class DatatableComponent<
 {
     private _disabled: boolean = false;
     private _rowScheme: RowScheme<RowDataType> = {} as RowScheme<RowDataType>;
+    private _rowValidators: ValidatorFn[] = [];
 
     private onChange!: OnChangeFn<void>;
     private onTouched!: OnTouchedFn<void>;
@@ -66,9 +68,15 @@ export class DatatableComponent<
         this.updateMaxRows();
         this.updateOptionsMap();
         this.initControl();
+        this.initControlValidators();
     }
     public get rowScheme(): RowScheme<RowDataType> {
         return this._rowScheme;
+    }
+    @Input() public set rowValidators(validators: ValidatorFn[]) {
+        this._rowValidators = validators;
+
+        this.initControlValidators();
     }
     @Input('data') public set dataInput(data: DataType[] | null) {
         this.writeValue(data);
@@ -324,6 +332,12 @@ export class DatatableComponent<
 
             this.control.addControl(id, control);
         });
+    }
+
+    private initControlValidators(): void {
+        this.control.clearValidators();
+        this.control.setValidators(this._rowValidators);
+        this.control.updateValueAndValidity();
     }
 
     private setData(data: DataType[]): void {

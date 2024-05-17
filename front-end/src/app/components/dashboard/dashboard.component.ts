@@ -13,13 +13,13 @@ import { isPIParameters } from '@core/types/processing/parameters-identification
 import {
     isOptimalControlRun,
     isPIRun,
-    isSimulationRun
+    isSimulationRun,
 } from '@core/types/run.guards';
 import {
     OptimalControlRun,
     PIRun,
     Run,
-    SimulationRun
+    SimulationRun,
 } from '@core/types/run.types';
 import { IOutputData, SplitComponent } from 'angular-split';
 import { Config, Layout, Data as PlotData } from 'plotly.js';
@@ -385,44 +385,55 @@ export class DashboardComponent implements OnInit, OnDestroy {
             { dataCompartments: [], dataInterventions: [] }
         );
 
-        this.plotsData = dataCompartments.map(
-            (compartment: IValues, index: number): IPlot => ({
-                data: [
+        this.plotsData = run.data.result.approximation.map(
+            (compartment: IValues): IPlot => {
+                const provided: IValues = run.data.parameters.data.find(
+                    (data: IValues): boolean => data.name === compartment.name
+                ) as IValues;
+
+                const data: PlotData[] = [
                     {
                         x,
-                        y: run.data.result.approximation[index].values,
+                        y: compartment.values,
                         type: 'scatter',
                         name: 'Approximated',
                         line: {
                             shape: 'linear',
                         },
                     },
-                    {
+                ];
+
+                if (provided) {
+                    data.push({
                         x,
-                        y: compartment.values,
+                        y: provided.values,
                         type: 'scatter',
                         name: 'Provided',
                         mode: 'markers',
-                    },
-                ],
-                layout: {
-                    autosize: true,
-                    title: {
-                        text: compartment.name,
-                    },
-                    xaxis: {
-                        title: {
-                            text: 'Time',
-                        },
-                    },
-                    yaxis: {
-                        rangemode: 'tozero',
+                    });
+                }
+
+                return {
+                    data,
+                    layout: {
+                        autosize: true,
                         title: {
                             text: compartment.name,
                         },
+                        xaxis: {
+                            title: {
+                                text: 'Time',
+                            },
+                        },
+                        yaxis: {
+                            rangemode: 'tozero',
+                            title: {
+                                text: compartment.name,
+                            },
+                        },
                     },
-                },
-            })
+                };
+            }
         );
 
         if (isPIParameters(run.data.parameters)) {

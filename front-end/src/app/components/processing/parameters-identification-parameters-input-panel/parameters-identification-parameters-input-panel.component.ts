@@ -1,5 +1,6 @@
 import { Component, OnDestroy } from '@angular/core';
 import {
+    AbstractControl,
     ControlValueAccessor,
     FormControl,
     FormGroup,
@@ -7,6 +8,7 @@ import {
     NG_VALUE_ACCESSOR,
     ValidationErrors,
     Validator,
+    ValidatorFn,
     Validators,
 } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -23,7 +25,7 @@ import {
     IValues,
 } from '@core/types/processing';
 import { IOption, OnChangeFn, OnTouchedFn } from '@core/types/utils.types';
-import { valuesToRowData } from '@core/utils';
+import { rowDataToValues, valuesToRowData } from '@core/utils';
 import { Subscription, tap } from 'rxjs';
 import { FilesService } from 'src/app/services/files.service';
 import { ModelService } from 'src/app/services/model.service';
@@ -112,7 +114,7 @@ export class ParametersIdentificationParametersInputPanelComponent
                     name: compartment.name,
                     editable: true,
                     type: InputType.Number,
-                    validationFns: [Validators.required, Validators.min(0)],
+                    validationFns: [Validators.min(0)],
                 },
             })
         ),
@@ -133,6 +135,23 @@ export class ParametersIdentificationParametersInputPanelComponent
         }),
         {}
     );
+    public readonly dataRowValidators: ValidatorFn[] = [
+        (control: AbstractControl): ValidationErrors | null => {
+            const value: Record<string, number> = structuredClone(
+                control.value
+            );
+
+            return Object.values(value).some((value: number): boolean => {
+                if (!value) {
+                    return false;
+                }
+
+                return true;
+            })
+                ? null
+                : { missingValues: true };
+        },
+    ];
 
     public constructor(
         private readonly snackBar: MatSnackBar,
@@ -236,30 +255,7 @@ export class ParametersIdentificationParametersInputPanelComponent
         );
     }
 
-    private onDataChange(data: Record<string, number>[]): void {
-        const compartments: IValues[] = this.modelService.compartments.map(
-            (compartment: ICompartment): IValues => ({
-                name: compartment.name,
-                values: data.map(
-                    (data: Record<string, number>): number =>
-                        data[compartment.name]
-                ),
-            })
-        );
-
-        const interventions: IValues[] = this.modelService.interventions.map(
-            (intervention: IIntervention): IValues => ({
-                name: intervention.name,
-                values: data.map(
-                    (data: Record<string, number>): number =>
-                        data[intervention.name]
-                ),
-            })
-        );
-
-        this.control.controls['data']!.setValue([
-            ...compartments,
-            ...interventions,
-        ]);
+    private onDataChange(rowData: Record<string, number>[]): void {
+        this.control.controls['data']!.setValue(rowDataToValues(rowData));
     }
 }
