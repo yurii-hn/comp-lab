@@ -6,7 +6,7 @@ import { DataDefinition } from '@core/types/definitions.types';
 import {
     ApproximationType,
     IOptimalControlParameters,
-    ISimulationParameters,
+    IPoint,
     IValues,
 } from '@core/types/processing';
 import { isPIParameters } from '@core/types/processing/parameters-identification.guards';
@@ -203,130 +203,32 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     private renderSimulationRun(run: SimulationRun): void {
-        const parameters: ISimulationParameters = run.data.parameters;
-
-        const x: number[] = this.getXAxis(
-            parameters.time,
-            parameters.nodesAmount
-        );
-
         this.plotsData = run.data.result.compartments.map(
-            (compartment: IValues): IPlot => ({
-                data: [
-                    {
-                        x,
-                        y: compartment.values,
-                        type: 'scatter',
-                        name: compartment.name,
-                        line: {
-                            shape: 'linear',
-                        },
-                    },
-                ],
-                layout: {
-                    autosize: true,
-                    title: {
-                        text: compartment.name,
-                    },
-                    xaxis: {
-                        title: {
-                            text: 'Time',
-                        },
-                    },
-                    yaxis: {
-                        rangemode: 'tozero',
-                        title: {
-                            text: compartment.name,
-                        },
-                    },
-                },
-            })
-        );
-    }
+            (compartment: IValues): IPlot => {
+                const x: number[] = [];
+                const y: number[] = [];
 
-    private renderOptimalControlRun(run: OptimalControlRun): void {
-        const parameters: IOptimalControlParameters = run.data.parameters;
+                compartment.values.forEach((point: IPoint): void => {
+                    x.push(point.time);
+                    y.push(point.value);
+                });
 
-        const xCompartments: number[] = this.getXAxis(
-            parameters.time,
-            parameters.nodesAmount
-        );
-        const xInterventions: number[] = this.getXAxis(
-            parameters.time,
-            parameters.intervention.nodesAmount
-        );
-        const piecewiseConstantApproximation: boolean =
-            parameters.intervention.approximationType ===
-            ApproximationType.PiecewiseConstant;
-        const lineShape: 'linear' | 'hv' = piecewiseConstantApproximation
-            ? 'hv'
-            : 'linear';
-
-        this.plotsData = run.data.result[0].compartments.map(
-            (compartment: IValues, index: number): IPlot => ({
-                data: [
-                    {
-                        x: xCompartments,
-                        y: compartment.values,
-                        type: 'scatter',
-                        name: 'Initial',
-                        line: {
-                            shape: 'linear',
-                        },
-                    },
-                    {
-                        x: xCompartments,
-                        y: run.data.result[1].compartments[index].values,
-                        type: 'scatter',
-                        name: 'Optimal',
-                        line: {
-                            shape: 'linear',
-                        },
-                    },
-                ],
-                layout: {
-                    autosize: true,
-                    title: {
-                        text: compartment.name,
-                    },
-                    xaxis: {
-                        title: {
-                            text: 'Time',
-                        },
-                    },
-                    yaxis: {
-                        rangemode: 'tozero',
-                        title: {
-                            text: compartment.name,
-                        },
-                    },
-                },
-            })
-        );
-
-        this.plotsData.push(
-            ...run.data.result[1].interventions.map(
-                (intervention: IValues): IPlot => ({
+                return {
                     data: [
                         {
-                            x: xInterventions,
-                            y: [
-                                ...intervention.values,
-                                ...(piecewiseConstantApproximation
-                                    ? [intervention.values.at(-1) as number]
-                                    : []),
-                            ],
+                            x,
+                            y,
                             type: 'scatter',
-                            name: intervention.name,
+                            name: compartment.name,
                             line: {
-                                shape: lineShape,
+                                shape: 'linear',
                             },
                         },
                     ],
                     layout: {
                         autosize: true,
                         title: {
-                            text: intervention.name,
+                            text: compartment.name,
                         },
                         xaxis: {
                             title: {
@@ -336,20 +238,139 @@ export class DashboardComponent implements OnInit, OnDestroy {
                         yaxis: {
                             rangemode: 'tozero',
                             title: {
-                                text: intervention.name,
+                                text: compartment.name,
                             },
                         },
                     },
-                })
+                };
+            }
+        );
+    }
+
+    private renderOptimalControlRun(run: OptimalControlRun): void {
+        const parameters: IOptimalControlParameters = run.data.parameters;
+
+        const piecewiseConstantApproximation: boolean =
+            parameters.intervention.approximationType ===
+            ApproximationType.PiecewiseConstant;
+        const lineShape: 'linear' | 'hv' = piecewiseConstantApproximation
+            ? 'hv'
+            : 'linear';
+
+        this.plotsData = run.data.result[0].compartments.map(
+            (compartment: IValues): IPlot => {
+                const x: number[] = [];
+                const yNonOptimal: number[] = [];
+                const yOptimal: number[] = [];
+
+                compartment.values.forEach((point: IPoint): void => {
+                    x.push(point.time);
+                    yNonOptimal.push(point.value);
+                });
+
+                run.data.result[1].compartments
+                    .find(
+                        (optimalCompartment: IValues): boolean =>
+                            optimalCompartment.name === compartment.name
+                    )!
+                    .values.forEach((point: IPoint): void => {
+                        yOptimal.push(point.value);
+                    });
+
+                return {
+                    data: [
+                        {
+                            x,
+                            y: yNonOptimal,
+                            type: 'scatter',
+                            name: 'Initial',
+                            line: {
+                                shape: 'linear',
+                            },
+                        },
+                        {
+                            x,
+                            y: yOptimal,
+                            type: 'scatter',
+                            name: 'Optimal',
+                            line: {
+                                shape: 'linear',
+                            },
+                        },
+                    ],
+                    layout: {
+                        autosize: true,
+                        title: {
+                            text: compartment.name,
+                        },
+                        xaxis: {
+                            title: {
+                                text: 'Time',
+                            },
+                        },
+                        yaxis: {
+                            rangemode: 'tozero',
+                            title: {
+                                text: compartment.name,
+                            },
+                        },
+                    },
+                };
+            }
+        );
+
+        this.plotsData.push(
+            ...run.data.result[1].interventions.map(
+                (intervention: IValues): IPlot => {
+                    const x: number[] = [];
+                    const y: number[] = [];
+
+                    intervention.values.forEach((point: IPoint): void => {
+                        x.push(point.time);
+                        y.push(point.value);
+                    });
+
+                    if (piecewiseConstantApproximation) {
+                        x.push(parameters.time);
+                        y.push(intervention.values.at(-1)!.value);
+                    }
+
+                    return {
+                        data: [
+                            {
+                                x,
+                                y,
+                                type: 'scatter',
+                                name: intervention.name,
+                                line: {
+                                    shape: lineShape,
+                                },
+                            },
+                        ],
+                        layout: {
+                            autosize: true,
+                            title: {
+                                text: intervention.name,
+                            },
+                            xaxis: {
+                                title: {
+                                    text: 'Time',
+                                },
+                            },
+                            yaxis: {
+                                rangemode: 'tozero',
+                                title: {
+                                    text: intervention.name,
+                                },
+                            },
+                        },
+                    };
+                }
             )
         );
     }
 
     private renderPIRun(run: PIRun): void {
-        const nodesAmount: number = run.data.parameters.data[0].values.length;
-        const time: number = run.data.parameters.timeStep * nodesAmount;
-
-        const x: number[] = this.getXAxis(time, nodesAmount);
         const {
             dataCompartments,
             dataInterventions,
@@ -387,14 +408,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
         this.plotsData = run.data.result.approximation.map(
             (compartment: IValues): IPlot => {
-                const provided: IValues = run.data.parameters.data.find(
-                    (data: IValues): boolean => data.name === compartment.name
-                ) as IValues;
+                const xApproximated: number[] = [];
+                const yApproximated: number[] = [];
+
+                const xData: number[] = [];
+                const yData: number[] = [];
+
+                compartment.values.forEach((point: IPoint): void => {
+                    xApproximated.push(point.time);
+                    yApproximated.push(point.value);
+                });
+
+                dataCompartments
+                    .find(
+                        (providedValues: IValues): boolean =>
+                            providedValues.name === compartment.name
+                    )
+                    ?.values?.forEach((point: IPoint): void => {
+                        xData.push(point.time);
+                        yData.push(point.value);
+                    });
 
                 const data: PlotData[] = [
                     {
-                        x,
-                        y: compartment.values,
+                        x: xApproximated,
+                        y: yApproximated,
                         type: 'scatter',
                         name: 'Approximated',
                         line: {
@@ -403,10 +441,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
                     },
                 ];
 
-                if (provided) {
+                if (yData.length) {
                     data.push({
-                        x,
-                        y: provided.values,
+                        x: xData,
+                        y: yData,
                         type: 'scatter',
                         name: 'Provided',
                         mode: 'markers',
@@ -438,12 +476,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
         if (isPIParameters(run.data.parameters)) {
             this.plotsData.push(
-                ...dataInterventions.map(
-                    (intervention: IValues): IPlot => ({
+                ...dataInterventions.map((intervention: IValues): IPlot => {
+                    const x: number[] = [];
+                    const y: number[] = [];
+
+                    intervention.values.forEach((point: IPoint): void => {
+                        x.push(point.time);
+                        y.push(point.value);
+                    });
+
+                    return {
                         data: [
                             {
-                                x: x,
-                                y: intervention.values,
+                                x,
+                                y,
                                 type: 'scatter',
                                 name: intervention.name,
                                 line: {
@@ -468,20 +514,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
                                 },
                             },
                         },
-                    })
-                )
+                    };
+                })
             );
         }
-    }
-
-    private getXAxis(time: number, nodesAmount: number): number[] {
-        const xAxis: number[] = [];
-        const step: number = time / nodesAmount;
-
-        for (let i: number = 0; i <= time; i += step) {
-            xAxis.push(i);
-        }
-
-        return xAxis;
     }
 }

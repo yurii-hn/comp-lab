@@ -20,7 +20,7 @@ export interface IIdentifiedConstant {
 }
 
 export interface IPIParameters {
-    timeStep: number;
+    nodesAmount: number;
     selectedConstants: ISelectedConstant[];
     data: IValues[];
 }

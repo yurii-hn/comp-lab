@@ -1,9 +1,8 @@
 """Variables Datatable"""
 
-
+from core.classes.common.point import Point
 from core.classes.common.values import Values
 from core.definitions.common.values import ValuesDefinition
-from core.definitions.model.variables_datatable import VariablesDatatableDefinition
 
 
 class VariablesDatatable:
@@ -38,71 +37,28 @@ class VariablesDatatable:
 
         return [lambdas.definition for lambdas in self.lambdas.values()]
 
-    @property
-    def definition(self) -> VariablesDatatableDefinition:
-        """Definition"""
-
-        return {
-            'compartments': {
-                name: compartment.definition
-                for name, compartment in self.compartments.items()
-            },
-            'constants': {
-                name: constant.definition
-                for name, constant in self.constants.items()
-            },
-            'interventions': {
-                name: intervention.definition
-                for name, intervention in self.interventions.items()
-            },
-            'lambdas': {
-                name: current_lambda.definition
-                for name, current_lambda in self.lambdas.items()
-            }
-        }
-
-    def __init__(self, definition: VariablesDatatableDefinition | None = None) -> None:
-        if definition:
-            self.compartments = {
-                name: Values(values)
-                for name, values in definition['compartments'].items()
-            }
-            self.constants = {
-                name: Values(values)
-                for name, values in definition['constants'].items()
-            }
-            self.interventions = {
-                name: Values(values)
-                for name, values in definition['interventions'].items()
-            }
-            self.lambdas = {
-                name: Values(values)
-                for name, values in definition['lambdas'].items()
-            }
-
-            return
-
+    def __init__(self) -> None:
         self.compartments = {}
         self.constants = {}
         self.interventions = {}
         self.lambdas = {}
 
-    def __getitem__(self, key: str) -> list[float]:
+    def __getitem__(self, key: str) -> Values:
         if key in self.compartments:
-            return self.compartments[key].values
+            return self.compartments[key]
 
         if key in self.constants:
-            return self.constants[key].values
+            return self.constants[key]
 
         if key in self.interventions:
-            return self.interventions[key].values
+            return self.interventions[key]
 
         if key in self.lambdas:
-            return self.lambdas[key].values
+            return self.lambdas[key]
 
         raise KeyError(f'Key "{key}" not found in Datatable')
 
-    def __setitem__(self, key: str, value: list[float]) -> None:
+    def __setitem__(self, key: str, value: list[Point]) -> None:
         if key in self.compartments:
             self.compartments[key].values = value
 

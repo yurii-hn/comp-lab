@@ -1,8 +1,10 @@
 """Optimal Control Result Class"""
 
-
 from core.classes.common.values import Values
-from core.definitions.optimal_control.result import OptimalControlResultDefinition
+from core.definitions.optimal_control.approximation_type import \
+    ApproximationType
+from core.definitions.optimal_control.result import \
+    OptimalControlResultDefinition
 
 
 class OptimalControlResult:
@@ -19,34 +21,35 @@ class OptimalControlResult:
         """Definition"""
 
         return {
-            'compartments': [
-                compartment.definition
-                for compartment in self.compartments
+            "compartments": [
+                compartment.definition for compartment in self.compartments
             ],
-            'interventions': [
-                intervention.definition
-                for intervention in self.interventions
+            "interventions": [
+                intervention.definition for intervention in self.interventions
             ],
-            'approximatedInterventions': [
+            "approximatedInterventions": [
                 approximated_intervention.definition
                 for approximated_intervention in self.approximated_interventions
             ],
-            'noControlObjective': self.no_control_objective,
-            'optimalObjective': self.control_objective,
+            "noControlObjective": self.no_control_objective,
+            "optimalObjective": self.control_objective,
         }
 
-    def __init__(self, definition: OptimalControlResultDefinition) -> None:
+    def __init__(
+        self,
+        definition: OptimalControlResultDefinition,
+        interventions_approximation_type: ApproximationType,
+    ) -> None:
         self.compartments = [
-            Values(compartment)
-            for compartment in definition['compartments']
+            Values(compartment) for compartment in definition["compartments"]
         ]
         self.interventions = [
-            Values(intervention)
-            for intervention in definition['interventions']
+            Values(intervention, interventions_approximation_type)
+            for intervention in definition["interventions"]
         ]
         self.approximated_interventions = [
             Values(approximated_intervention)
-            for approximated_intervention in definition['approximatedInterventions']
+            for approximated_intervention in definition["approximatedInterventions"]
         ]
-        self.no_control_objective = definition['noControlObjective']
-        self.control_objective = definition['optimalObjective']
+        self.no_control_objective = definition["noControlObjective"]
+        self.control_objective = definition["optimalObjective"]

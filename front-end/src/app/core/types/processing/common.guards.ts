@@ -1,11 +1,23 @@
 import { isModel } from '../model.guards';
 import {
     IErrorResponse,
+    IPoint,
     IRequestBody,
     ISuccessResponse,
     IValidationResponse,
     IValues,
 } from './common.types';
+
+export function isPoint(point: any): point is IPoint {
+    const isKeysAmountValid: boolean = Object.keys(point).length === 2;
+
+    const isTimeValid: boolean =
+        'time' in point && typeof point.time === 'number';
+    const isValueValid: boolean =
+        'value' in point && typeof point.value === 'number';
+
+    return isKeysAmountValid && isTimeValid && isValueValid;
+}
 
 export function isValues(values: any): values is IValues {
     const isKeysAmountValid: boolean = Object.keys(values).length === 2;
@@ -15,7 +27,7 @@ export function isValues(values: any): values is IValues {
     const isValuesValid: boolean =
         'values' in values &&
         Array.isArray(values.values) &&
-        values.values.every((value: any): boolean => typeof value === 'number');
+        values.values.every((value: any): boolean => isPoint(value));
 
     return isKeysAmountValid && isNameValid && isValuesValid;
 }

@@ -1,5 +1,5 @@
 import { Observable, Subscriber } from 'rxjs';
-import { IValues } from './types/processing';
+import { IPoint, IValues } from './types/processing';
 
 export function fromResizeObserver(
     target: Element
@@ -29,19 +29,43 @@ export function valuesToRowData(values: IValues[]): Record<string, number>[] {
         return [];
     }
 
-    return Array.from(
-        { length: values[0].values.length },
-        (_: unknown, index: number): Record<string, number> =>
-            values.reduce(
-                (
-                    row: Record<string, number>,
-                    values: IValues
-                ): Record<string, number> => ({
-                    ...row,
-                    [values.name]: values.values[index],
-                }),
-                {}
-            )
+    const times: number[] = getSetArray(
+        values.reduce(
+            (times: number[], value: IValues): number[] =>
+                times.concat(value.values.map((point): number => point.time)),
+            []
+        )
+    );
+
+    times.sort((timeA: number, timeB: number): number => timeA - timeB);
+
+    return times.reduce(
+        (
+            rowsData: Record<string, number>[],
+            time: number
+        ): Record<string, number>[] =>
+            rowsData.concat(
+                values.reduce(
+                    (
+                        row: Record<string, number>,
+                        value: IValues
+                    ): Record<string, number> => {
+                        const point: IPoint | undefined = value.values.find(
+                            (point: IPoint): boolean => point.time === time
+                        );
+
+                        if (point) {
+                            row[value.name] = point.value;
+                        }
+
+                        return row;
+                    },
+                    {
+                        t: time,
+                    }
+                )
+            ),
+        []
     );
 }
 
@@ -50,23 +74,52 @@ export function rowDataToValues(rowData: Record<string, number>[]): IValues[] {
         return [];
     }
 
-    return Object.keys(rowData[0]).reduce(
-        (values: IValues[], name: string): IValues[] => {
-            const currentValues = rowData.map(
-                (row: Record<string, number>): number => row[name]
-            );
+    const columns: string[] = getSetArray(
+        rowData.reduce(
+            (columns: string[], row: Record<string, number>): string[] =>
+                columns.concat(
+                    Object.keys(row).filter(
+                        (name: string): boolean => name !== 't'
+                    )
+                ),
+            []
+        )
+    );
 
-            if (currentValues.some((value: number): boolean => !value)) {
-                return values;
-            }
+    return columns.reduce((values: IValues[], name: string): IValues[] => {
+        const currentValues: IPoint[] = rowData.reduce(
+            (
+                currentValues: IPoint[],
+                row: Record<string, number>
+            ): IPoint[] => {
+                if (!row.hasOwnProperty(name)) {
+                    return currentValues;
+                }
+
+                return currentValues.concat({
+                    time: row['t'],
+                    value: row[name],
+                });
+            },
+            []
+        );
+
+        if (currentValues.length) {
+            currentValues.sort(
+                (pointA: IPoint, pointB: IPoint): number =>
+                    pointA.time - pointB.time
+            );
 
             values.push({
                 name,
                 values: currentValues,
             });
+        }
 
-            return values;
-        },
-        []
-    );
+        return values;
+    }, []);
+}
+
+function getSetArray<Type>(array: Type[]): Type[] {
+    return Array.from(new Set(array));
 }

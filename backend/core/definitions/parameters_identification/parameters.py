@@ -4,12 +4,13 @@
 from typing import TypedDict
 
 from core.definitions.common.values import ValuesDefinition
-from core.definitions.parameters_identification.selected_constant import SelectedConstantDefinition
+from core.definitions.parameters_identification.selected_constant import \
+    SelectedConstantDefinition
 
 
 class PIParametersDefinition(TypedDict):
     """PI Parameters Definition"""
 
-    timeStep: float
+    nodesAmount: int
     selectedConstants: list[SelectedConstantDefinition]
     data: list[ValuesDefinition]

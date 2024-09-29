@@ -67,8 +67,9 @@ export function isPIParameters(
 ): piParameters is IPIParameters {
     const isKeysAmountValid: boolean = Object.keys(piParameters).length === 3;
 
-    const isTimeStepValid: boolean =
-        'timeStep' in piParameters && typeof piParameters.timeStep === 'number';
+    const isNodesAmountValid: boolean =
+        'nodesAmount' in piParameters &&
+        typeof piParameters.nodesAmount === 'number';
     const isSelectedConstantsValid: boolean =
         'selectedConstants' in piParameters &&
         Array.isArray(piParameters.selectedConstants) &&
@@ -83,7 +84,7 @@ export function isPIParameters(
     return (
         isKeysAmountValid &&
         isSelectedConstantsValid &&
-        isTimeStepValid &&
+        isNodesAmountValid &&
         isDataValid
     );
 }

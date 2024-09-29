@@ -1,16 +1,15 @@
 """Equation Class"""
 
-
 from typing import Callable, cast
+
+from core.classes.model.variables_datatable import VariablesDatatable
+from core.definitions.model.continuity_type import ContinuityType
+from core.definitions.model.symbols_table import SymbolsTable
 from sympy import Expr, FiniteSet, Interval, Symbol, diff, lambdify, sympify
 from sympy.calculus.util import continuous_domain
 
-from core.classes.model.variables_datatable import VariablesDatatable
-from core.definitions.model.symbols_table import SymbolsTable
-from core.definitions.model.continuity_type import ContinuityType
 
-
-class Equation():
+class Equation:
     """Equation"""
 
     expression: Expr
@@ -35,7 +34,7 @@ class Equation():
         self,
         step_size: float,
         nodes_amount: int,
-        variables_datatable: VariablesDatatable
+        variables_datatable: VariablesDatatable,
     ) -> float:
         """Calculate interval"""
 
@@ -43,7 +42,7 @@ class Equation():
 
         for i in range(nodes_amount + 1):
             values: list[float] = [
-                variables_datatable[str(variable)][i]
+                variables_datatable[str(variable)](i * step_size)
                 for variable in self.variables
             ]
 
@@ -52,10 +51,7 @@ class Equation():
         return value
 
     def check_continuity(
-        self,
-        symbol: Symbol,
-        interval: Interval | FiniteSet,
-        derivative: bool = False
+        self, symbol: Symbol, interval: Interval | FiniteSet, derivative: bool = False
     ) -> ContinuityType:
         """Check continuity"""
 
@@ -63,17 +59,16 @@ class Equation():
             return ContinuityType.DISCONTINUOUS
 
         if derivative:
-            if not continuous_domain(
-                diff(self.expression, symbol),
-                symbol,
-                interval
-            ) == interval:
+            if (
+                not continuous_domain(diff(self.expression, symbol), symbol, interval)
+                == interval
+            ):
                 return ContinuityType.CONTINUOUS
 
         return (
             ContinuityType.CONTINUOUSLY_DIFFERENTIABLE
-            if derivative else
-            ContinuityType.CONTINUOUS
+            if derivative
+            else ContinuityType.CONTINUOUS
         )
 
     def add(self, equation: Expr) -> None:
@@ -86,10 +81,7 @@ class Equation():
     def add_str(self, equation: str, symbols_table: SymbolsTable) -> None:
         """Add equation"""
 
-        self.expression += sympify(
-            equation.replace('^', '**'),
-            symbols_table
-        )
+        self.expression += sympify(equation.replace("^", "**"), symbols_table)
 
         self.__update_function()
 
@@ -103,10 +95,7 @@ class Equation():
     def subtract_str(self, equation: str, symbols_table: SymbolsTable) -> None:
         """Subtract equation"""
 
-        self.expression -= sympify(
-            equation.replace('^', '**'),
-            symbols_table
-        )
+        self.expression -= sympify(equation.replace("^", "**"), symbols_table)
 
         self.__update_function()
 

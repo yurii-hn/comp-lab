@@ -1,17 +1,18 @@
 """Optimal Control Success Response Class"""
 
-
 from core.classes.common.success_response import SuccessResponse
 from core.classes.optimal_control.parameters import OptimalControlParameters
 from core.classes.optimal_control.result import OptimalControlResult
 from core.classes.simulation.result import SimulationResult
-from core.definitions.optimal_control.success_response import OptimalControlSuccessResponseDefinition
+from core.definitions.optimal_control.approximation_type import \
+    ApproximationType
+from core.definitions.optimal_control.success_response import \
+    OptimalControlSuccessResponseDefinition
 
 
 class OptimalControlSuccessResponse(
     SuccessResponse[
-        OptimalControlParameters,
-        tuple[SimulationResult, OptimalControlResult]
+        OptimalControlParameters, tuple[SimulationResult, OptimalControlResult]
     ]
 ):
     """Optimal Control Success Response"""
@@ -21,24 +22,21 @@ class OptimalControlSuccessResponse(
         """Definition"""
 
         return {
-            'parameters': self.parameters.definition,
-            'result': (
-                self.result[0].definition,
-                self.result[1].definition
-            )
+            "parameters": self.parameters.definition,
+            "result": (self.result[0].definition, self.result[1].definition),
         }
 
-    def __init__(self, definition: OptimalControlSuccessResponseDefinition) -> None:
+    def __init__(
+        self,
+        definition: OptimalControlSuccessResponseDefinition,
+        interventions_approximation_type: ApproximationType,
+    ) -> None:
         super().__init__(
-            OptimalControlParameters(
-                definition['parameters']
-            ),
+            OptimalControlParameters(definition["parameters"]),
             (
-                SimulationResult(
-                    definition['result'][0]
-                ),
+                SimulationResult(definition["result"][0]),
                 OptimalControlResult(
-                    definition['result'][1]
-                )
-            )
+                    definition["result"][1], interventions_approximation_type
+                ),
+            ),
         )

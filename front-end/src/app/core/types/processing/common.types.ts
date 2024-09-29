@@ -1,8 +1,13 @@
 import { IModel } from '../model.types';
 
+export interface IPoint {
+    time: number;
+    value: number;
+}
+
 export interface IValues {
     name: string;
-    values: number[];
+    values: IPoint[];
 }
 
 export interface IRequestBody<ParametersType = any> {

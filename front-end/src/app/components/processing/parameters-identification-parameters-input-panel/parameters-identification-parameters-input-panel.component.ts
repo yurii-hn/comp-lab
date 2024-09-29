@@ -56,7 +56,9 @@ export class ParametersIdentificationParametersInputPanelComponent
     private readonly subscription: Subscription = new Subscription();
 
     public readonly control: FormGroup = new FormGroup({
-        timeStep: new FormControl<number | null>(null, [Validators.required]),
+        nodesAmount: new FormControl<number | null>(null, [
+            Validators.required,
+        ]),
         selectedConstants: new FormControl<ISelectedConstant[] | null>(null, [
             Validators.required,
         ]),
@@ -133,13 +135,27 @@ export class ParametersIdentificationParametersInputPanelComponent
             ...rowScheme,
             ...columnScheme,
         }),
-        {}
+        {
+            t: {
+                name: 'Time',
+                type: InputType.Number,
+                validationFns: [Validators.required, Validators.min(0)],
+            },
+        }
     );
     public readonly dataRowValidators: ValidatorFn[] = [
         (control: AbstractControl): ValidationErrors | null => {
+            const timeControl: FormControl<number> = (control as FormGroup)
+                .controls['t'] as FormControl<number>;
             const value: Record<string, number> = structuredClone(
                 control.value
             );
+
+            if (timeControl.enabled && !value['t']) {
+                return { missingTime: true };
+            }
+
+            delete value['t'];
 
             return Object.values(value).some((value: number): boolean => {
                 if (!value) {
@@ -178,7 +194,7 @@ export class ParametersIdentificationParametersInputPanelComponent
     public writeValue(value: IPIParameters | null): void {
         this.control.setValue(
             value ?? {
-                timeStep: null,
+                nodesAmount: null,
                 selectedConstants: null,
                 data: null,
             }
