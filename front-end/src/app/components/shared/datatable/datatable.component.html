@@ -7,16 +7,22 @@
         <td mat-cell class="data-column" *matCellDef="let row">
             <ng-template #cellDisplay [ngSwitch]="rowScheme[id].type">
                 <ng-container *ngSwitchCase="'number'">{{
-                    (row.data[id] | number) ?? "N/A"
+                    (row.data[id] | number:"1.0-10"
+
+                    ) ?? "N/A"
                 }}</ng-container>
 
                 <ng-container *ngSwitchCase="'select'">{{
                     row.data[id] ? getOptionLabel(id, row.data[id]) : "N/A"
                 }}</ng-container>
 
-                <ng-container *ngSwitchDefault>{{
+                <ng-container *ngSwitchCase="'text'">{{
                     row.data[id] ?? "N/A"
                 }}</ng-container>
+
+                <ng-container *ngSwitchDefault>
+                    Unknown type: {{ rowScheme[id].type }}
+                </ng-container>
             </ng-template>
 
             <ng-template #cellEditing [formGroup]="control">
