@@ -488,7 +488,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         this.subscriptions.add(
             concat(
                 this.workspacesService.addSample('sir.scm'),
-                this.workspacesService.addSample('interventions.scm')
+                this.workspacesService.addSample('interventions.scm'),
+                this.workspacesService.addSample('seird.scm')
             ).subscribe()
         );
     }
