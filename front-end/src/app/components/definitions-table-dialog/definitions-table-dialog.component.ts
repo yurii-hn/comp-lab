@@ -2,8 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import {
     FormControl,
     FormGroup,
-    ValidationErrors,
-    Validators,
+    Validators
 } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { ModelDefinition } from '@core/classes/model.class';
@@ -45,8 +44,7 @@ export class DefinitionsTableDialogComponent implements OnInit {
             editable: true,
             validationFns: [
                 Validators.required,
-                (control: FormControl): ValidationErrors | null =>
-                    this.validationService.definitionName(control.value),
+                this.validationService.getDefinitionNameValidator(),
             ],
         },
         value: {
@@ -64,8 +62,7 @@ export class DefinitionsTableDialogComponent implements OnInit {
             editable: true,
             validationFns: [
                 Validators.required,
-                (control: FormControl): ValidationErrors | null =>
-                    this.validationService.definitionName(control.value),
+                this.validationService.getDefinitionNameValidator(),
             ],
         },
         value: {
@@ -84,8 +81,7 @@ export class DefinitionsTableDialogComponent implements OnInit {
                 editable: true,
                 validationFns: [
                     Validators.required,
-                    (control: FormControl): ValidationErrors | null =>
-                        this.validationService.definitionName(control.value),
+                    this.validationService.getDefinitionNameValidator(),
                 ],
             },
         };
@@ -102,6 +98,7 @@ export class DefinitionsTableDialogComponent implements OnInit {
                 })
             ),
             editable: true,
+            validationFns: [Validators.required],
         },
         target: {
             name: 'Target',
@@ -114,6 +111,7 @@ export class DefinitionsTableDialogComponent implements OnInit {
                 })
             ),
             editable: true,
+            validationFns: [Validators.required],
         },
     };
 

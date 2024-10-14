@@ -1,7 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
-import { ICompartment } from '@core/types/model.types';
 import { IValidationResponse } from '@core/types/processing';
 import { Observable } from 'rxjs';
 import { ModelService } from './model.service';
@@ -32,6 +31,12 @@ export class ValidationService {
         return (control: AbstractControl): ValidationErrors | null => {
             const name: any = control.value;
 
+            if (control.pristine) {
+                initialName = name;
+
+                return null;
+            }
+
             if (!name || typeof name !== 'string' || name === initialName) {
                 return null;
             }
@@ -40,7 +45,7 @@ export class ValidationService {
         };
     }
 
-    public definitionName(name: string): ValidationErrors | null {
+    private definitionName(name: string): ValidationErrors | null {
         if (!name) {
             return null;
         }
@@ -49,8 +54,8 @@ export class ValidationService {
             return { invalidName: true };
         }
 
-        return this.modelService.compartments.some(
-            (compartment: ICompartment): boolean => compartment.name === name
+        return this.modelService.symbols.some(
+            (symbol: string): boolean => symbol === name
         )
             ? { nameExists: true }
             : null;
