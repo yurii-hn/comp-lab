@@ -51,12 +51,13 @@ export class FlowDialogComponent {
     constructor(
         private readonly dialogRef: MatDialogRef<FlowDialogComponent, IFlow>,
         private readonly modelService: ModelService,
-        @Inject(MAT_DIALOG_DATA) private readonly data?: IFlow
+        @Inject(MAT_DIALOG_DATA) private readonly data: IFlow
     ) {
-        if (data) {
+        if (data.id) {
             this.edit = true;
-            this.control.patchValue(data);
         }
+
+        this.control.patchValue(data);
     }
 
     public onClose(): void {
