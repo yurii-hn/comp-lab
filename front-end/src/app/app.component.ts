@@ -342,16 +342,14 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
             dialog
                 .afterClosed()
                 .pipe(
-                    tap((definition?: IFlow): void => {
-                        if (!definition) {
-                            edge.remove();
-                        }
+                    tap((): void => {
+                        edge.remove();
                     }),
                     filter(
                         (definition?: IFlow): definition is IFlow =>
                             !!definition
                     ),
-                    tap(this.modelService.updateFlow.bind(this.modelService))
+                    tap(this.modelService.addFlow.bind(this.modelService))
                 )
                 .subscribe()
         );
