@@ -203,8 +203,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     private renderSimulationRun(run: SimulationRun): void {
-        this.plotsData = run.data.result.compartments.map(
-            (compartment: IValues): IPlot => {
+        this.plotsData = run.data.result.compartments.reduce(
+            (plotsData: IPlot[], compartment: IValues): IPlot[] => {
                 const x: number[] = [];
                 const y: number[] = [];
 
@@ -213,18 +213,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
                     y.push(point.value);
                 });
 
-                return {
-                    data: [
-                        {
-                            x,
-                            y,
-                            type: 'scatter',
-                            name: compartment.name,
-                            line: {
-                                shape: 'linear',
-                            },
+                const data: PlotData[] = [
+                    {
+                        x,
+                        y,
+                        type: 'scatter',
+                        name: compartment.name,
+                        line: {
+                            shape: 'linear',
                         },
-                    ],
+                    },
+                ];
+
+                plotsData[0].data.push(...data);
+
+                plotsData.push({
+                    data,
                     layout: {
                         autosize: true,
                         title: {
@@ -242,8 +246,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
                             },
                         },
                     },
-                };
-            }
+                });
+
+                return plotsData;
+            },
+            [
+                {
+                    data: [],
+                    layout: {
+                        autosize: true,
+                        title: {
+                            text: 'All compartments',
+                        },
+                        xaxis: {
+                            title: {
+                                text: 'Time',
+                            },
+                        },
+                        yaxis: {
+                            title: {
+                                text: 'Value',
+                            },
+                        },
+                    },
+                },
+            ]
         );
     }
 
