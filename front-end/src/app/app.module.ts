@@ -1,4 +1,7 @@
-import { HttpClientModule } from '@angular/common/http';
+import {
+  provideHttpClient,
+  withInterceptorsFromDi,
+} from '@angular/common/http';
 import { NgModule } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { BrowserModule } from '@angular/platform-browser';
@@ -60,6 +63,7 @@ PlotlyModule.plotlyjs = PlotlyJS;
         OptimalControlInfoPanelComponent,
         ParametersIdentificationInfoPanelComponent,
     ],
+    bootstrap: [AppComponent],
     imports: [
         BrowserModule,
         BrowserAnimationsModule,
@@ -68,7 +72,6 @@ PlotlyModule.plotlyjs = PlotlyJS;
         MatDialogModule,
         MatInputModule,
         ReactiveFormsModule,
-        HttpClientModule,
         PlotlyModule,
         MatTableModule,
         MatSelectModule,
@@ -81,7 +84,6 @@ PlotlyModule.plotlyjs = PlotlyJS;
         MatAutocompleteModule,
         AngularSplitModule,
     ],
-    providers: [],
-    bootstrap: [AppComponent],
+    providers: [provideHttpClient(withInterceptorsFromDi())],
 })
 export class AppModule {}
