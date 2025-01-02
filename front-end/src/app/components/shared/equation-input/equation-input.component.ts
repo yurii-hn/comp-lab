@@ -53,6 +53,7 @@ import { ValidationService } from 'src/app/services/validation.service';
             multi: true,
         },
     ],
+    standalone: false
 })
 export class EquationInputComponent
     implements ControlValueAccessor, AfterViewInit, OnDestroy, AsyncValidator

@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid';
     selector: 'app-compartment-dialog',
     templateUrl: './compartment-dialog.component.html',
     styleUrls: ['./compartment-dialog.component.scss'],
+    standalone: false
 })
 export class CompartmentDialogComponent {
     public readonly edit: boolean = false;

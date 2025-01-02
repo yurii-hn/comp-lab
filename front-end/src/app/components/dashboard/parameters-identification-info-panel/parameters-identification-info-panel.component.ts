@@ -17,6 +17,7 @@ import { IOutputData, SplitComponent } from 'angular-split';
     selector: 'app-parameters-identification-info-panel',
     templateUrl: './parameters-identification-info-panel.component.html',
     styleUrls: ['./parameters-identification-info-panel.component.scss'],
+    standalone: false
 })
 export class ParametersIdentificationInfoPanelComponent {
     @ViewChild(SplitComponent) private readonly splitComponent!: SplitComponent;

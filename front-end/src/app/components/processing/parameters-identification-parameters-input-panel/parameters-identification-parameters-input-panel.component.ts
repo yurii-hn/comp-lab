@@ -32,8 +32,7 @@ import { ModelService } from 'src/app/services/model.service';
 
 @Component({
     selector: 'app-parameters-identification-parameters-input-panel',
-    templateUrl:
-        './parameters-identification-parameters-input-panel.component.html',
+    templateUrl: './parameters-identification-parameters-input-panel.component.html',
     styleUrls: [
         './parameters-identification-parameters-input-panel.component.scss',
     ],
@@ -49,6 +48,7 @@ import { ModelService } from 'src/app/services/model.service';
             multi: true,
         },
     ],
+    standalone: false
 })
 export class ParametersIdentificationParametersInputPanelComponent
     implements ControlValueAccessor, Validator, OnDestroy

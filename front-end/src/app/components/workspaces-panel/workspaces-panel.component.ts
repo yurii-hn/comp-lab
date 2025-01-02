@@ -8,6 +8,7 @@ import { WorkspacesService } from 'src/app/services/workspaces.service';
     selector: 'app-workspaces-panel',
     templateUrl: './workspaces-panel.component.html',
     styleUrls: ['./workspaces-panel.component.scss'],
+    standalone: false
 })
 export class WorkspacesPanelComponent implements OnInit, OnDestroy {
     private readonly subscription: Subscription = new Subscription();

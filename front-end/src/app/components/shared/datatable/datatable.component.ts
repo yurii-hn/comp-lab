@@ -35,6 +35,7 @@ import { IOption, OnChangeFn, OnTouchedFn } from '@core/types/utils.types';
             multi: true,
         },
     ],
+    standalone: false
 })
 export class DatatableComponent<
     RowDataType extends Record<string, any>,

@@ -10,6 +10,7 @@ import { v4 as uuid } from 'uuid';
     selector: 'app-flow-dialog',
     templateUrl: './flow-dialog.component.html',
     styleUrls: ['./flow-dialog.component.scss'],
+    standalone: false
 })
 export class FlowDialogComponent {
     public readonly edit: boolean = false;

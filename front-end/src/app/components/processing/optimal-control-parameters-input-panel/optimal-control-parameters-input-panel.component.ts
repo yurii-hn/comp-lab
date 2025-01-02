@@ -33,6 +33,7 @@ import { Observable, Subscription, first, map } from 'rxjs';
             multi: true,
         },
     ],
+    standalone: false
 })
 export class OptimalControlParametersInputPanelComponent
     implements ControlValueAccessor, AsyncValidator, OnDestroy

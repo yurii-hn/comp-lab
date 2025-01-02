@@ -13,6 +13,7 @@ import {
     selector: 'app-processing-dialog',
     templateUrl: './processing-dialog.component.html',
     styleUrls: ['./processing-dialog.component.scss'],
+    standalone: false
 })
 export class ProcessingDialogComponent {
     public type: ProcessingType = ProcessingType.Simulation;

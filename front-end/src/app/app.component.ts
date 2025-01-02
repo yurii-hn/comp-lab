@@ -55,6 +55,7 @@ import { WorkspacesService } from './services/workspaces.service';
     selector: 'app-root',
     templateUrl: './app.component.html',
     styleUrls: ['./app.component.scss'],
+    standalone: false
 })
 export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     @ViewChild('canvas') private readonly canvas!: ElementRef<HTMLDivElement>;

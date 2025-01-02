@@ -9,6 +9,7 @@ import { IOutputData, SplitComponent } from 'angular-split';
     selector: 'app-optimal-control-info-panel',
     templateUrl: './optimal-control-info-panel.component.html',
     styleUrls: ['./optimal-control-info-panel.component.scss'],
+    standalone: false
 })
 export class OptimalControlInfoPanelComponent {
     @ViewChild(SplitComponent) private readonly splitComponent!: SplitComponent;

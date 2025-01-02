@@ -29,6 +29,7 @@ import { Subscription } from 'rxjs';
             multi: true,
         },
     ],
+    standalone: false
 })
 export class SimulationParametersInputPanelComponent
     implements ControlValueAccessor, Validator, OnDestroy

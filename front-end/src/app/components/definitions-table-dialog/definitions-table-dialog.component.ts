@@ -35,6 +35,7 @@ import { v4 as uuid } from 'uuid';
     selector: 'app-definitions-table-dialog',
     templateUrl: './definitions-table-dialog.component.html',
     styleUrls: ['./definitions-table-dialog.component.scss'],
+    standalone: false
 })
 export class DefinitionsTableDialogComponent implements OnInit {
     public readonly compartmentsRowScheme: RowScheme<CompartmentDefinition> = {
