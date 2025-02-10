@@ -2,15 +2,17 @@
 
 from typing import Generic, TypeVar
 
-
 # pylint: disable=invalid-name
-ParametersType = TypeVar('ParametersType')
-ResultType = TypeVar('ResultType')
+ProcessingType = TypeVar("ProcessingType")
+ParametersType = TypeVar("ParametersType")
+ResultType = TypeVar("ResultType")
 # pylint: enable=invalid-name
 
 
-class SuccessResponse(Generic[ParametersType, ResultType]):
+class SuccessResponse(Generic[ProcessingType, ParametersType, ResultType]):
     """Success response"""
+
+    type: ProcessingType
     parameters: ParametersType
     result: ResultType
 
@@ -20,6 +22,12 @@ class SuccessResponse(Generic[ParametersType, ResultType]):
 
         raise NotImplementedError
 
-    def __init__(self, parameters: ParametersType, result: ResultType) -> None:
+    def __init__(
+        self,
+        processing_type: ProcessingType,
+        parameters: ParametersType,
+        result: ResultType,
+    ) -> None:
+        self.type = processing_type
         self.parameters = parameters
         self.result = result

@@ -1,8 +1,10 @@
+@let displayData = this.displayData();
+@let interventionsRowScheme = this.interventionsRowScheme();
+
 <as-split
     direction="vertical"
     [gutterSize]="7"
     [gutterDblClickDuration]="400"
-    (gutterDblClick)="onGutterDBClick($event)"
     [restrictMove]="true"
 >
     <as-split-area class="split-area" [size]="50">
@@ -14,8 +16,9 @@
                     <p class="field">
                         <span class="name">No Control Objective Value:</span>
                         {{
-                            data
-                                ? (data.result[1].noControlObjective | number)
+                            displayData.result.noControlObjective
+                                ? (displayData.result.noControlObjective
+                                  | number)
                                 : "N/A"
                         }}
                     </p>
@@ -23,8 +26,8 @@
                     <p class="field">
                         <span class="name">Optimal Objective Value:</span>
                         {{
-                            data
-                                ? (data.result[1].optimalObjective | number)
+                            displayData.result.optimalObjective
+                                ? (displayData.result.optimalObjective | number)
                                 : "N/A"
                         }}
                     </p>
@@ -37,8 +40,8 @@
                             [disabled]="true"
                             [compact]="true"
                             [rowScheme]="interventionsRowScheme"
-                            [data]="interventionsData"
-                        ></app-datatable>
+                            [data]="displayData.result.interventions"
+                        />
                     </div>
                 </div>
             </div>
@@ -53,17 +56,17 @@
                 <div class="body">
                     <p class="field">
                         <span class="name">Time:</span>
-                        {{ data ? data.parameters.time : "N/A" }}
+                        {{ displayData.parameters.time ?? "N/A" }}
                     </p>
 
                     <p class="field">
                         <span class="name">Nodes Amount:</span>
-                        {{ data ? data.parameters.nodesAmount : "N/A" }}
+                        {{ displayData.parameters.nodesAmount ?? "N/A" }}
                     </p>
 
                     <p class="field">
                         <span class="name">Objective Function:</span>
-                        {{ data ? data.parameters.objectiveFunction : "N/A" }}
+                        {{ displayData.parameters.objectiveFunction ?? "N/A" }}
                     </p>
 
                     <div class="group">
@@ -73,40 +76,32 @@
                             <p class="field">
                                 <span class="name">Nodes Amount:</span>
                                 {{
-                                    data
-                                        ? data.parameters.intervention
-                                              .nodesAmount
-                                        : "N/A"
+                                    displayData.parameters.intervention
+                                        .nodesAmount ?? "N/A"
                                 }}
                             </p>
 
                             <p class="field">
                                 <span class="name">Approximation Type:</span>
                                 {{
-                                    data
-                                        ? data.parameters.intervention
-                                              .approximationType
-                                        : "N/A"
+                                    displayData.parameters.intervention
+                                        .approximationType ?? "N/A"
                                 }}
                             </p>
 
                             <p class="field">
                                 <span class="name">Lower Boundary:</span>
                                 {{
-                                    data
-                                        ? data.parameters.intervention
-                                              .lowerBoundary
-                                        : "N/A"
+                                    displayData.parameters.intervention
+                                        .lowerBoundary ?? "N/A"
                                 }}
                             </p>
 
                             <p class="field">
                                 <span class="name">Upper Boundary:</span>
                                 {{
-                                    data
-                                        ? data.parameters.intervention
-                                              .upperBoundary
-                                        : "N/A"
+                                    displayData.parameters.intervention
+                                        .upperBoundary ?? "N/A"
                                 }}
                             </p>
                         </div>

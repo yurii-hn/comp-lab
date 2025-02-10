@@ -1,57 +1,56 @@
-import { Component, Input, ViewChild } from '@angular/core';
-import { InputType, RowScheme } from '@core/types/datatable.types';
-import { IValues } from '@core/types/processing';
+import { DecimalPipe } from '@angular/common';
+import {
+  Component,
+  effect,
+  inject,
+  Injector,
+  input,
+  InputSignal,
+  OnInit,
+  Signal,
+  untracked,
+} from '@angular/core';
 import { OptimalControlData } from '@core/types/run.types';
-import { valuesToRowData } from '@core/utils';
-import { IOutputData, SplitComponent } from 'angular-split';
+import { AngularSplitModule } from 'angular-split';
+import {
+  DisplayData,
+  OptimalControlInfoPanelStore,
+} from 'src/app/components/dashboard/optimal-control-info-panel/optimal-control-info-panel.store';
+import { DatatableComponent } from 'src/app/components/shared/datatable/datatable.component';
+import { RowScheme } from 'src/app/components/shared/datatable/datatable.store';
 
 @Component({
     selector: 'app-optimal-control-info-panel',
+    imports: [AngularSplitModule, DatatableComponent, DecimalPipe],
+    providers: [OptimalControlInfoPanelStore],
     templateUrl: './optimal-control-info-panel.component.html',
     styleUrls: ['./optimal-control-info-panel.component.scss'],
-    standalone: false
 })
-export class OptimalControlInfoPanelComponent {
-    @ViewChild(SplitComponent) private readonly splitComponent!: SplitComponent;
+export class OptimalControlInfoPanelComponent implements OnInit {
+    private readonly injector: Injector = inject(Injector);
+    private readonly localStore = inject(OptimalControlInfoPanelStore);
 
-    private _data: OptimalControlData | null = null;
+    public readonly inputData: InputSignal<OptimalControlData | null> =
+        input.required<OptimalControlData | null>({
+            alias: 'data',
+        });
 
-    @Input() public set data(data: OptimalControlData | null) {
-        this._data = data;
+    public readonly displayData: Signal<DisplayData> =
+        this.localStore.displayData;
 
-        this.onDataUpdate(this._data);
-    }
-    public get data(): OptimalControlData | null {
-        return this._data;
-    }
+    public interventionsRowScheme: Signal<RowScheme> =
+        this.localStore.interventionsRowScheme;
 
-    public interventionsData: Record<string, number>[] = [];
+    public ngOnInit(): void {
+        effect(
+            (): void => {
+                const data: OptimalControlData | null = this.inputData();
 
-    public interventionsRowScheme: RowScheme = {};
-
-    public onGutterDBClick(event: IOutputData): void {
-        this.splitComponent.setVisibleAreaSizes([50, 50]);
-    }
-
-    private onDataUpdate(data: OptimalControlData | null): void {
-        if (!data) {
-            this.interventionsRowScheme = {};
-            this.interventionsData = [];
-
-            return;
-        }
-
-        this.interventionsRowScheme = data.result[1].interventions.reduce(
-            (rowScheme: RowScheme, intervention: IValues): RowScheme => ({
-                ...rowScheme,
-                [intervention.name]: {
-                    name: intervention.name,
-                    type: InputType.Number,
-                },
-            }),
-            {}
+                untracked((): void => this.localStore.setData(data));
+            },
+            {
+                injector: this.injector,
+            },
         );
-
-        this.interventionsData = valuesToRowData(data.result[1].interventions);
     }
 }

@@ -1,23 +1,10 @@
-import {
-    IErrorResponse,
-    IRequestBody,
-    ISuccessResponse,
-    IValues,
-} from './common.types';
+import { Values } from './common.types';
 
-export interface ISimulationParameters {
+export interface SimulationParameters {
     time: number;
     nodesAmount: number;
 }
 
-export interface ISimulationResult {
-    compartments: IValues[];
+export interface SimulationResult {
+    compartments: Values[];
 }
-
-export type SimulationRequestBody = IRequestBody<ISimulationParameters>;
-
-export type SimulationSuccessResponse = ISuccessResponse<
-    ISimulationParameters,
-    ISimulationResult
->;
-export type SimulationResponse = SimulationSuccessResponse | IErrorResponse;

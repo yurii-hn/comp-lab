@@ -1,3 +1,7 @@
+@let editMode = this.editMode();
+@let sources = this.sources();
+@let targets = this.targets();
+
 <div class="header">
     <p class="title">Flow</p>
 
@@ -17,12 +21,11 @@
             <mat-label>Source</mat-label>
 
             <mat-select formControlName="source">
-                <mat-option
-                    *ngFor="let source of sources; trackBy: optionsTrackBy"
-                    [value]="source.value"
-                >
-                    {{ source.label }}
-                </mat-option>
+                @for (source of sources; track source.value) {
+                    <mat-option [value]="source.value">
+                        {{ source.label }}
+                    </mat-option>
+                }
             </mat-select>
         </mat-form-field>
 
@@ -30,12 +33,11 @@
             <mat-label>Target</mat-label>
 
             <mat-select formControlName="target">
-                <mat-option
-                    *ngFor="let target of targets; trackBy: optionsTrackBy"
-                    [value]="target.value"
-                >
-                    {{ target.label }}
-                </mat-option>
+                @for (target of targets; track target.value) {
+                    <mat-option [value]="target.value">
+                        {{ target.label }}
+                    </mat-option>
+                }
             </mat-select>
         </mat-form-field>
     </div>
@@ -45,7 +47,7 @@
         formControlName="equation"
         [title]="'Equation'"
         [placeholder]="'Enter equation'"
-    ></app-equation-input>
+    />
 </div>
 
 <div class="footer">
@@ -60,6 +62,6 @@
         [disabled]="control.invalid || control.pristine"
         (click)="onAccept()"
     >
-        {{ edit ? "Update" : "Add" }}
+        {{ editMode ? "Update" : "Add" }}
     </button>
 </div>

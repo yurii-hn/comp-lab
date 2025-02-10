@@ -4,6 +4,7 @@ from core.classes.common.success_response import SuccessResponse
 from core.classes.optimal_control.parameters import OptimalControlParameters
 from core.classes.optimal_control.result import OptimalControlResult
 from core.classes.simulation.result import SimulationResult
+from core.definitions.common.processing_type import ProcessingType
 from core.definitions.optimal_control.approximation_type import \
     ApproximationType
 from core.definitions.optimal_control.success_response import \
@@ -12,7 +13,9 @@ from core.definitions.optimal_control.success_response import \
 
 class OptimalControlSuccessResponse(
     SuccessResponse[
-        OptimalControlParameters, tuple[SimulationResult, OptimalControlResult]
+        ProcessingType.OPTIMAL_CONTROL,
+        OptimalControlParameters,
+        tuple[SimulationResult, OptimalControlResult],
     ]
 ):
     """Optimal Control Success Response"""
@@ -22,6 +25,7 @@ class OptimalControlSuccessResponse(
         """Definition"""
 
         return {
+            "type": self.type.value,
             "parameters": self.parameters.definition,
             "result": (self.result[0].definition, self.result[1].definition),
         }
@@ -32,6 +36,7 @@ class OptimalControlSuccessResponse(
         interventions_approximation_type: ApproximationType,
     ) -> None:
         super().__init__(
+            ProcessingType.OPTIMAL_CONTROL,
             OptimalControlParameters(definition["parameters"]),
             (
                 SimulationResult(definition["result"][0]),

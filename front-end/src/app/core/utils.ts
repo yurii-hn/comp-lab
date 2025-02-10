@@ -1,8 +1,8 @@
 import { Observable, Subscriber } from 'rxjs';
-import { IPoint, IValues } from './types/processing';
+import { Point, Values } from './types/processing';
 
 export function fromResizeObserver(
-    target: Element
+    target: Element,
 ): Observable<ResizeObserverEntry> {
     return new Observable(
         (subscriber: Subscriber<ResizeObserverEntry>): (() => void) => {
@@ -11,7 +11,7 @@ export function fromResizeObserver(
                     entries.forEach((entry: ResizeObserverEntry): void => {
                         subscriber.next(entry);
                     });
-                }
+                },
             );
 
             resizeObserver.observe(target);
@@ -20,21 +20,25 @@ export function fromResizeObserver(
                 resizeObserver.unobserve(target);
                 resizeObserver.disconnect();
             };
-        }
+        },
     );
 }
 
-export function valuesToRowData(values: IValues[]): Record<string, number>[] {
+export function areEqual<Value>(valueA: Value, valueB: Value): boolean {
+    return JSON.stringify(valueA) === JSON.stringify(valueB);
+}
+
+export function valuesToRowData(values: Values[]): Record<string, number>[] {
     if (!values.length) {
         return [];
     }
 
     const times: number[] = getSetArray(
         values.reduce(
-            (times: number[], value: IValues): number[] =>
+            (times: number[], value: Values): number[] =>
                 times.concat(value.values.map((point): number => point.time)),
-            []
-        )
+            [],
+        ),
     );
 
     times.sort((timeA: number, timeB: number): number => timeA - timeB);
@@ -42,16 +46,16 @@ export function valuesToRowData(values: IValues[]): Record<string, number>[] {
     return times.reduce(
         (
             rowsData: Record<string, number>[],
-            time: number
+            time: number,
         ): Record<string, number>[] =>
             rowsData.concat(
                 values.reduce(
                     (
                         row: Record<string, number>,
-                        value: IValues
+                        value: Values,
                     ): Record<string, number> => {
-                        const point: IPoint | undefined = value.values.find(
-                            (point: IPoint): boolean => point.time === time
+                        const point: Point | undefined = value.values.find(
+                            (point: Point): boolean => point.time === time,
                         );
 
                         if (point) {
@@ -62,14 +66,14 @@ export function valuesToRowData(values: IValues[]): Record<string, number>[] {
                     },
                     {
                         t: time,
-                    }
-                )
+                    },
+                ),
             ),
-        []
+        [],
     );
 }
 
-export function rowDataToValues(rowData: Record<string, number>[]): IValues[] {
+export function rowDataToValues(rowData: Record<string, number>[]): Values[] {
     if (!rowData.length) {
         return [];
     }
@@ -79,19 +83,16 @@ export function rowDataToValues(rowData: Record<string, number>[]): IValues[] {
             (columns: string[], row: Record<string, number>): string[] =>
                 columns.concat(
                     Object.keys(row).filter(
-                        (name: string): boolean => name !== 't'
-                    )
+                        (name: string): boolean => name !== 't',
+                    ),
                 ),
-            []
-        )
+            [],
+        ),
     );
 
-    return columns.reduce((values: IValues[], name: string): IValues[] => {
-        const currentValues: IPoint[] = rowData.reduce(
-            (
-                currentValues: IPoint[],
-                row: Record<string, number>
-            ): IPoint[] => {
+    return columns.reduce((values: Values[], name: string): Values[] => {
+        const currentValues: Point[] = rowData.reduce(
+            (currentValues: Point[], row: Record<string, number>): Point[] => {
                 if (!row.hasOwnProperty(name)) {
                     return currentValues;
                 }
@@ -101,13 +102,13 @@ export function rowDataToValues(rowData: Record<string, number>[]): IValues[] {
                     value: row[name],
                 });
             },
-            []
+            [],
         );
 
         if (currentValues.length) {
             currentValues.sort(
-                (pointA: IPoint, pointB: IPoint): number =>
-                    pointA.time - pointB.time
+                (pointA: Point, pointB: Point): number =>
+                    pointA.time - pointB.time,
             );
 
             values.push({
@@ -120,6 +121,6 @@ export function rowDataToValues(rowData: Record<string, number>[]): IValues[] {
     }, []);
 }
 
-function getSetArray<Type>(array: Type[]): Type[] {
+export function getSetArray<Type>(array: Type[]): Type[] {
     return Array.from(new Set(array));
 }

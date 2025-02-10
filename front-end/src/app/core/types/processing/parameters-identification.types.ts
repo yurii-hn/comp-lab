@@ -1,11 +1,6 @@
-import {
-    IErrorResponse,
-    IRequestBody,
-    ISuccessResponse,
-    IValues,
-} from './common.types';
+import { Values } from './common.types';
 
-export interface ISelectedConstant {
+export interface SelectedConstant {
     id: string;
     name: string;
     upperBoundary: number;
@@ -13,24 +8,19 @@ export interface ISelectedConstant {
     lowerBoundary: number;
 }
 
-export interface IIdentifiedConstant {
+export interface IdentifiedConstant {
     id: string;
     name: string;
     value: number;
 }
 
-export interface IPIParameters {
+export interface PIParameters {
     nodesAmount: number;
-    selectedConstants: ISelectedConstant[];
-    data: IValues[];
+    selectedConstants: SelectedConstant[];
+    data: Values[];
 }
 
-export interface IPIResult {
-    constants: IIdentifiedConstant[];
-    approximation: IValues[];
+export interface PIResult {
+    constants: IdentifiedConstant[];
+    approximation: Values[];
 }
-
-export type PIRequestBody = IRequestBody<IPIParameters>;
-
-export type PISuccessResponse = ISuccessResponse<IPIParameters, IPIResult>;
-export type PIResponse = PISuccessResponse | IErrorResponse;

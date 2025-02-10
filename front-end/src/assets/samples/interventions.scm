@@ -110,7 +110,7 @@
         {
             "id": "020e08d8-ecdc-5be7-8ec4-b1299e412d0a",
             "name": "N",
-            "value": 44e6
+            "value": 44000000
         },
         {
             "id": "80b2bf75-d235-525a-a5c1-8d8471cf3be6",

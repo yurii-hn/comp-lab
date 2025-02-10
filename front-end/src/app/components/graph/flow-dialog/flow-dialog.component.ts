@@ -1,19 +1,48 @@
-import { Component, Inject } from '@angular/core';
-import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { Component, effect, inject, Signal, untracked } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import {
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { ICompartment, IFlow } from '@core/types/model.types';
-import { IOption } from '@core/types/utils.types';
-import { ModelService } from 'src/app/services/model.service';
-import { v4 as uuid } from 'uuid';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+import { Flow } from '@core/types/model.types';
+import { Store } from '@ngrx/store';
+import { skip } from 'rxjs';
+import {
+  FlowDialogStore,
+  FormValue,
+} from 'src/app/components/graph/flow-dialog/flow-dialog.store';
+import { Option } from 'src/app/components/shared/datatable/datatable.store';
+import { EquationInputComponent } from 'src/app/components/shared/equation-input/equation-input.component';
+import { FlowDialogActions } from 'src/app/state/actions/flow-dialog.actions';
 
 @Component({
     selector: 'app-flow-dialog',
+    imports: [
+        ReactiveFormsModule,
+        MatIconModule,
+        MatButtonModule,
+        MatSelectModule,
+        EquationInputComponent,
+    ],
+    providers: [FlowDialogStore],
     templateUrl: './flow-dialog.component.html',
     styleUrls: ['./flow-dialog.component.scss'],
-    standalone: false
 })
 export class FlowDialogComponent {
-    public readonly edit: boolean = false;
+    private readonly store: Store = inject(Store);
+    private readonly localStore = inject(FlowDialogStore);
+    private readonly dialogRef: MatDialogRef<FlowDialogComponent, void> =
+        inject(MatDialogRef<FlowDialogComponent, void>);
+
+    public readonly editMode: Signal<boolean> = this.localStore.editMode;
+    public readonly sources: Signal<Option[]> = this.localStore.sources;
+    public readonly targets: Signal<Option[]> = this.localStore.targets;
 
     public readonly control: FormGroup = new FormGroup({
         equation: new FormControl<string>('', [Validators.required]),
@@ -21,44 +50,29 @@ export class FlowDialogComponent {
         target: new FormControl<string>('', [Validators.required]),
     });
 
-    public get sources(): IOption[] {
-        return this.modelService.compartments
-            .filter(
-                (compartment: ICompartment): boolean =>
-                    compartment.id !== this.control.value.target
-            )
-            .map(
-                (compartment: ICompartment): IOption => ({
-                    value: compartment.id,
-                    label: compartment.name,
-                })
-            );
-    }
+    constructor() {
+        const valueChanges: Signal<FormValue | undefined> = toSignal(
+            this.control.valueChanges.pipe(skip(1)),
+        );
+        const initialData: Flow | undefined = inject(MAT_DIALOG_DATA);
 
-    public get targets(): IOption[] {
-        return this.modelService.compartments
-            .filter(
-                (compartment: ICompartment): boolean =>
-                    compartment.id !== this.control.value.source
-            )
-            .map(
-                (compartment: ICompartment): IOption => ({
-                    value: compartment.id,
-                    label: compartment.name,
-                })
-            );
-    }
+        effect((): void => {
+            const change: FormValue | undefined = valueChanges();
 
-    constructor(
-        private readonly dialogRef: MatDialogRef<FlowDialogComponent, IFlow>,
-        private readonly modelService: ModelService,
-        @Inject(MAT_DIALOG_DATA) private readonly data: IFlow
-    ) {
-        if (data.id) {
-            this.edit = true;
-        }
+            if (change === undefined) {
+                return;
+            }
 
-        this.control.patchValue(data);
+            untracked((): void => this.localStore.setValueFromForm(change));
+        });
+
+        effect(() => {
+            const formValue: FormValue = this.localStore.formValue();
+
+            untracked((): void => this.control.patchValue(formValue));
+        });
+
+        this.localStore.setInitialData(initialData ?? null);
     }
 
     public onClose(): void {
@@ -66,13 +80,12 @@ export class FlowDialogComponent {
     }
 
     public onAccept(): void {
-        this.dialogRef.close({
-            id: this.edit ? this.data!.id : uuid(),
-            ...this.control.value,
-        });
-    }
+        this.store.dispatch(
+            FlowDialogActions.upsertFlow({
+                flow: this.localStore.value(),
+            }),
+        );
 
-    public optionsTrackBy(_: number, option: IOption): string {
-        return option.value;
+        this.dialogRef.close();
     }
 }

@@ -1,4 +1,5 @@
 {
+    "type": "OptimalControl",
     "parameters": {
         "intervention": {
             "approximationType": "piecewise-linear",

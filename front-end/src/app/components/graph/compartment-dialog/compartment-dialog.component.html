@@ -1,3 +1,5 @@
+@let editMode = this.editMode();
+
 <div class="header">
     <p class="title">Compartment</p>
 
@@ -42,6 +44,6 @@
         [disabled]="control.invalid || control.pristine"
         (click)="onAccept()"
     >
-        {{ edit ? "Update" : "Add" }}
+        {{ editMode ? "Update" : "Add" }}
     </button>
 </div>

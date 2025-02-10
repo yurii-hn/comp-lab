@@ -1,30 +1,15 @@
-import { IModel } from '../model.types';
+export enum ProcessingType {
+    Simulation = 'Simulation',
+    OptimalControl = 'OptimalControl',
+    PI = 'PI',
+}
 
-export interface IPoint {
+export interface Point {
     time: number;
     value: number;
 }
 
-export interface IValues {
+export interface Values {
     name: string;
-    values: IPoint[];
-}
-
-export interface IRequestBody<ParametersType = any> {
-    parameters: ParametersType;
-    model: IModel;
-}
-
-export interface IErrorResponse {
-    error: string;
-}
-
-export interface ISuccessResponse<ParametersType = any, ResultType = any> {
-    parameters: ParametersType;
-    result: ResultType;
-}
-
-export interface IValidationResponse {
-    valid: boolean;
-    message?: string;
+    values: Point[];
 }

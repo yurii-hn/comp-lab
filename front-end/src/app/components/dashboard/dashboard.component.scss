@@ -44,7 +44,7 @@
 
             .plots {
                 display: grid;
-                grid: repeat(2, calc(50% - 5px)) / auto-flow min-content;
+                grid: repeat(2, calc(50% - 5px)) / auto-flow 800px;
                 gap: 10px;
                 height: 100%;
                 padding: 20px;

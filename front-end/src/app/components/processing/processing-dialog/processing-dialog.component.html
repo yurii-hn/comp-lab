@@ -1,3 +1,6 @@
+@let currentControl = this.currentControl();
+@let typeIndex = this.typeIndex();
+
 <div class="header">
     <p class="title">Model Processing</p>
 
@@ -16,7 +19,8 @@
     class="body"
     mat-align-tabs="center"
     [formGroup]="control"
-    [(selectedIndex)]="type"
+    [selectedIndex]="typeIndex"
+    (selectedIndexChange)="onTypeChange($event)"
 >
     <mat-tab>
         <ng-template mat-tab-label>
@@ -25,10 +29,10 @@
             Simulation
         </ng-template>
 
-        <app-simulation-parameters-input-panel
+        <app-simulation-parameters-input
             class="panel"
             formControlName="simulation"
-        ></app-simulation-parameters-input-panel>
+        />
     </mat-tab>
 
     <mat-tab>
@@ -38,10 +42,10 @@
             Optimal Control
         </ng-template>
 
-        <app-optimal-control-parameters-input-panel
+        <app-optimal-control-parameters-input
             class="panel"
             formControlName="optimalControl"
-        ></app-optimal-control-parameters-input-panel>
+        />
     </mat-tab>
 
     <mat-tab>
@@ -51,11 +55,10 @@
             Parameters Identification
         </ng-template>
 
-        <app-parameters-identification-parameters-input-panel
+        <app-parameters-identification-parameters-input
             class="panel"
             formControlName="parametersIdentification"
-        >
-        </app-parameters-identification-parameters-input-panel>
+        />
     </mat-tab>
 </mat-tab-group>
 

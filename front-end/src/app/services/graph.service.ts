@@ -1,67 +1,90 @@
-import { EventEmitter, Injectable } from '@angular/core';
-import { ICompartment, IFlow } from '@core/types/model.types';
-import cytoscape, {
-    EdgeCollection,
-    EdgeSingular,
-    EventObject,
-    NodeSingular,
-    SingularElementArgument,
-} from 'cytoscape';
-import edgehandles from 'cytoscape-edgehandles';
+import { Injectable } from '@angular/core';
+import { Compartment, Flow } from '@core/types/model.types';
 import klay from 'cytoscape-klay';
-import { cytoscapeLayoutOptions, cytoscapeOptions } from '../core/constants';
 
-cytoscape.use(klay);
-cytoscape.use(edgehandles);
+interface Diff<Type extends { id: string }> {
+    added: Type[];
+    updated: Type[];
+    removed: Type[];
+}
 
-@Injectable({
-    providedIn: 'root',
-})
+export interface GraphModel {
+    compartments: Compartment[];
+    flows: Flow[];
+}
+
+const cytoscapeLayoutOptions: klay.KlayLayoutOptions = {
+    name: 'klay',
+    fit: true,
+    animate: true,
+    animationEasing: 'ease-in-out',
+    animationDuration: 300,
+    padding: 100,
+    klay: {
+        spacing: 100,
+    },
+};
+
+@Injectable()
 export class GraphService {
-    private cytoscapeObj!: cytoscape.Core;
-    private edgehandles!: edgehandles.EdgeHandlesInstance;
-
-    public readonly compartmentOpen: EventEmitter<NodeSingular> =
-        new EventEmitter<NodeSingular>();
-    public readonly flowOpen: EventEmitter<EdgeSingular> =
-        new EventEmitter<EdgeSingular>();
-    public readonly flowAdd: EventEmitter<EdgeSingular> =
-        new EventEmitter<EdgeSingular>();
-
-    public get graphReady(): boolean {
-        return this.cytoscapeObj !== undefined;
-    }
-    public get selectedElement(): SingularElementArgument {
-        return this.cytoscapeObj.elements(':selected').first();
+    public layout(cytoscapeObj: cytoscape.Core): void {
+        cytoscapeObj.layout(cytoscapeLayoutOptions).run();
     }
 
-    public init(container: HTMLElement): void {
-        this.cytoscapeObj = cytoscape({
-            container: container,
-            ...cytoscapeOptions,
+    public updateGraph(
+        previousModel: GraphModel,
+        currentModel: GraphModel,
+        cytoscapeObj: cytoscape.Core,
+    ): void {
+        if (!currentModel.compartments.length && !currentModel.flows.length) {
+            this.clear(cytoscapeObj);
+
+            return;
+        }
+
+        this.updateCompartments(
+            cytoscapeObj,
+            previousModel.compartments,
+            currentModel.compartments,
+        );
+
+        this.updateFlows(cytoscapeObj, previousModel.flows, currentModel.flows);
+
+        this.layout(cytoscapeObj);
+    }
+
+    private clear(cytoscapeObj: cytoscape.Core): void {
+        cytoscapeObj.elements().remove();
+    }
+
+    private updateCompartments(
+        cytoscapeObj: cytoscape.Core,
+        previousCompartments: Compartment[],
+        currentCompartments: Compartment[],
+    ): void {
+        const diff: Diff<Compartment> = this.getDiff(
+            previousCompartments,
+            currentCompartments,
+        );
+
+        diff.added.forEach((compartment: Compartment): void => {
+            this.addCompartment(cytoscapeObj, compartment);
         });
 
-        this.edgehandles = this.cytoscapeObj.edgehandles();
+        diff.updated.forEach((compartment: Compartment): void => {
+            this.updateCompartment(cytoscapeObj, compartment);
+        });
 
-        this.cytoscapeObj.on('dblclick', this.onDBClick.bind(this));
-        this.cytoscapeObj.on('cxttapend', 'node', this.onFlowStart.bind(this));
-        this.cytoscapeObj.on('ehcomplete', this.onFlowEnd.bind(this) as any);
-        this.cytoscapeObj.on('select', 'node, edge', this.onSelect.bind(this));
+        diff.removed.forEach((compartment: Compartment): void => {
+            this.removeCompartment(cytoscapeObj, compartment.id);
+        });
     }
 
-    public layout(): void {
-        this.cytoscapeObj.layout(cytoscapeLayoutOptions).run();
-    }
-
-    public clear(): void {
-        this.cytoscapeObj.elements().remove();
-    }
-
-    public addCompartment(
-        compartment: ICompartment,
-        layout: boolean = true
+    private addCompartment(
+        cytoscapeObj: cytoscape.Core,
+        compartment: Compartment,
     ): void {
-        this.cytoscapeObj.add({
+        cytoscapeObj.add({
             group: 'nodes',
             data: {
                 id: compartment.id,
@@ -70,22 +93,31 @@ export class GraphService {
             },
             classes: 'compartment',
             renderedPosition: {
-                x: this.cytoscapeObj.width() / 2,
-                y: this.cytoscapeObj.height() / 2,
+                x: cytoscapeObj.width() / 2,
+                y: cytoscapeObj.height() / 2,
             },
         });
-
-        if (layout) {
-            this.layout();
-        }
     }
 
-    public updateCompartment(compartment: ICompartment): void {
-        const node: NodeSingular = this.cytoscapeObj
+    private updateCompartment(
+        cytoscapeObj: cytoscape.Core,
+        compartment: Compartment,
+    ): void {
+        const node: cytoscape.NodeSingular = cytoscapeObj
             .nodes()
             .$id(compartment.id);
 
-        this.renameDefinitionInFlows(node.data('name'), compartment.name);
+        const name: string = node.data('name');
+        const expressionRegExp: RegExp = new RegExp(`\\b${name}\\b`, 'g');
+
+        cytoscapeObj.edges().forEach((edge: cytoscape.EdgeSingular): void => {
+            edge.data(
+                'equation',
+                edge
+                    .data('equation')
+                    .replace(expressionRegExp, compartment.name),
+            );
+        });
 
         node.data({
             name: compartment.name,
@@ -93,20 +125,45 @@ export class GraphService {
         });
     }
 
-    public removeCompartment(id: string, layout: boolean = true): void {
-        const node: NodeSingular = this.cytoscapeObj.nodes().$id(id);
+    private removeCompartment(cytoscapeObj: cytoscape.Core, id: string): void {
+        const node: cytoscape.NodeSingular = cytoscapeObj.nodes().$id(id);
 
-        this.removeFlowsByDefinition(node.data('name'));
+        const expressionRegExp: RegExp = new RegExp(
+            `\\b${node.data('name')}\\b`,
+            'g',
+        );
+        const edges: cytoscape.EdgeCollection = cytoscapeObj
+            .edges()
+            .filter((edge: cytoscape.EdgeSingular): boolean =>
+                edge.data('equation').match(expressionRegExp),
+            );
 
+        edges.remove();
         node.remove();
-
-        if (layout) {
-            this.layout();
-        }
     }
 
-    public addFlow(flow: IFlow, layout: boolean = true): void {
-        this.cytoscapeObj.add({
+    private updateFlows(
+        cytoscapeObj: cytoscape.Core,
+        previousFlows: Flow[],
+        currentFlows: Flow[],
+    ): void {
+        const diff: Diff<Flow> = this.getDiff(previousFlows, currentFlows);
+
+        diff.added.forEach((flow: Flow): void => {
+            this.addFlow(cytoscapeObj, flow);
+        });
+
+        diff.updated.forEach((flow: Flow): void => {
+            this.updateFlow(cytoscapeObj, flow);
+        });
+
+        diff.removed.forEach((flow: Flow): void => {
+            this.removeFlow(cytoscapeObj, flow.id);
+        });
+    }
+
+    private addFlow(cytoscapeObj: cytoscape.Core, flow: Flow): void {
+        cytoscapeObj.add({
             group: 'edges',
             data: {
                 id: flow.id,
@@ -115,85 +172,55 @@ export class GraphService {
                 equation: flow.equation,
             },
         });
-
-        if (layout) {
-            this.layout();
-        }
     }
 
-    public updateFlow(flow: IFlow, layout: boolean = true): void {
-        const edge: EdgeSingular = this.cytoscapeObj.edges().$id(flow.id);
+    private updateFlow(cytoscapeObj: cytoscape.Core, flow: Flow): void {
+        const edge: cytoscape.EdgeSingular = cytoscapeObj.edges().$id(flow.id);
 
         edge.data('equation', flow.equation);
-
         edge.move({
             source: flow.source,
             target: flow.target,
         });
-
-        if (layout) {
-            this.layout();
-        }
     }
 
-    public removeFlow(id: string, layout: boolean = false): void {
-        this.cytoscapeObj.edges().$id(id).remove();
-
-        if (layout) {
-            this.layout();
-        }
+    private removeFlow(cytoscapeObj: cytoscape.Core, id: string): void {
+        cytoscapeObj.edges().$id(id).remove();
     }
 
-    private removeFlowsByDefinition(name: string): void {
-        const expressionRegExp: RegExp = new RegExp(`\\b${name}\\b`, 'g');
-        const edges: EdgeCollection = this.cytoscapeObj
-            .edges()
-            .filter((edge: EdgeSingular): boolean =>
-                edge.data('equation').match(expressionRegExp)
-            );
+    private getDiff<Type extends { id: string }>(
+        oldArray: Type[],
+        newArray: Type[],
+    ): Diff<Type> {
+        const diff: Diff<Type> = {
+            added: [],
+            updated: [],
+            removed: [],
+        };
 
-        edges.remove();
-    }
+        newArray.forEach((newItem: Type): void => {
+            if (
+                oldArray.find(
+                    (oldItem: Type): boolean => oldItem.id === newItem.id,
+                )
+            ) {
+                diff.updated.push(newItem);
 
-    private renameDefinitionInFlows(name: string, newName: string): void {
-        const expressionRegExp: RegExp = new RegExp(`\\b${name}\\b`, 'g');
+                return;
+            }
 
-        this.cytoscapeObj.edges().forEach((edge: EdgeSingular): void => {
-            edge.data(
-                'equation',
-                edge.data('equation').replace(expressionRegExp, newName)
-            );
+            diff.added.push(newItem);
         });
-    }
 
-    private onDBClick(event: EventObject): void {
-        if (!event.target.group) {
-            return;
-        }
+        diff.removed.push(
+            ...oldArray.filter(
+                (oldItem: Type): boolean =>
+                    !newArray.find(
+                        (newItem: Type): boolean => newItem.id === oldItem.id,
+                    ),
+            ),
+        );
 
-        if (event.target.group() === 'nodes') {
-            this.compartmentOpen.next(event.target as NodeSingular);
-
-            return;
-        }
-
-        this.flowOpen.next(event.target as EdgeSingular);
-    }
-
-    private onFlowStart(event: EventObject): void {
-        this.edgehandles.start(event.target);
-    }
-
-    private onFlowEnd(
-        event: EventObject,
-        sourceNode: NodeSingular,
-        targetNode: NodeSingular,
-        addedEdge: EdgeSingular
-    ): void {
-        this.flowAdd.next(addedEdge);
-    }
-
-    private onSelect(event: EventObject): void {
-        this.cytoscapeObj.elements().not(event.target).unselect();
+        return diff;
     }
 }

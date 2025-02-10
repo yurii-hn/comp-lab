@@ -1,143 +1,118 @@
-import { Component, OnInit } from '@angular/core';
 import {
-    FormControl,
-    FormGroup,
-    Validators
-} from '@angular/forms';
+  Component,
+  effect,
+  inject,
+  Injector,
+  OnInit,
+  Signal,
+  untracked,
+} from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
 import { MatDialogRef } from '@angular/material/dialog';
-import { ModelDefinition } from '@core/classes/model.class';
-import { InputType, RowScheme } from '@core/types/datatable.types';
+import { MatIconModule } from '@angular/material/icon';
 import {
-    CompartmentDefinition,
-    ConstantDefinition,
-    FlowDefinition,
-    InterventionDefinition,
-} from '@core/types/definitions.types';
-import {
-    isCompartment,
-    isConstant,
-    isFlow,
-    isIntervention,
-} from '@core/types/model.guards';
-import {
-    ICompartment,
-    IConstant,
-    IFlow,
-    IIntervention,
-    IModel,
+  Compartment,
+  Constant,
+  Flow,
+  Intervention,
 } from '@core/types/model.types';
-import { IOption } from '@core/types/utils.types';
-import { ModelService } from 'src/app/services/model.service';
-import { ValidationService } from 'src/app/services/validation.service';
-import { v4 as uuid } from 'uuid';
+import { Store } from '@ngrx/store';
+import { skip } from 'rxjs';
+import {
+  CompartmentDefinition,
+  ConstantDefinition,
+  DefinitionsTableDialogStore,
+  FlowDefinition,
+  FormValue,
+  InterventionDefinition,
+} from 'src/app/components/definitions-table-dialog/definitions-table-dialog.store';
+import { DatatableComponent } from 'src/app/components/shared/datatable/datatable.component';
+import { RowScheme } from 'src/app/components/shared/datatable/datatable.store';
+import { DefinitionsTableActions } from 'src/app/state/actions/definitions-table.actions';
+import { selectCurrentModel } from 'src/app/state/selectors/workspace.selectors';
 
 @Component({
     selector: 'app-definitions-table-dialog',
+    imports: [
+        ReactiveFormsModule,
+        MatIconModule,
+        MatButtonModule,
+        DatatableComponent,
+    ],
+    providers: [DefinitionsTableDialogStore],
     templateUrl: './definitions-table-dialog.component.html',
     styleUrls: ['./definitions-table-dialog.component.scss'],
-    standalone: false
 })
 export class DefinitionsTableDialogComponent implements OnInit {
-    public readonly compartmentsRowScheme: RowScheme<CompartmentDefinition> = {
-        name: {
-            name: 'Name',
-            type: InputType.Text,
-            editable: true,
-            validationFns: [
-                Validators.required,
-                this.validationService.getDefinitionNameValidator(),
-            ],
-        },
-        value: {
-            name: 'Value',
-            type: InputType.Number,
-            editable: true,
-            validationFns: [Validators.required, Validators.min(0)],
-        },
-    };
-
-    public readonly constantsRowScheme: RowScheme<ConstantDefinition> = {
-        name: {
-            name: 'Name',
-            type: InputType.Text,
-            editable: true,
-            validationFns: [
-                Validators.required,
-                this.validationService.getDefinitionNameValidator(),
-            ],
-        },
-        value: {
-            name: 'Value',
-            type: InputType.Number,
-            editable: true,
-            validationFns: [Validators.required],
-        },
-    };
-
-    public readonly interventionsRowScheme: RowScheme<InterventionDefinition> =
-        {
-            name: {
-                name: 'Name',
-                type: InputType.Text,
-                editable: true,
-                validationFns: [
-                    Validators.required,
-                    this.validationService.getDefinitionNameValidator(),
-                ],
-            },
-        };
-
-    public readonly flowsRowScheme: RowScheme<FlowDefinition> = {
-        source: {
-            name: 'Source',
-            type: InputType.Select,
-            exclusive: false,
-            options: this.modelService.compartments.map(
-                (compartment: ICompartment): IOption => ({
-                    value: compartment.id,
-                    label: compartment.name,
-                })
-            ),
-            editable: true,
-            validationFns: [Validators.required],
-        },
-        target: {
-            name: 'Target',
-            type: InputType.Select,
-            exclusive: false,
-            options: this.modelService.compartments.map(
-                (compartment: ICompartment): IOption => ({
-                    value: compartment.id,
-                    label: compartment.name,
-                })
-            ),
-            editable: true,
-            validationFns: [Validators.required],
-        },
-    };
+    private readonly injector: Injector = inject(Injector);
+    private readonly store: Store = inject(Store);
+    private readonly localStore = inject(DefinitionsTableDialogStore);
+    private readonly dialogRef: MatDialogRef<
+        DefinitionsTableDialogComponent,
+        void
+    > = inject(MatDialogRef<DefinitionsTableDialogComponent, void>);
 
     public readonly control: FormGroup = new FormGroup({
-        compartments: new FormControl<(ICompartment | CompartmentDefinition)[]>(
-            []
+        compartments: new FormControl<(Compartment | CompartmentDefinition)[]>(
+            [],
         ),
-        constants: new FormControl<(IConstant | ConstantDefinition)[]>([]),
+        constants: new FormControl<(Constant | ConstantDefinition)[]>([]),
         interventions: new FormControl<
-            (IIntervention | InterventionDefinition)[]
+            (Intervention | InterventionDefinition)[]
         >([]),
-        flows: new FormControl<(IFlow | FlowDefinition)[]>([]),
+        flows: new FormControl<(Flow | FlowDefinition)[]>([]),
     });
 
-    constructor(
-        private readonly dialogRef: MatDialogRef<
-            DefinitionsTableDialogComponent,
-            ModelDefinition
-        >,
-        private readonly modelService: ModelService,
-        private readonly validationService: ValidationService
-    ) {}
+    public readonly compartmentsRowScheme: Signal<
+        RowScheme<CompartmentDefinition>
+    > = this.localStore.compartmentsRowScheme;
+    public readonly constantsRowScheme: Signal<RowScheme<ConstantDefinition>> =
+        this.localStore.constantsRowScheme;
+    public readonly interventionsRowScheme: Signal<
+        RowScheme<InterventionDefinition>
+    > = this.localStore.interventionsRowScheme;
+    public readonly flowsRowScheme: Signal<RowScheme<FlowDefinition>> =
+        this.localStore.flowsRowScheme;
 
     public ngOnInit(): void {
-        this.init(this.modelService.model);
+        const valueChanges: Signal<FormValue | undefined> = toSignal(
+            this.control.valueChanges.pipe(skip(1)),
+            {
+                injector: this.injector,
+            },
+        );
+
+        effect(
+            (): void => {
+                const change: FormValue | undefined = valueChanges();
+
+                if (change === undefined) {
+                    return;
+                }
+
+                untracked((): void => this.localStore.setValueFromForm(change));
+            },
+            {
+                injector: this.injector,
+            },
+        );
+
+        effect(
+            (): void => {
+                const formValue: FormValue = this.localStore.formValue();
+
+                untracked((): void => this.control.setValue(formValue));
+            },
+            {
+                injector: this.injector,
+            },
+        );
+
+        this.localStore.setValueFromParent(
+            this.store.selectSignal(selectCurrentModel)(),
+        );
     }
 
     public onClose(): void {
@@ -145,71 +120,12 @@ export class DefinitionsTableDialogComponent implements OnInit {
     }
 
     public onSave(): void {
-        const value: {
-            compartments: (ICompartment | CompartmentDefinition)[];
-            constants: (IConstant | ConstantDefinition)[];
-            interventions: (IIntervention | InterventionDefinition)[];
-            flows: (IFlow | FlowDefinition)[];
-        } = this.control.value;
-
-        const definition: ModelDefinition = new ModelDefinition({
-            compartments: value.compartments.map(
-                (
-                    compartment: ICompartment | CompartmentDefinition
-                ): ICompartment => {
-                    if (isCompartment(compartment)) {
-                        return compartment;
-                    }
-
-                    return {
-                        ...compartment,
-                        id: uuid(),
-                    };
-                }
-            ),
-            constants: value.constants.map(
-                (constant: IConstant | ConstantDefinition): IConstant => {
-                    if (isConstant(constant)) {
-                        return constant;
-                    }
-
-                    return {
-                        ...constant,
-                        id: uuid(),
-                    };
-                }
-            ),
-            interventions: value.interventions.map(
-                (
-                    intervention: IIntervention | InterventionDefinition
-                ): IIntervention => {
-                    if (isIntervention(intervention)) {
-                        return intervention;
-                    }
-
-                    return {
-                        ...intervention,
-                        id: uuid(),
-                    };
-                }
-            ),
-            flows: value.flows.map((flow: IFlow | FlowDefinition): IFlow => {
-                if (isFlow(flow)) {
-                    return flow;
-                }
-
-                return {
-                    ...flow,
-                    id: uuid(),
-                    equation: '',
-                };
+        this.store.dispatch(
+            DefinitionsTableActions.updateModel({
+                model: this.localStore.value(),
             }),
-        });
+        );
 
-        this.dialogRef.close(definition);
-    }
-
-    private init(model: IModel): void {
-        this.control.setValue(model);
+        this.dialogRef.close();
     }
 }

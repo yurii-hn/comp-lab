@@ -1,43 +1,45 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import {
-    OptimalControlRequestBody,
-    OptimalControlResponse,
-    PIRequestBody,
-    PIResponse,
-    SimulationRequestBody,
-    SimulationResponse,
+  OptimalControlRequestBody,
+  OptimalControlSuccessResponse,
+  PIRequestBody,
+  PISuccessResponse,
+  SimulationRequestBody,
+  SimulationSuccessResponse,
 } from '@core/types/processing';
+import { ErrorResponse } from '@core/types/processing/api.types';
 import { Observable } from 'rxjs';
 
 @Injectable({
     providedIn: 'root',
 })
 export class ProcessingService {
-    constructor(private readonly httpClient: HttpClient) {}
+    private readonly httpClient: HttpClient = inject(HttpClient);
 
     public simulateModel(
-        data: SimulationRequestBody
-    ): Observable<SimulationResponse> {
-        return this.httpClient.post<SimulationResponse>(
+        data: SimulationRequestBody,
+    ): Observable<SimulationSuccessResponse | ErrorResponse> {
+        return this.httpClient.post<SimulationSuccessResponse | ErrorResponse>(
             'http://localhost:5000/simulate',
-            data
+            data,
         );
     }
 
     public optimizeModel(
-        data: OptimalControlRequestBody
-    ): Observable<OptimalControlResponse> {
-        return this.httpClient.post<OptimalControlResponse>(
-            'http://localhost:5000/optimal-control',
-            data
-        );
+        data: OptimalControlRequestBody,
+    ): Observable<OptimalControlSuccessResponse | ErrorResponse> {
+        return this.httpClient.post<
+            OptimalControlSuccessResponse | ErrorResponse
+        >('http://localhost:5000/optimal-control', data);
     }
 
-    public identifyParameters(data: PIRequestBody): Observable<PIResponse> {
-        return this.httpClient.post<PIResponse>(
+    public identifyParameters(
+        data: PIRequestBody,
+    ): Observable<PISuccessResponse | ErrorResponse> {
+        return this.httpClient.post<PISuccessResponse | ErrorResponse>(
             'http://localhost:5000/parameters-identification',
-            data
+            data,
         );
     }
 }

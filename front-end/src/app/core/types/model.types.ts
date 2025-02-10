@@ -1,30 +1,30 @@
-export interface ICompartment {
+export interface Compartment {
     id: string;
     name: string;
     value: number;
 }
 
-export interface IConstant {
+export interface Constant {
     id: string;
     name: string;
     value: number;
 }
 
-export interface IIntervention {
+export interface Intervention {
     id: string;
     name: string;
 }
 
-export interface IFlow {
+export interface Flow {
     id: string;
     source: string;
     target: string;
     equation: string;
 }
 
-export interface IModel {
-    compartments: ICompartment[];
-    constants: IConstant[];
-    interventions: IIntervention[];
-    flows: IFlow[];
+export interface Model {
+    compartments: Compartment[];
+    constants: Constant[];
+    interventions: Intervention[];
+    flows: Flow[];
 }

@@ -1,3 +1,9 @@
+@let compartments = this.compartments();
+@let constants = this.constants();
+@let interventions = this.interventions();
+@let title = this.title();
+@let placeholder = this.placeholder();
+
 <mat-form-field class="input" subscriptSizing="dynamic">
     <mat-label>{{ title }}</mat-label>
 
@@ -12,58 +18,75 @@
         [formControl]="control"
     ></textarea>
 
-    <mat-error *ngIf="control.errors && control.errors['equation']">
-        <ng-container
-            *ngFor="let error of control.errors!['equation'] | keyvalue"
-        >
-            <p *ngIf="error.key !== 'required'" class="error-message">
-                {{ error.value }}
-            </p>
-        </ng-container>
-    </mat-error>
+    @if (control.errors) {
+        <mat-error>
+            @for (error of control.errors | keyvalue; track error.value) {
+                @if (error.key !== "required") {
+                    <p class="error-message">
+                        {{ error.value }}
+                    </p>
+                }
+            }
+        </mat-error>
+    }
 </mat-form-field>
 
 <div class="keyboards">
     <div>
         <div class="title">Compartments</div>
 
-        <mat-chip-listbox *ngIf="compartments.length; else noContent">
-            <mat-chip
-                *ngFor="let compartment of compartments"
-                [disabled]="control.disabled"
-                (click)="onChipInput(compartment.name)"
-            >
-                {{ compartment.name }}
-            </mat-chip>
-        </mat-chip-listbox>
+        @if (compartments?.length) {
+            <mat-chip-listbox>
+                @for (compartment of compartments; track compartment.id) {
+                    <mat-chip
+                        [disabled]="control.disabled"
+                        (click)="onChipInput(compartment.name)"
+                    >
+                        {{ compartment.name }}
+                    </mat-chip>
+                }
+            </mat-chip-listbox>
+        } @else {
+            <ng-container [ngTemplateOutlet]="noContent" />
+        }
     </div>
 
     <div>
         <div class="title">Constants</div>
 
-        <mat-chip-listbox *ngIf="constants.length; else noContent">
-            <mat-chip
-                *ngFor="let constant of constants"
-                [disabled]="control.disabled"
-                (click)="onChipInput(constant.name)"
-            >
-                {{ constant.name }}
-            </mat-chip>
-        </mat-chip-listbox>
+        @if (constants?.length) {
+            <mat-chip-listbox>
+                @for (constant of constants; track constant.id) {
+                    <mat-chip
+                        [disabled]="control.disabled"
+                        (click)="onChipInput(constant.name)"
+                    >
+                        {{ constant.name }}
+                    </mat-chip>
+                }
+            </mat-chip-listbox>
+        } @else {
+            <ng-container [ngTemplateOutlet]="noContent" />
+        }
     </div>
 
     <div>
         <div class="title">Interventions</div>
 
-        <mat-chip-listbox *ngIf="interventions.length; else noContent">
-            <mat-chip
-                *ngFor="let intervention of interventions"
-                [disabled]="control.disabled"
-                (click)="onChipInput(intervention.name)"
-            >
-                {{ intervention.name }}
-            </mat-chip>
-        </mat-chip-listbox>
+        @if (interventions?.length) {
+            <mat-chip-listbox>
+                @for (intervention of interventions; track intervention.id) {
+                    <mat-chip
+                        [disabled]="control.disabled"
+                        (click)="onChipInput(intervention.name)"
+                    >
+                        {{ intervention.name }}
+                    </mat-chip>
+                }
+            </mat-chip-listbox>
+        } @else {
+            <ng-container [ngTemplateOutlet]="noContent" />
+        }
     </div>
 
     <ng-template #noContent>

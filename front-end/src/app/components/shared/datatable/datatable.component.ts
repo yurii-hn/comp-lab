@@ -1,29 +1,59 @@
-import { Component, HostBinding, Input, ViewChild } from '@angular/core';
+import { DecimalPipe, TitleCasePipe } from '@angular/common';
 import {
-    ControlValueAccessor,
-    FormControl,
-    FormGroup,
-    NG_VALIDATORS,
-    NG_VALUE_ACCESSOR,
-    ValidationErrors,
-    Validator,
-    ValidatorFn,
+  AfterViewInit,
+  Component,
+  effect,
+  inject,
+  Injector,
+  input,
+  InputSignal,
+  OnInit,
+  Signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
+import {
+  ControlValueAccessor,
+  FormControl,
+  FormGroup,
+  NG_VALIDATORS,
+  NG_VALUE_ACCESSOR,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validator,
+  ValidatorFn,
 } from '@angular/forms';
-import { MatTable } from '@angular/material/table';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTable, MatTableModule } from '@angular/material/table';
+import { OnChangeFn, OnTouchedFn } from '@core/types/util.types';
 import {
-    ColumnScheme,
-    IRow,
-    ISelectColumnScheme,
-    InputType,
-    RowScheme,
-} from '@core/types/datatable.types';
-import { IOption, OnChangeFn, OnTouchedFn } from '@core/types/utils.types';
+  ColumnScheme,
+  DatatableStore,
+  Option,
+  RowScheme,
+  SingularFormValue,
+  Value,
+} from 'src/app/components/shared/datatable/datatable.store';
 
 @Component({
     selector: 'app-datatable',
-    templateUrl: './datatable.component.html',
-    styleUrls: ['./datatable.component.scss'],
+    imports: [
+        ReactiveFormsModule,
+        MatIconModule,
+        MatSelectModule,
+        MatButtonModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatTableModule,
+        DecimalPipe,
+        TitleCasePipe,
+    ],
     providers: [
+        DatatableStore,
         {
             provide: NG_VALUE_ACCESSOR,
             useExisting: DatatableComponent,
@@ -35,117 +65,108 @@ import { IOption, OnChangeFn, OnTouchedFn } from '@core/types/utils.types';
             multi: true,
         },
     ],
-    standalone: false
+    templateUrl: './datatable.component.html',
+    styleUrls: ['./datatable.component.scss'],
+    host: {
+        'class.compact': 'localStore.compact()',
+    },
 })
-export class DatatableComponent<
-    RowDataType extends Record<string, any>,
-    DataType extends RowDataType
-> implements ControlValueAccessor, Validator
+export class DatatableComponent
+    implements ControlValueAccessor, Validator, OnInit, AfterViewInit
 {
-    private _disabled: boolean = false;
-    private _rowScheme: RowScheme<RowDataType> = {} as RowScheme<RowDataType>;
-    private _rowValidators: ValidatorFn[] = [];
+    private readonly injector: Injector = inject(Injector);
+    private readonly localStore = inject(DatatableStore);
 
-    private onChange!: OnChangeFn<void>;
-    private onTouched!: OnTouchedFn<void>;
+    private readonly table: Signal<MatTable<SingularFormValue>> =
+        viewChild.required<MatTable<SingularFormValue>>(MatTable);
 
-    private readonly optionsMap: Map<string, IOption[]> = new Map();
-
-    private get data(): (DataType | RowDataType)[] {
-        return this.rows.map(
-            (row: IRow<DataType | RowDataType>): DataType | RowDataType =>
-                structuredClone(row.data)
-        );
-    }
-
-    @Input() public enumerate: boolean = false;
-    @HostBinding('class.compact') @Input() public compact: boolean = false;
-    @Input() public set disabled(disabled: boolean) {
-        this.setDisabledState(disabled);
-    }
-    @Input() public set rowScheme(scheme: RowScheme<RowDataType>) {
-        this._rowScheme = scheme;
-
-        this.updateMaxRows();
-        this.updateOptionsMap();
-        this.initControl();
-        this.initControlValidators();
-    }
-    public get rowScheme(): RowScheme<RowDataType> {
-        return this._rowScheme;
-    }
-    @Input() public set rowValidators(validators: ValidatorFn[]) {
-        this._rowValidators = validators;
-
-        this.initControlValidators();
-    }
-    @Input('data') public set dataInput(data: DataType[] | null) {
-        this.writeValue(data);
-    }
-
-    @ViewChild(MatTable) public table!: MatTable<IRow<DataType | RowDataType>>;
-
-    public rows: IRow<DataType | RowDataType>[] = [];
-
-    public adding: boolean = false;
-    public editing: boolean = false;
-    public maxRows: number = Infinity;
+    public readonly rowSchemeInput: InputSignal<RowScheme> = input.required({
+        alias: 'rowScheme',
+    });
+    public readonly rowValidatorsInput: InputSignal<ValidatorFn[]> = input<
+        ValidatorFn[]
+    >([], {
+        alias: 'rowValidators',
+    });
+    public readonly dataInput: InputSignal<Value | undefined> = input<
+        Value | undefined
+    >(undefined, {
+        alias: 'data',
+    });
+    public readonly disabledInput: InputSignal<boolean> = input(false, {
+        alias: 'disabled',
+    });
+    public readonly enumerateInput: InputSignal<boolean> = input(false, {
+        alias: 'enumerate',
+    });
+    public readonly compactInput: InputSignal<boolean> = input(false, {
+        alias: 'compact',
+    });
 
     public control: FormGroup = new FormGroup({});
 
-    public get ids(): string[] {
-        return Object.keys(this._rowScheme);
-    }
-    public get columns(): string[] {
-        const columns: string[] = [];
+    public readonly rowScheme: Signal<RowScheme> = this.localStore.rowScheme;
+    public readonly rows: Signal<SingularFormValue[]> = this.localStore.rows;
 
-        if (this.enumerate) {
-            columns.push('index');
-        }
+    public readonly columns: Signal<string[]> = this.localStore.columns;
+    public readonly ids: Signal<string[]> = this.localStore.ids;
+    public readonly editable: Signal<boolean> = this.localStore.editable;
+    public readonly maxRows: Signal<number> = this.localStore.maxRows;
+    public readonly editing: Signal<boolean> = this.localStore.editing;
+    public readonly adding: Signal<boolean> = this.localStore.adding;
 
-        columns.push(...this.ids);
-
-        if (!this.compact) {
-            columns.push('placeholder');
-        }
-
-        if (!this._disabled) {
-            columns.push('actions');
-        }
-
-        return columns;
+    public ngOnInit(): void {
+        this.initInputsSync();
+        this.initControlSync();
     }
 
-    public get editable(): boolean {
-        return this.ids.some(
-            (id: string): boolean => !!this._rowScheme[id].editable
+    public ngAfterViewInit(): void {
+        this.initTableSync();
+    }
+
+    public writeValue(value: Value | null): void {
+        this.localStore.markAsReactive();
+
+        this.localStore.setData(value);
+    }
+
+    public registerOnChange(onChange: OnChangeFn<Value>): void {
+        effect(
+            (): void => {
+                if (this.localStore.adding() || this.localStore.editing()) {
+                    return;
+                }
+
+                const value: Value = this.localStore.value();
+
+                untracked((): void => onChange(value));
+            },
+            {
+                injector: this.injector,
+            },
         );
     }
 
-    public writeValue(value: DataType[] | null): void {
-        this.setData(value ?? []);
+    public registerOnTouched(onTouched: OnTouchedFn): void {
+        effect(
+            (): void => {
+                this.localStore.editing();
+                this.localStore.value();
 
-        this.updateOptionsMap();
-    }
-
-    public registerOnChange(
-        onChange: OnChangeFn<DataType | RowDataType[]>
-    ): void {
-        this.onChange = (): void => {
-            onChange(this.data);
-        };
-    }
-
-    public registerOnTouched(onTouched: OnTouchedFn<void>): void {
-        this.onTouched = onTouched;
+                untracked((): void => onTouched());
+            },
+            {
+                injector: this.injector,
+            },
+        );
     }
 
     public setDisabledState(disabled: boolean): void {
-        this._disabled = disabled;
+        this.localStore.setDisabled(disabled);
     }
 
     public validate(): ValidationErrors | null {
-        if (!this.editing) {
+        if (!this.localStore.editing()) {
             return null;
         }
 
@@ -154,232 +175,232 @@ export class DatatableComponent<
         };
     }
 
-    public getOptionLabel(id: string, value: string): string {
-        const scheme: ISelectColumnScheme = this._rowScheme[
-            id
-        ] as ISelectColumnScheme;
-
-        const option: IOption = scheme.options.find(
-            (option: IOption): boolean => option.value === value
-        ) as IOption;
-
-        return option.label;
+    public getOptionLabel(columnId: string, value: string): string {
+        return this.localStore.getOptionLabel(columnId, value);
     }
 
-    public getAvailableOptions(id: string): IOption[] {
-        return this.optionsMap.get(id) || [];
+    public getAvailableOptions(columnId: string): Option[] {
+        return this.localStore.getAvailableOptions(columnId);
     }
 
-    public getErrors(id: string): string[] {
-        const control: FormControl = this.control.get(id) as FormControl;
+    public getErrors(columnId: string): string[] {
+        const control: FormControl = this.control.get(columnId) as FormControl;
 
         const errors: ValidationErrors | null = control.errors;
 
         return errors ? Object.keys(errors) : [];
     }
 
-    public onEdit(row: IRow<DataType | RowDataType>): void {
-        this.control.patchValue(row.data);
-
-        this.editing = true;
-        row.editing = true;
-
-        this.onTouched();
-        this.onChange();
+    public onEdit(index: number): void {
+        this.localStore.editRow(index);
     }
 
     public onDelete(index: number): void {
-        this.rows.splice(index, 1);
-
-        this.updateOptionsMap();
-
-        this.onTouched();
-        this.onChange();
-        this.table.renderRows();
+        this.localStore.deleteRow(index);
     }
 
-    public onSave(row: IRow<DataType | RowDataType>): void {
-        this.ids.forEach((id: string): void => {
-            const scheme: ColumnScheme = this._rowScheme[id];
-
-            if (!scheme.editable && !this.adding) {
-                return;
-            }
-
-            let value: any = this.control.get(id)?.value;
-
-            switch (scheme.type) {
-                case InputType.Number:
-                    value = parseFloat(value);
-
-                    break;
-            }
-
-            // @ts-ignore
-            row.data[id] = value;
-        });
-
-        this.control.reset();
-        this.updateOptionsMap();
-
-        this.editing = false;
-        row.editing = false;
-
-        if (this.adding) {
-            this.adding = false;
-
-            this.disableNonEditableColumns();
-        }
-
-        this.onTouched();
-        this.onChange();
+    public onSave(): void {
+        this.localStore.saveRow(this.control.value);
     }
 
-    public onCancel(row: IRow<DataType | RowDataType>): void {
-        this.control.reset();
-
-        this.editing = false;
-        row.editing = false;
-
-        if (this.adding) {
-            this.adding = false;
-
-            this.disableNonEditableColumns();
-
-            this.rows.pop();
-            this.table.renderRows();
-        }
-
-        this.onTouched();
-        this.onChange();
+    public onCancel(): void {
+        this.localStore.cancel();
     }
 
     public onRowAdd(): void {
-        this.editing = true;
-        this.adding = true;
-
-        this.onChange();
-
-        const newRow: IRow<RowDataType> = this.getEmptyRow();
-
-        newRow.editing = true;
-
-        this.disableNonEditableColumns(false);
-
-        this.rows.push(newRow);
-        this.table.renderRows();
+        this.localStore.addRow();
     }
 
-    private updateMaxRows(): void {
-        const optionsCounts: number[] = this.ids.reduce(
-            (counts: number[], id: string): number[] => {
-                const scheme: ColumnScheme = this._rowScheme[id];
+    private initInputsSync(): void {
+        effect(
+            (): void => {
+                const rowScheme: RowScheme = this.rowSchemeInput();
 
-                if (scheme.type !== InputType.Select || !scheme.exclusive) {
-                    return counts;
-                }
-
-                counts.push(scheme.options.length);
-
-                return counts;
+                untracked((): void => this.localStore.setRowScheme(rowScheme));
             },
-            []
+            {
+                injector: this.injector,
+            },
         );
+        effect(
+            (): void => {
+                const rowValidators: ValidatorFn[] = this.rowValidatorsInput();
 
-        this.maxRows =
-            optionsCounts.length > 0 ? Math.min(...optionsCounts) : Infinity;
-    }
-
-    private updateOptionsMap(): void {
-        this.ids.forEach((id: string): void => {
-            const scheme: ColumnScheme = this._rowScheme[id];
-
-            if (scheme.type !== InputType.Select) {
-                return;
-            }
-
-            if (!scheme.exclusive) {
-                this.optionsMap.set(id, scheme.options);
-
-                return;
-            }
-
-            const available: IOption[] = scheme.options.filter(
-                (option: IOption): boolean =>
-                    !this.rows.some(
-                        (row: IRow<DataType | RowDataType>): boolean =>
-                            option.value === row.data[id]
-                    )
-            );
-
-            this.optionsMap.set(id, available);
-        });
-    }
-
-    private initControl(): void {
-        this.control = new FormGroup({});
-
-        this.ids.forEach((id: string): void => {
-            const scheme: ColumnScheme = this._rowScheme[id];
-
-            const control: FormControl = new FormControl(
-                null,
-                scheme.validationFns || []
-            );
-
-            if (!scheme.editable) {
-                control.disable();
-            }
-
-            this.control.addControl(id, control);
-        });
-    }
-
-    private initControlValidators(): void {
-        this.control.clearValidators();
-        this.control.setValidators(this._rowValidators);
-        this.control.updateValueAndValidity();
-    }
-
-    private setData(data: DataType[]): void {
-        this.rows = data.map(
-            (data: DataType): IRow<DataType> => ({
-                data,
-                editing: false,
-            })
+                untracked((): void =>
+                    this.localStore.setRowValidators(rowValidators),
+                );
+            },
+            {
+                injector: this.injector,
+            },
         );
-    }
+        effect(
+            (): void => {
+                const isReactive: boolean = untracked((): boolean =>
+                    this.localStore.isReactive(),
+                );
 
-    private disableNonEditableColumns(disabled: boolean = true): void {
-        this.ids.forEach((id: string): void => {
-            const scheme: ColumnScheme = this._rowScheme[id];
-
-            if (!scheme.editable) {
-                const control: FormControl = this.control.get(
-                    id
-                ) as FormControl;
-
-                if (disabled) {
-                    control.disable();
-
+                if (isReactive) {
                     return;
                 }
 
-                control.enable();
-            }
-        });
+                const data: Value | undefined = this.dataInput();
+
+                untracked((): void => this.localStore.setData(data ?? null));
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            (): void => {
+                const isReactive: boolean = untracked((): boolean =>
+                    this.localStore.isReactive(),
+                );
+
+                if (isReactive) {
+                    return;
+                }
+
+                const disabled: boolean = this.disabledInput();
+
+                untracked((): void => this.localStore.setDisabled(disabled));
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            (): void => {
+                const enumerate: boolean = this.enumerateInput();
+
+                untracked((): void => this.localStore.setEnumerate(enumerate));
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            (): void => {
+                const compact: boolean = this.compactInput();
+
+                untracked((): void => this.localStore.setCompact(compact));
+            },
+            {
+                injector: this.injector,
+            },
+        );
     }
 
-    private getEmptyRow(): IRow<RowDataType> {
-        return {
-            data: this.ids.reduce(
-                (data: RowDataType, id: string): RowDataType => ({
-                    ...data,
-                    [id]: null,
-                }),
-                {} as RowDataType
-            ),
-            editing: false,
-        };
+    private initControlSync(): void {
+        effect(
+            (): void => {
+                const schemesIds: string[] = this.localStore.ids();
+                const rowScheme: RowScheme = this.localStore.rowScheme();
+
+                untracked((): void => {
+                    this.control = new FormGroup({});
+
+                    schemesIds.forEach((id: string): void => {
+                        const scheme: ColumnScheme = rowScheme[
+                            id
+                        ] as ColumnScheme;
+
+                        const columnControl: FormControl = new FormControl(
+                            null,
+                            scheme.validationFns || [],
+                        );
+
+                        if (!scheme.editable) {
+                            columnControl.disable();
+                        }
+
+                        this.control.addControl(id, columnControl);
+                    });
+
+                    this.setControlValidators(this.localStore.rowValidators());
+                });
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            (): void => {
+                const rowValidators: ValidatorFn[] =
+                    this.localStore.rowValidators();
+
+                untracked((): void => this.setControlValidators(rowValidators));
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            (): void => {
+                const editedRow: SingularFormValue | null =
+                    this.localStore.editedRow();
+
+                untracked((): void => {
+                    if (!editedRow) {
+                        this.control.reset();
+
+                        return;
+                    }
+
+                    this.control.patchValue(editedRow.data);
+                });
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            (): void => {
+                const rowScheme: RowScheme = this.localStore.rowScheme();
+                const ids: string[] = this.localStore.ids();
+                const toDisable: boolean = !this.localStore.adding();
+
+                untracked((): void => {
+                    ids.forEach((id: string): void => {
+                        if (!rowScheme[id]!.editable) {
+                            const control: FormControl = this.control.get(
+                                id,
+                            ) as FormControl;
+
+                            if (toDisable) {
+                                control.disable();
+
+                                return;
+                            }
+
+                            control.enable();
+                        }
+                    });
+                });
+            },
+            {
+                injector: this.injector,
+            },
+        );
+    }
+
+    private initTableSync(): void {
+        effect(
+            (): void => {
+                this.localStore.rows();
+
+                untracked((): void => this.table().renderRows());
+            },
+            {
+                injector: this.injector,
+            },
+        );
+    }
+
+    private setControlValidators(validators: ValidatorFn[]): void {
+        this.control.clearValidators();
+        this.control.setValidators(validators);
+        this.control.updateValueAndValidity();
     }
 }

@@ -1,5 +1,8 @@
+@let isElementSelected = this.isElementSelected();
+@let hasCompartments = this.hasCompartments();
+
 <div class="buttons-container top-left-buttons">
-    <app-workspaces-panel></app-workspaces-panel>
+    <app-workspaces-panel />
 
     <button
         mat-mini-fab
@@ -16,7 +19,7 @@
         mat-mini-fab
         class="button"
         color="primary"
-        (click)="onCompartmentAdd()"
+        (click)="onCompartmentOpen()"
     >
         <mat-icon>add</mat-icon>
     </button>
@@ -29,7 +32,7 @@
         mat-mini-fab
         class="button"
         color="primary"
-        [disabled]="!selected"
+        [disabled]="!isElementSelected"
         (click)="onDelete()"
     >
         <mat-icon>delete</mat-icon>
@@ -39,7 +42,7 @@
         mat-mini-fab
         class="button"
         color="primary"
-        [disabled]="!compartmentsCount"
+        [disabled]="!hasCompartments"
         (click)="onClear()"
     >
         <mat-icon>delete_forever</mat-icon>

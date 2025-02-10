@@ -1,104 +1,62 @@
 import {
-    Component,
-    Input,
-    ViewChild
+  Component,
+  effect,
+  inject,
+  Injector,
+  input,
+  InputSignal,
+  OnInit,
+  Signal,
+  untracked,
 } from '@angular/core';
-import { InputType, RowScheme } from '@core/types/datatable.types';
-import {
-    IdentifiedConstantDefinition,
-    SelectedConstantDefinition,
-} from '@core/types/definitions.types';
-import { IValues } from '@core/types/processing';
+import { IdentifiedConstant } from '@core/types/processing';
 import { PIData } from '@core/types/run.types';
-import { valuesToRowData } from '@core/utils';
-import { IOutputData, SplitComponent } from 'angular-split';
+import { AngularSplitModule } from 'angular-split';
+import {
+  DisplayData,
+  PIInfoPanelStore,
+} from 'src/app/components/dashboard/parameters-identification-info-panel/parameters-identification-info-panel.store';
+import { DatatableComponent } from 'src/app/components/shared/datatable/datatable.component';
+import { RowScheme } from 'src/app/components/shared/datatable/datatable.store';
 
 @Component({
     selector: 'app-parameters-identification-info-panel',
+    imports: [AngularSplitModule, DatatableComponent],
+    providers: [PIInfoPanelStore],
     templateUrl: './parameters-identification-info-panel.component.html',
     styleUrls: ['./parameters-identification-info-panel.component.scss'],
-    standalone: false
 })
-export class ParametersIdentificationInfoPanelComponent {
-    @ViewChild(SplitComponent) private readonly splitComponent!: SplitComponent;
+export class ParametersIdentificationInfoPanelComponent implements OnInit {
+    private readonly injector: Injector = inject(Injector);
+    private readonly localStore = inject(PIInfoPanelStore);
 
-    private _data: PIData | null = null;
+    public readonly inputData: InputSignal<PIData | null> =
+        input.required<PIData | null>({
+            alias: 'data',
+        });
 
-    @Input() public set data(data: PIData | null) {
-        this._data = data;
+    public readonly displayData: Signal<DisplayData> =
+        this.localStore.displayData;
 
-        this.onDataUpdate(this._data);
-    }
-    public get data(): PIData | null {
-        return this._data;
-    }
+    public readonly identifiedConstantsRowScheme: Signal<
+        RowScheme<IdentifiedConstant>
+    > = this.localStore.identifiedConstantsRowScheme;
+    public readonly selectedConstantsRowScheme: Signal<
+        RowScheme<IdentifiedConstant>
+    > = this.localStore.selectedConstantsRowScheme;
+    public readonly dataRowScheme: Signal<RowScheme> =
+        this.localStore.dataRowScheme;
 
-    public identifiedConstantsData: IdentifiedConstantDefinition[] = [];
-    public selectedConstantsData: SelectedConstantDefinition[] = [];
-    public dataData: Record<string, number>[] = [];
+    public ngOnInit(): void {
+        effect(
+            (): void => {
+                const data: PIData | null = this.inputData();
 
-    public dataRowScheme: RowScheme = {};
-
-    public readonly selectedConstantsRowScheme: RowScheme<SelectedConstantDefinition> =
-        {
-            name: {
-                name: 'Name',
-                type: InputType.Text,
+                untracked((): void => this.localStore.setData(data));
             },
-            lowerBoundary: {
-                name: 'Lower boundary',
-                type: InputType.Number,
+            {
+                injector: this.injector,
             },
-            value: {
-                name: 'Initial guess',
-                type: InputType.Number,
-            },
-            upperBoundary: {
-                name: 'Upper boundary',
-                type: InputType.Number,
-            },
-        };
-
-    public readonly identifiedConstantsRowScheme: RowScheme<IdentifiedConstantDefinition> =
-        {
-            name: {
-                name: 'Name',
-                type: InputType.Text,
-            },
-            value: {
-                name: 'Value',
-                type: InputType.Number,
-            },
-        };
-
-    public onGutterDBClick(event: IOutputData): void {
-        this.splitComponent.setVisibleAreaSizes([50, 50]);
-    }
-
-    public onDataUpdate(data: PIData | null): void {
-        if (!data) {
-            this.dataRowScheme = {};
-
-            this.identifiedConstantsData = [];
-            this.selectedConstantsData = [];
-            this.dataData = [];
-
-            return;
-        }
-
-        this.dataRowScheme = data.parameters.data.reduce(
-            (rowScheme: RowScheme, values: IValues): RowScheme => ({
-                ...rowScheme,
-                [values.name]: {
-                    name: values.name,
-                    type: InputType.Number,
-                },
-            }),
-            {}
         );
-
-        this.identifiedConstantsData = data.result.constants;
-        this.selectedConstantsData = data.parameters.selectedConstants;
-        this.dataData = valuesToRowData(data.parameters.data);
     }
 }

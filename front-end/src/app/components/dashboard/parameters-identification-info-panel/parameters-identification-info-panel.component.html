@@ -1,8 +1,12 @@
+@let displayData = this.displayData();
+@let identifiedConstantsRowScheme = this.identifiedConstantsRowScheme();
+@let selectedConstantsRowScheme = this.selectedConstantsRowScheme();
+@let dataRowScheme = this.dataRowScheme();
+
 <as-split
     direction="vertical"
     [gutterSize]="7"
     [gutterDblClickDuration]="400"
-    (gutterDblClick)="onGutterDBClick($event)"
     [restrictMove]="true"
 >
     <as-split-area class="split-area" [size]="50">
@@ -19,8 +23,8 @@
                             [disabled]="true"
                             [compact]="true"
                             [rowScheme]="identifiedConstantsRowScheme"
-                            [data]="identifiedConstantsData"
-                        ></app-datatable>
+                            [data]="displayData.result.constants"
+                        />
                     </div>
                 </div>
             </div>
@@ -35,7 +39,7 @@
                 <div class="body">
                     <p class="field">
                         <span class="name">Nodes Amount:</span>
-                        {{ data ? data.parameters.nodesAmount : "N/A" }}
+                        {{ displayData.parameters.nodesAmount ?? "N/A" }}
                     </p>
 
                     <div class="table-group">
@@ -46,8 +50,8 @@
                             [disabled]="true"
                             [compact]="true"
                             [rowScheme]="selectedConstantsRowScheme"
-                            [data]="selectedConstantsData"
-                        ></app-datatable>
+                            [data]="displayData.parameters.selectedConstants"
+                        />
                     </div>
 
                     <div class="table-group">
@@ -58,8 +62,8 @@
                             [disabled]="true"
                             [compact]="true"
                             [rowScheme]="dataRowScheme"
-                            [data]="dataData"
-                        ></app-datatable>
+                            [data]="displayData.parameters.data"
+                        />
                     </div>
                 </div>
             </div>

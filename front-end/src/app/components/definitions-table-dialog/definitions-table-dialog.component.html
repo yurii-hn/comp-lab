@@ -1,3 +1,8 @@
+@let compartmentsRowScheme = this.compartmentsRowScheme();
+@let constantsRowScheme = this.constantsRowScheme();
+@let interventionsRowScheme = this.interventionsRowScheme();
+@let flowsRowScheme = this.flowsRowScheme();
+
 <div class="header">
     <p class="title">Definitions Table</p>
 
@@ -18,7 +23,7 @@
         <app-datatable
             formControlName="compartments"
             [rowScheme]="compartmentsRowScheme"
-        ></app-datatable>
+        />
     </div>
 
     <div class="section constants">
@@ -27,7 +32,7 @@
         <app-datatable
             formControlName="constants"
             [rowScheme]="constantsRowScheme"
-        ></app-datatable>
+        />
     </div>
 
     <div class="section interventions">
@@ -36,16 +41,13 @@
         <app-datatable
             formControlName="interventions"
             [rowScheme]="interventionsRowScheme"
-        ></app-datatable>
+        />
     </div>
 
     <div class="section flows">
         <div class="title">Flows</div>
 
-        <app-datatable
-            formControlName="flows"
-            [rowScheme]="flowsRowScheme"
-        ></app-datatable>
+        <app-datatable formControlName="flows" [rowScheme]="flowsRowScheme" />
     </div>
 </div>
 

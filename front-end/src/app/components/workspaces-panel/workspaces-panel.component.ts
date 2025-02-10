@@ -1,60 +1,47 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { FormControl } from '@angular/forms';
-import { IWorkspace } from '@core/types/workspaces.types';
-import { Subscription, filter, map, tap } from 'rxjs';
-import { WorkspacesService } from 'src/app/services/workspaces.service';
+import { Component, inject, Signal } from '@angular/core';
+import { ReactiveFormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSelectChange, MatSelectModule } from '@angular/material/select';
+import { Store } from '@ngrx/store';
+import { WorkspaceActions } from 'src/app/state/actions/workspace.actions';
+import {
+  selectCurrentWorkspaceName,
+  selectWorkspaceNames,
+  selectWorkspacesCount,
+} from 'src/app/state/selectors/workspace.selectors';
 
 @Component({
     selector: 'app-workspaces-panel',
+    imports: [
+        MatIconModule,
+        MatSelectModule,
+        MatButtonModule,
+        ReactiveFormsModule,
+    ],
     templateUrl: './workspaces-panel.component.html',
     styleUrls: ['./workspaces-panel.component.scss'],
-    standalone: false
 })
-export class WorkspacesPanelComponent implements OnInit, OnDestroy {
-    private readonly subscription: Subscription = new Subscription();
+export class WorkspacesPanelComponent {
+    private readonly store: Store = inject(Store);
 
-    public readonly control: FormControl<string> = new FormControl<string>(
-        ''
-    ) as FormControl<string>;
-
-    public constructor(public readonly workspacesService: WorkspacesService) {}
-
-    public ngOnInit(): void {
-        const nameSub: Subscription = this.workspacesService.current$
-            .pipe(
-                filter((workspace: IWorkspace): boolean => !!workspace.name),
-                map((workspace: IWorkspace): string => workspace.name),
-                tap(this.setName.bind(this))
-            )
-            .subscribe();
-
-        const changeSub: Subscription = this.control.valueChanges
-            .pipe(tap(this.set.bind(this)))
-            .subscribe();
-
-        this.subscription.add(nameSub);
-        this.subscription.add(changeSub);
-    }
-
-    public ngOnDestroy(): void {
-        this.subscription.unsubscribe();
-    }
+    public readonly currentWorkspaceName: Signal<string> =
+        this.store.selectSignal(selectCurrentWorkspaceName);
+    public readonly workspacesNames =
+        this.store.selectSignal(selectWorkspaceNames);
+    public readonly workspacesCount: Signal<number> = this.store.selectSignal(
+        selectWorkspacesCount,
+    );
 
     public add(): void {
-        this.workspacesService.addNew();
+        this.store.dispatch(WorkspaceActions.addWorkspace({}));
+    }
+
+    public set({ value: name }: MatSelectChange): void {
+        this.store.dispatch(WorkspaceActions.selectWorkspace({ name }));
     }
 
     public remove(): void {
-        this.workspacesService.remove();
-    }
-
-    private setName(name: string): void {
-        this.control.setValue(name, {
-            emitEvent: false,
-        });
-    }
-
-    private set(name: string): void {
-        this.workspacesService.set(name);
+        this.store.dispatch(WorkspaceActions.removeWorkspace());
     }
 }

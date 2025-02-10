@@ -1,11 +1,14 @@
+@let currentWorkspaceName = this.currentWorkspaceName();
+@let workspacesNames = this.workspacesNames();
+@let workspacesCount = this.workspacesCount();
+
 <mat-form-field subscriptSizing="dynamic">
-    <mat-select [formControl]="control">
-        <mat-option
-            *ngFor="let workspace of workspacesService.names"
-            [value]="workspace"
-        >
-            {{ workspace }}
-        </mat-option>
+    <mat-select [value]="currentWorkspaceName" (selectionChange)="set($event)">
+        @for (workspace of workspacesNames; track workspace) {
+            <mat-option [value]="workspace">
+                {{ workspace }}
+            </mat-option>
+        }
     </mat-select>
 </mat-form-field>
 
@@ -16,7 +19,7 @@
 <button
     mat-mini-fab
     color="primary"
-    [disabled]="workspacesService.names.length === 1"
+    [disabled]="workspacesCount === 1"
     (click)="remove()"
 >
     <mat-icon>close</mat-icon>

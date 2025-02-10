@@ -1,4 +1,5 @@
 {
+    "type": "Simulation",
     "parameters": {
         "nodesAmount": 100,
         "time": 100

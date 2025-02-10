@@ -1,149 +1,114 @@
 import {
-    AfterViewInit,
-    Component,
-    ElementRef,
-    OnDestroy,
-    OnInit,
-    ViewChild,
+  AfterViewInit,
+  Component,
+  ElementRef,
+  Injector,
+  OnInit,
+  Signal,
+  effect,
+  inject,
+  untracked,
+  viewChild,
 } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { ModelDefinition } from '@core/classes/model.class';
 
-import { DataDefinition } from '@core/types/definitions.types';
-import {
-    ICompartment,
-    IConstant,
-    IFlow,
-    IIntervention,
-    IModel,
-} from '@core/types/model.types';
-import {
-    ISelectedConstant,
-    OptimalControlResponse,
-    PIResponse,
-    Parameters,
-    SimulationResponse,
-} from '@core/types/processing';
-import { isSuccessResponse } from '@core/types/processing/common.guards';
-import { isOptimalControlParameters } from '@core/types/processing/optimal-control.guards';
-import { isPIParameters } from '@core/types/processing/parameters-identification.guards';
-import { isSimulationParameters } from '@core/types/processing/simulation.guards';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { Store } from '@ngrx/store';
 import { EdgeSingular, NodeSingular, SingularElementArgument } from 'cytoscape';
-import {
-    Observable,
-    Subscription,
-    concat,
-    debounceTime,
-    filter,
-    tap,
-} from 'rxjs';
+import { filter, tap } from 'rxjs';
+import { AppStore } from 'src/app/app.store';
+import { WorkspacesPanelComponent } from 'src/app/components/workspaces-panel/workspaces-panel.component';
+import { GraphService } from 'src/app/services/graph.service';
+import { AppActions } from 'src/app/state/actions/app.actions';
+import { selectHasCompartments } from 'src/app/state/selectors/workspace.selectors';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { DefinitionsTableDialogComponent } from './components/definitions-table-dialog/definitions-table-dialog.component';
 import { CompartmentDialogComponent } from './components/graph/compartment-dialog/compartment-dialog.component';
 import { FlowDialogComponent } from './components/graph/flow-dialog/flow-dialog.component';
 import { ProcessingDialogComponent } from './components/processing/processing-dialog/processing-dialog.component';
 import { ConfirmationDialogComponent } from './components/shared/confirmation-dialog/confirmation-dialog.component';
-import { fromResizeObserver } from './core/utils';
-import { FilesService } from './services/files.service';
-import { ModelService } from './services/model.service';
-import { ProcessingService } from './services/processing.service';
-import { RunsService } from './services/runs.service';
-import { WorkspacesService } from './services/workspaces.service';
 
 @Component({
     selector: 'app-root',
+    imports: [MatIconModule, MatButtonModule, WorkspacesPanelComponent],
+    providers: [GraphService, AppStore],
     templateUrl: './app.component.html',
     styleUrls: ['./app.component.scss'],
-    standalone: false
 })
-export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
-    @ViewChild('canvas') private readonly canvas!: ElementRef<HTMLDivElement>;
+export class AppComponent implements OnInit, AfterViewInit {
+    private readonly injector: Injector = inject(Injector);
+    private readonly localStore = inject(AppStore);
+    private readonly store: Store = inject(Store);
+    private readonly dialogService: MatDialog = inject(MatDialog);
 
-    private readonly windowResize$: Observable<ResizeObserverEntry> =
-        fromResizeObserver(window.document.body);
-    private readonly subscriptions: Subscription = new Subscription();
+    private readonly canvas: Signal<ElementRef<HTMLDivElement>> =
+        viewChild.required<ElementRef<HTMLDivElement>>('canvas');
 
-    public get selected(): boolean {
-        return (
-            this.modelService.graphReady &&
-            !!this.modelService.selectedElement.length
-        );
-    }
-    public get compartmentsCount(): number {
-        return this.modelService.compartments.length;
-    }
-
-    constructor(
-        private readonly dialogService: MatDialog,
-        private readonly snackBar: MatSnackBar,
-        private readonly filesService: FilesService,
-        public readonly workspacesService: WorkspacesService,
-        private readonly modelService: ModelService,
-        private readonly processingService: ProcessingService,
-        public readonly runsService: RunsService
-    ) {}
+    public readonly isElementSelected: Signal<boolean> =
+        this.localStore.isElementSelected;
+    public readonly hasCompartments: Signal<boolean> = this.store.selectSignal(
+        selectHasCompartments,
+    );
 
     public ngOnInit(): void {
-        const windowResizeSub: Subscription = this.windowResize$
-            .pipe(debounceTime(500), tap(this.onLayout.bind(this)))
-            .subscribe();
+        effect(
+            (): void => {
+                const openedElement: SingularElementArgument | null =
+                    this.localStore.openedElement();
 
-        this.subscriptions.add(windowResizeSub);
+                if (!openedElement) {
+                    return;
+                }
+
+                untracked((): void => {
+                    if (openedElement.group() === 'nodes') {
+                        this.onCompartmentOpen(openedElement as NodeSingular);
+
+                        return;
+                    }
+
+                    this.onFlowOpen(openedElement as EdgeSingular);
+                });
+            },
+            {
+                injector: this.injector,
+            },
+        );
     }
 
     public ngAfterViewInit(): void {
-        this.modelService.initGraph(this.canvas.nativeElement);
-        this.initWorkspaces();
+        this.localStore.initGraph(this.canvas().nativeElement);
 
-        const compartmentOpenSub: Subscription =
-            this.modelService.compartmentOpen
-                .pipe(tap(this.onCompartmentEdit.bind(this)))
-                .subscribe();
-
-        const flowAddSub: Subscription = this.modelService.flowAdd
-            .pipe(tap(this.onFlowAdd.bind(this)))
-            .subscribe();
-
-        const flowOpenSub: Subscription = this.modelService.flowOpen
-            .pipe(tap(this.onFlowEdit.bind(this)))
-            .subscribe();
-
-        this.subscriptions.add(compartmentOpenSub);
-        this.subscriptions.add(flowAddSub);
-        this.subscriptions.add(flowOpenSub);
-    }
-
-    public ngOnDestroy(): void {
-        this.subscriptions.unsubscribe();
-    }
-
-    public onDefinitionsTable(): void {
-        const dialog: MatDialogRef<
-            DefinitionsTableDialogComponent,
-            ModelDefinition
-        > = this.dialogService.open(DefinitionsTableDialogComponent, {
-            autoFocus: false,
-            disableClose: true,
-        });
-
-        this.subscriptions.add(
-            dialog
-                .afterClosed()
-                .pipe(
-                    filter(
-                        (
-                            definition?: ModelDefinition
-                        ): definition is ModelDefinition => !!definition
-                    ),
-                    tap(this.modelService.update.bind(this.modelService))
-                )
-                .subscribe()
+        this.store.dispatch(
+            AppActions.importSampleModel({
+                path: 'sir.scm',
+                createNewWorkspace: false,
+            }),
+        );
+        this.store.dispatch(
+            AppActions.importSampleModel({
+                path: 'interventions.scm',
+                createNewWorkspace: true,
+            }),
+        );
+        this.store.dispatch(
+            AppActions.importSampleModel({
+                path: 'seird.scm',
+                createNewWorkspace: true,
+            }),
         );
     }
 
+    public onDefinitionsTable(): void {
+        this.dialogService.open(DefinitionsTableDialogComponent, {
+            autoFocus: false,
+            disableClose: true,
+        });
+    }
+
     public onLayout(): void {
-        this.modelService.layoutGraph();
+        this.localStore.layoutGraph();
     }
 
     public onClear(): void {
@@ -159,55 +124,29 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
                 },
             });
 
-        this.subscriptions.add(
-            dialog
-                .afterClosed()
-                .pipe(
-                    filter((confirmed?: boolean): boolean => !!confirmed),
-                    tap((): void => {
-                        this.modelService.clear();
-                    })
-                )
-                .subscribe()
-        );
+        dialog
+            .afterClosed()
+            .pipe(
+                filter(
+                    (confirmed?: boolean): confirmed is boolean => !!confirmed,
+                ),
+                tap((): void => {
+                    this.store.dispatch(
+                        AppActions.clearModel({
+                            constants: false,
+                        }),
+                    );
+                }),
+            )
+            .subscribe();
     }
 
     public onImport(): void {
-        this.subscriptions.add(
-            this.filesService
-                .readDataFromFile<IModel>('.scm')
-                .pipe(
-                    tap((definition: IModel): void => {
-                        this.workspacesService.replaceModel(definition);
-
-                        this.snackBar.open(
-                            'Model imported successfully',
-                            'Dismiss',
-                            {
-                                panelClass: 'snackbar',
-                                horizontalPosition: 'right',
-                                verticalPosition: 'bottom',
-                                duration: 5000,
-                            }
-                        );
-                    })
-                )
-                .subscribe()
-        );
+        this.store.dispatch(AppActions.importModel());
     }
 
     public onExport(): void {
-        this.filesService.downloadFileWithData(
-            this.modelService.model,
-            `${this.workspacesService.current.name}.scm`
-        );
-
-        this.snackBar.open('Model export is ready for downloading', 'Dismiss', {
-            panelClass: 'snackbar',
-            horizontalPosition: 'right',
-            verticalPosition: 'bottom',
-            duration: 5000,
-        });
+        this.store.dispatch(AppActions.exportModel());
     }
 
     public onDashboard(): void {
@@ -220,29 +159,19 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     public onProcess(): void {
-        const dialog: MatDialogRef<ProcessingDialogComponent, Parameters> =
-            this.dialogService.open(ProcessingDialogComponent, {
-                autoFocus: false,
-                disableClose: true,
-            });
-
-        this.subscriptions.add(
-            dialog
-                .afterClosed()
-                .pipe(
-                    filter(
-                        (parameters?: Parameters): parameters is Parameters =>
-                            !!parameters
-                    ),
-                    tap(this.processModel.bind(this))
-                )
-                .subscribe()
-        );
+        this.dialogService.open(ProcessingDialogComponent, {
+            autoFocus: false,
+            disableClose: true,
+        });
     }
 
     public onDelete(): void {
-        const selectedElement: SingularElementArgument =
-            this.modelService.selectedElement;
+        const selectedElement: SingularElementArgument | null =
+            this.localStore.selectedElement();
+
+        if (!selectedElement) {
+            return;
+        }
 
         const isCompartment: boolean = selectedElement.group() === 'nodes';
         const id: string = selectedElement.id();
@@ -259,239 +188,67 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
                 },
             });
 
-        this.subscriptions.add(
-            dialog
-                .afterClosed()
-                .pipe(
-                    filter((confirmed?: boolean): boolean => !!confirmed),
-                    tap((): void => {
-                        if (isCompartment) {
-                            this.modelService.removeCompartment(id);
+        dialog
+            .afterClosed()
+            .pipe(
+                filter((confirmed?: boolean): boolean => !!confirmed),
+                tap((): void => {
+                    if (isCompartment) {
+                        this.store.dispatch(
+                            AppActions.removeCompartment({
+                                id,
+                            }),
+                        );
 
-                            return;
-                        }
+                        return;
+                    }
 
-                        this.modelService.removeFlow(id);
-                    })
-                )
-                .subscribe()
-        );
+                    this.store.dispatch(
+                        AppActions.removeFlow({
+                            id,
+                        }),
+                    );
+                }),
+            )
+            .subscribe();
     }
 
-    public onCompartmentAdd(): void {
-        const dialog: MatDialogRef<CompartmentDialogComponent, ICompartment> =
+    public onCompartmentOpen(node?: NodeSingular): void {
+        const dialog: MatDialogRef<CompartmentDialogComponent, void> =
             this.dialogService.open(CompartmentDialogComponent, {
                 autoFocus: false,
                 disableClose: true,
+                data: node?.data(),
             });
 
-        this.subscriptions.add(
-            dialog
-                .afterClosed()
-                .pipe(
-                    filter(
-                        (
-                            definition?: ICompartment
-                        ): definition is ICompartment => !!definition
-                    ),
-                    tap(
-                        this.modelService.addCompartment.bind(this.modelService)
-                    )
-                )
-                .subscribe()
-        );
+        dialog
+            .afterClosed()
+            .pipe(
+                tap((): void => {
+                    this.localStore.resetOpenedElement();
+                }),
+            )
+            .subscribe();
     }
 
-    private onCompartmentEdit(node: NodeSingular): void {
-        const dialog: MatDialogRef<CompartmentDialogComponent, ICompartment> =
-            this.dialogService.open(CompartmentDialogComponent, {
-                autoFocus: false,
-                disableClose: true,
-                data: node.data(),
-            });
-
-        this.subscriptions.add(
-            dialog
-                .afterClosed()
-                .pipe(
-                    filter(
-                        (
-                            definition?: ICompartment
-                        ): definition is ICompartment => !!definition
-                    ),
-                    tap(
-                        this.modelService.updateCompartment.bind(
-                            this.modelService
-                        )
-                    )
-                )
-                .subscribe()
-        );
-    }
-
-    private onFlowAdd(edge: EdgeSingular): void {
-        const dialog: MatDialogRef<FlowDialogComponent, IFlow> =
-            this.dialogService.open(FlowDialogComponent, {
-                autoFocus: false,
-                data: {
-                    source: edge.source().id(),
-                    target: edge.target().id(),
-                },
-            });
-
-        this.subscriptions.add(
-            dialog
-                .afterClosed()
-                .pipe(
-                    tap((): void => {
-                        edge.remove();
-                    }),
-                    filter(
-                        (definition?: IFlow): definition is IFlow =>
-                            !!definition
-                    ),
-                    tap(this.modelService.addFlow.bind(this.modelService))
-                )
-                .subscribe()
-        );
-    }
-
-    private onFlowEdit(edge: EdgeSingular): void {
-        const dialog: MatDialogRef<FlowDialogComponent, IFlow> =
+    private onFlowOpen(edge: EdgeSingular): void {
+        const dialog: MatDialogRef<FlowDialogComponent, void> =
             this.dialogService.open(FlowDialogComponent, {
                 autoFocus: false,
                 data: edge.data(),
             });
 
-        this.subscriptions.add(
-            dialog
-                .afterClosed()
-                .pipe(
-                    filter(
-                        (definition?: IFlow): definition is IFlow =>
-                            !!definition
-                    ),
-                    tap(this.modelService.updateFlow.bind(this.modelService))
-                )
-                .subscribe()
-        );
-    }
+        dialog
+            .afterClosed()
+            .pipe(
+                tap((): void => {
+                    if (edge.data('equation') === undefined) {
+                        edge.remove();
+                    }
 
-    private processModel(parameters: Parameters): void {
-        let observable: Observable<
-            SimulationResponse | OptimalControlResponse | PIResponse
-        >;
-
-        if (isSimulationParameters(parameters)) {
-            observable = this.processingService.simulateModel({
-                parameters,
-                model: {
-                    compartments: this.modelService.compartments,
-                    constants: [
-                        ...this.modelService.constants,
-                        ...this.modelService.interventions.map(
-                            (intervention: IIntervention): IConstant => ({
-                                id: intervention.id,
-                                name: intervention.name,
-                                value: 0,
-                            })
-                        ),
-                    ],
-                    interventions: [],
-                    flows: this.modelService.flows,
-                },
-            });
-        } else if (isOptimalControlParameters(parameters)) {
-            observable = this.processingService.optimizeModel({
-                parameters,
-                model: this.modelService.model,
-            });
-        } else if (isPIParameters(parameters)) {
-            observable = this.processingService.identifyParameters({
-                parameters,
-                model: {
-                    compartments: this.modelService.compartments,
-                    constants: this.modelService.constants.filter(
-                        (constant: IConstant): boolean =>
-                            !parameters.selectedConstants.find(
-                                (
-                                    selectedConstant: ISelectedConstant
-                                ): boolean =>
-                                    selectedConstant.id === constant.id
-                            )
-                    ),
-                    interventions: [
-                        ...this.modelService.interventions,
-                        ...parameters.selectedConstants.map(
-                            (
-                                selectedConstant: ISelectedConstant
-                            ): IIntervention => ({
-                                id: selectedConstant.id,
-                                name: selectedConstant.name,
-                            })
-                        ),
-                    ],
-                    flows: this.modelService.flows,
-                },
-            });
-        } else {
-            return;
-        }
-
-        this.subscriptions.add(
-            observable
-                .pipe(
-                    tap(
-                        (
-                            response:
-                                | SimulationResponse
-                                | OptimalControlResponse
-                                | PIResponse
-                        ): void => {
-                            if (isSuccessResponse(response)) {
-                                this.runsService.add({
-                                    parameters: response.parameters,
-                                    result: response.result,
-                                } as DataDefinition);
-
-                                this.snackBar.open(
-                                    'Processing completed successfully',
-                                    'Dismiss',
-                                    {
-                                        panelClass: 'snackbar',
-                                        horizontalPosition: 'right',
-                                        verticalPosition: 'bottom',
-                                        duration: 5000,
-                                    }
-                                );
-
-                                return;
-                            }
-
-                            this.snackBar.open(
-                                'Processing failed.\n\n' +
-                                    `Error: ${response.error}`,
-                                'Dismiss',
-                                {
-                                    panelClass: 'snackbar',
-                                    horizontalPosition: 'right',
-                                    verticalPosition: 'bottom',
-                                }
-                            );
-                        }
-                    )
-                )
-                .subscribe()
-        );
-    }
-
-    private initWorkspaces(): void {
-        this.subscriptions.add(
-            concat(
-                this.workspacesService.addSample('sir.scm'),
-                this.workspacesService.addSample('interventions.scm'),
-                this.workspacesService.addSample('seird.scm')
-            ).subscribe()
-        );
+                    this.localStore.resetOpenedElement();
+                }),
+            )
+            .subscribe();
     }
 }

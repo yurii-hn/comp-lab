@@ -1,133 +1,158 @@
+import { CdkTextareaAutosize } from '@angular/cdk/text-field';
+import { KeyValuePipe, NgTemplateOutlet } from '@angular/common';
 import {
-    AfterViewInit,
-    Component,
-    ElementRef,
-    EventEmitter,
-    Input,
-    OnDestroy,
-    ViewChild,
+  AfterViewInit,
+  Component,
+  effect,
+  ElementRef,
+  inject,
+  Injector,
+  input,
+  InputSignal,
+  OnInit,
+  Signal,
+  untracked,
+  viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
-    AsyncValidator,
-    ControlValueAccessor,
-    FormControl,
-    NG_ASYNC_VALIDATORS,
-    NG_VALUE_ACCESSOR,
-    ValidationErrors,
-    Validators,
+  AbstractControl,
+  ControlValueAccessor,
+  FormControl,
+  FormControlStatus,
+  NG_VALIDATORS,
+  NG_VALUE_ACCESSOR,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validator,
+  Validators,
 } from '@angular/forms';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { Compartment, Constant, Intervention } from '@core/types/model.types';
 import {
-    ICompartment,
-    IConstant,
-    IIntervention,
-} from '@core/types/model.types';
-import { IValidationResponse } from '@core/types/processing';
-import { OnChangeFn, OnTouchedFn } from '@core/types/utils.types';
+  OnChangeFn,
+  OnTouchedFn,
+  OnValidatorChangeFn,
+} from '@core/types/util.types';
+import { Store } from '@ngrx/store';
+import { Observable, skip, take } from 'rxjs';
 import {
-    Observable,
-    Subject,
-    Subscription,
-    debounceTime,
-    distinctUntilChanged,
-    filter,
-    switchMap,
-    take,
-    tap,
-} from 'rxjs';
-import { ModelService } from 'src/app/services/model.service';
-import { ValidationService } from 'src/app/services/validation.service';
+  EquationInputStore,
+  FormValue,
+  Value,
+} from 'src/app/components/shared/equation-input/equation-input.store';
+import {
+  selectCompartments,
+  selectConstants,
+  selectInterventions,
+} from 'src/app/state/selectors/workspace.selectors';
 
 @Component({
     selector: 'app-equation-input',
-    templateUrl: './equation-input.component.html',
-    styleUrls: ['./equation-input.component.scss'],
+    imports: [
+        ReactiveFormsModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatChipsModule,
+        CdkTextareaAutosize,
+        NgTemplateOutlet,
+        KeyValuePipe,
+    ],
     providers: [
+        EquationInputStore,
         {
             provide: NG_VALUE_ACCESSOR,
             useExisting: EquationInputComponent,
             multi: true,
         },
         {
-            provide: NG_ASYNC_VALIDATORS,
+            provide: NG_VALIDATORS,
             useExisting: EquationInputComponent,
             multi: true,
         },
     ],
-    standalone: false
+    templateUrl: './equation-input.component.html',
+    styleUrls: ['./equation-input.component.scss'],
 })
 export class EquationInputComponent
-    implements ControlValueAccessor, AfterViewInit, OnDestroy, AsyncValidator
+    implements ControlValueAccessor, AfterViewInit, OnInit, Validator
 {
-    @ViewChild('input') private equationInput!: ElementRef;
+    private readonly injector: Injector = inject(Injector);
+    private readonly store: Store = inject(Store);
+    private readonly localStore = inject(EquationInputStore);
 
-    private readonly validationRequest: Subject<string> = new Subject();
-    private readonly validationResult: EventEmitter<ValidationErrors | null> =
-        new EventEmitter<ValidationErrors | null>();
-    private readonly subscription: Subscription = new Subscription();
+    private equationInput: Signal<ElementRef<HTMLTextAreaElement>> =
+        viewChild.required<ElementRef<HTMLTextAreaElement>>('input');
 
-    @Input() public title: string = '';
-    @Input() public placeholder: string = '';
+    public readonly titleInput: InputSignal<string> = input.required({
+        alias: 'title',
+    });
+    public readonly placeholderInput: InputSignal<string> = input.required({
+        alias: 'placeholder',
+    });
 
-    public readonly control: FormControl<string> = new FormControl<string>('', [
-        Validators.required,
-    ]) as FormControl<string>;
+    public readonly title: Signal<string> = this.localStore.title;
+    public readonly placeholder: Signal<string> = this.localStore.placeholder;
 
-    public readonly compartments: ICompartment[] =
-        this.modelService.compartments;
-    public readonly constants: IConstant[] = this.modelService.constants;
-    public readonly interventions: IIntervention[] =
-        this.modelService.interventions;
+    public readonly control: FormControl<string | null> =
+        new FormControl<string>(
+            '',
+            [Validators.required],
+            [this.controlValidator.bind(this)],
+        );
 
-    constructor(
-        public readonly modelService: ModelService,
-        private readonly validationService: ValidationService
-    ) {}
+    public readonly compartments: Signal<Compartment[]> =
+        this.store.selectSignal(selectCompartments);
+    public readonly constants: Signal<Constant[]> =
+        this.store.selectSignal(selectConstants);
+    public readonly interventions: Signal<Intervention[]> =
+        this.store.selectSignal(selectInterventions);
+
+    public ngOnInit(): void {
+        this.initInputsSync();
+        this.initControlSync();
+    }
 
     public ngAfterViewInit(): void {
-        const inputLength: number = this.control.value
-            ? this.control.value.length
-            : 0;
+        this.localStore.validate(this.control.value);
 
-        this.setCursorPosition(inputLength);
-        this.initValidator();
-
-        this.validationRequest.next(this.control.value);
+        this.setCursorPosition(this.control.value?.length ?? 0);
     }
 
-    public ngOnDestroy(): void {
-        this.subscription.unsubscribe();
+    public writeValue(value: Value | null): void {
+        this.localStore.setValueFromParent(value);
     }
 
-    public onChipInput(name: string): void {
-        const equation: string = this.control.value;
-        const cursorPosition: number = this.getCursorPosition();
+    public registerOnChange(onChange: OnChangeFn<Value>): void {
+        effect(
+            () => {
+                const value: Value = this.localStore.value();
 
-        const leftPart: string = equation
-            ? equation.slice(0, cursorPosition).trim()
-            : '';
-        const rightPart: string = equation
-            ? equation.slice(cursorPosition).trim()
-            : '';
-
-        this.control.setValue(`${leftPart} ${name} ${rightPart}`);
-
-        this.setCursorPosition(leftPart.length + name.length + 2);
+                untracked((): void => onChange(value));
+            },
+            {
+                injector: this.injector,
+            },
+        );
     }
 
-    public writeValue(equation: string): void {
-        this.control.setValue(equation);
+    public registerOnTouched(onTouched: OnTouchedFn): void {
+        effect(
+            () => {
+                this.localStore.value();
+
+                untracked((): void => onTouched());
+            },
+            {
+                injector: this.injector,
+            },
+        );
     }
 
-    public registerOnChange(onChange: OnChangeFn<string | null>): void {
-        this.subscription.add(this.control.valueChanges.subscribe(onChange));
-    }
-
-    public registerOnTouched(onTouched: OnTouchedFn<string | null>): void {
-        this.subscription.add(this.control.valueChanges.subscribe(onTouched));
-    }
-
-    public setDisabledState(isDisabled: boolean): void {
-        if (isDisabled) {
+    public setDisabledState(disabled: boolean): void {
+        if (disabled) {
             this.control.disable();
 
             return;
@@ -136,56 +161,143 @@ export class EquationInputComponent
         this.control.enable();
     }
 
-    public validate(): Observable<ValidationErrors | null> {
-        this.validationRequest.next(this.control.value);
-
-        return this.validationResult.pipe(take(1));
+    public validate(): ValidationErrors | null {
+        return this.control.valid ? null : { equation: true };
     }
 
-    private initValidator(): void {
-        const validationSubscription: Subscription = this.validationRequest
-            .pipe(
-                filter((equation: string): boolean => !!equation),
-                debounceTime(500),
-                distinctUntilChanged(),
-                switchMap(
-                    (equation: string): Observable<IValidationResponse> =>
-                        this.validationService.expression(
-                            equation,
-                            this.modelService.symbols
-                        )
-                ),
-                tap((response: IValidationResponse): void => {
-                    if (!response.valid) {
-                        const errors: ValidationErrors = {
-                            equation: {
-                                invalid: response.message,
-                            },
-                        };
+    public registerOnValidatorChange(
+        onValidatorChange: OnValidatorChangeFn,
+    ): void {
+        const statusChanges: Signal<FormControlStatus | undefined> = toSignal(
+            this.control.statusChanges,
+            {
+                injector: this.injector,
+            },
+        );
 
-                        this.control.setErrors(errors);
-                        this.validationResult.next(errors);
+        effect(
+            (): void => {
+                const status: FormControlStatus | undefined = statusChanges();
 
-                        return;
-                    }
+                if (status === undefined) {
+                    return;
+                }
 
-                    this.control.setErrors(null);
-                    this.validationResult.next(null);
-                })
-            )
-            .subscribe();
-
-        this.subscription.add(validationSubscription);
+                untracked((): void => onValidatorChange());
+            },
+            {
+                injector: this.injector,
+            },
+        );
     }
 
-    private setCursorPosition(position: number): void {
-        this.equationInput.nativeElement.focus();
+    public onChipInput(name: string): void {
+        const newCursorPosition: number = this.localStore.insertAt(
+            name,
+            this.getCursorPosition(),
+        );
 
-        this.equationInput.nativeElement.selectionStart = position;
-        this.equationInput.nativeElement.selectionEnd = position;
+        this.setCursorPosition(newCursorPosition);
+    }
+
+    private initInputsSync(): void {
+        effect(
+            (): void => {
+                const title: string = this.titleInput();
+
+                untracked((): void => this.localStore.setTitle(title));
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            (): void => {
+                const placeholder: string = this.placeholderInput();
+
+                untracked((): void =>
+                    this.localStore.setPlaceholder(placeholder),
+                );
+            },
+            {
+                injector: this.injector,
+            },
+        );
+    }
+
+    private initControlSync(): void {
+        const valueChanges: Signal<string | null | undefined> = toSignal(
+            this.control.valueChanges.pipe(skip(1)),
+            {
+                injector: this.injector,
+            },
+        );
+        const validationResult: Signal<ValidationErrors | null | undefined> =
+            toSignal(this.localStore.validationResult, {
+                injector: this.injector,
+            });
+
+        effect(
+            (): void => {
+                const change: string | null | undefined = valueChanges();
+
+                if (change === undefined) {
+                    return;
+                }
+
+                untracked((): void => this.localStore.setValueFromForm(change));
+            },
+            {
+                injector: this.injector,
+            },
+        );
+
+        effect(
+            (): void => {
+                const result: ValidationErrors | null | undefined =
+                    validationResult();
+
+                if (result === undefined) {
+                    return;
+                }
+
+                untracked((): void => this.control.setErrors(result));
+            },
+            {
+                injector: this.injector,
+            },
+        );
+
+        effect(
+            () => {
+                const formValue: FormValue = this.localStore.formValue();
+
+                untracked((): void => this.control.setValue(formValue));
+            },
+            {
+                injector: this.injector,
+            },
+        );
     }
 
     private getCursorPosition(): number {
-        return this.equationInput.nativeElement.selectionStart || 0;
+        return this.equationInput().nativeElement.selectionStart || 0;
+    }
+
+    private setCursorPosition(position: number): void {
+        const input: HTMLTextAreaElement = this.equationInput().nativeElement;
+
+        input.focus();
+
+        input.selectionStart = position;
+        input.selectionEnd = position;
+    }
+
+    private controlValidator(
+        control: AbstractControl,
+    ): Observable<ValidationErrors | null> {
+        this.localStore.validate(control.value);
+
+        return this.localStore.validationResult.pipe(take(1));
     }
 }

@@ -1,0 +1,44 @@
+@let constantsRowScheme = this.constantsRowScheme();
+@let dataRowScheme = this.dataRowScheme();
+@let dataRowValidators = this.dataRowValidators();
+
+<ng-container [formGroup]="control">
+    <mat-form-field class="input" subscriptSizing="dynamic">
+        <mat-label>Simulation Nodes Amount</mat-label>
+
+        <input
+            matInput
+            placeholder="Enter value"
+            type="number"
+            formControlName="nodesAmount"
+        />
+    </mat-form-field>
+
+    <div class="datatable-input">
+        <div class="header">
+            <div class="title">Constants to identify</div>
+        </div>
+
+        <app-datatable
+            formControlName="selectedConstants"
+            [rowScheme]="constantsRowScheme"
+        />
+    </div>
+
+    <div class="datatable-input">
+        <div class="header">
+            <div class="title">Solution Data</div>
+
+            <button mat-mini-fab (click)="onDataImport()">
+                <mat-icon>upload_file</mat-icon>
+            </button>
+        </div>
+
+        <app-datatable
+            formControlName="data"
+            [rowScheme]="dataRowScheme"
+            [rowValidators]="dataRowValidators"
+            [enumerate]="true"
+        />
+    </div>
+</ng-container>

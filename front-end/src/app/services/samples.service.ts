@@ -1,12 +1,12 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 @Injectable({
     providedIn: 'root',
 })
 export class SamplesService {
-    constructor(private readonly httpClient: HttpClient) {}
+    private readonly httpClient: HttpClient = inject(HttpClient);
 
     public getSample<DataType>(path: string): Observable<DataType> {
         return this.httpClient.get<DataType>(`/assets/samples/${path}`, {
