@@ -1,7 +1,7 @@
-import { Observable, Subscriber } from 'rxjs';
+import { Observable, Observer, Subscriber } from 'rxjs';
 import { Point, Values } from './types/processing';
 
-export function fromResizeObserver(
+export function observeResizes(
     target: Element,
 ): Observable<ResizeObserverEntry> {
     return new Observable(
@@ -20,6 +20,39 @@ export function fromResizeObserver(
                 resizeObserver.unobserve(target);
                 resizeObserver.disconnect();
             };
+        },
+    );
+}
+
+export type CytoscapeEventHandlerFnParams = [
+    event: cytoscape.EventObject,
+    ...extraParams: any,
+];
+
+export function fromCytoscapeObjEvent(
+    cytoscapeObj: cytoscape.Core,
+    event: string,
+    selector?: cytoscape.Selector,
+): Observable<CytoscapeEventHandlerFnParams> {
+    return new Observable(
+        (observer: Observer<CytoscapeEventHandlerFnParams>): void => {
+            if (selector) {
+                cytoscapeObj.on(
+                    event,
+                    selector,
+                    (...args: CytoscapeEventHandlerFnParams): void => {
+                        observer.next(args);
+                    },
+                );
+
+                return;
+            }
+            cytoscapeObj.on(
+                event,
+                (...args: CytoscapeEventHandlerFnParams): void => {
+                    observer.next(args);
+                },
+            );
         },
     );
 }

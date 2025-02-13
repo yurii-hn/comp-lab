@@ -1,0 +1,44 @@
+:host {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 75px;
+    padding: 10px;
+    background-color: var(--mat-sys-primary-container);
+    border-radius: var(--mat-sys-corner-large);
+    white-space: nowrap;
+    user-select: none;
+    cursor: pointer;
+
+    &.selected {
+        background-color: var(--mat-sys-tertiary-container);
+
+        .name {
+            color: var(--mat-sys-on-tertiary-container);
+        }
+
+        .value {
+            color: var(--mat-sys-tertiary-fixed-dim);
+        }
+    }
+
+    &:hover {
+        filter: brightness(calc(1 - var(--mat-sys-hover-state-layer-opacity)));
+    }
+
+    &:active {
+        filter: brightness(
+            calc(1 - var(--mat-sys-pressed-state-layer-opacity))
+        );
+    }
+
+    .name {
+        font: var(--mat-sys-label-large);
+        color: var(--mat-sys-on-primary-container);
+    }
+
+    .value {
+        font: var(--mat-sys-body-small);
+        color: var(--mat-sys-primary-fixed-dim);
+    }
+}

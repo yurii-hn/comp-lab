@@ -67,6 +67,9 @@ export class ParametersIdentificationParametersInputComponent
     private readonly injector: Injector = inject(Injector);
     private readonly localStore = inject(PIParametersInputStore);
 
+    private onChange: OnChangeFn | null = null;
+    private onTouched: OnTouchedFn | null = null;
+
     public readonly control: FormGroup = new FormGroup({
         nodesAmount: new FormControl<number | null>(null, [
             Validators.required,
@@ -99,6 +102,16 @@ export class ParametersIdentificationParametersInputComponent
 
         effect(
             (): void => {
+                const formValue: FormValue = this.localStore.formValue();
+
+                untracked((): void => this.control.setValue(formValue));
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            (): void => {
                 const change: FormValue | undefined = valueChanges();
 
                 if (change === undefined) {
@@ -111,12 +124,19 @@ export class ParametersIdentificationParametersInputComponent
                 injector: this.injector,
             },
         );
-
         effect(
             (): void => {
-                const formValue: FormValue = this.localStore.formValue();
+                const value: Value = this.localStore.value();
 
-                untracked((): void => this.control.setValue(formValue));
+                untracked((): void => {
+                    if (this.onChange) {
+                        this.onChange(value);
+                    }
+
+                    if (this.onTouched) {
+                        this.onTouched();
+                    }
+                });
             },
             {
                 injector: this.injector,
@@ -129,29 +149,11 @@ export class ParametersIdentificationParametersInputComponent
     }
 
     public registerOnChange(onChange: OnChangeFn<Value>): void {
-        effect(
-            (): void => {
-                const value: Value = this.localStore.value();
-
-                untracked((): void => onChange(value));
-            },
-            {
-                injector: this.injector,
-            },
-        );
+        this.onChange = onChange;
     }
 
     public registerOnTouched(onTouched: OnTouchedFn): void {
-        effect(
-            (): void => {
-                this.localStore.value();
-
-                untracked((): void => onTouched());
-            },
-            {
-                injector: this.injector,
-            },
-        );
+        this.onTouched = onTouched;
     }
 
     public setDisabledState(disabled: boolean): void {

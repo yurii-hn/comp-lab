@@ -15,14 +15,11 @@
         padding: 20px;
         border-width: 0;
         border-style: solid;
-        border-color: #e0e0e0;
         border-bottom-width: 1px;
 
         .title {
-            font-size: 22px;
-            font-weight: bold;
+            font: var(--mat-sys-title-large);
             margin: 0;
-            color: white;
         }
 
         .header-controls {
@@ -57,8 +54,7 @@
                 height: 100%;
 
                 .message {
-                    font-size: 20px;
-                    color: white;
+                    font: var(--mat-sys-body-large);
                 }
             }
         }

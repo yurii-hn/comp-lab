@@ -77,6 +77,9 @@ export class DatatableComponent
     private readonly injector: Injector = inject(Injector);
     private readonly localStore = inject(DatatableStore);
 
+    private onChange: OnChangeFn | null = null;
+    private onTouched: OnTouchedFn | null = null;
+
     private readonly table: Signal<MatTable<SingularFormValue>> =
         viewChild.required<MatTable<SingularFormValue>>(MatTable);
 
@@ -131,34 +134,11 @@ export class DatatableComponent
     }
 
     public registerOnChange(onChange: OnChangeFn<Value>): void {
-        effect(
-            (): void => {
-                if (this.localStore.adding() || this.localStore.editing()) {
-                    return;
-                }
-
-                const value: Value = this.localStore.value();
-
-                untracked((): void => onChange(value));
-            },
-            {
-                injector: this.injector,
-            },
-        );
+        this.onChange = onChange;
     }
 
     public registerOnTouched(onTouched: OnTouchedFn): void {
-        effect(
-            (): void => {
-                this.localStore.editing();
-                this.localStore.value();
-
-                untracked((): void => onTouched());
-            },
-            {
-                injector: this.injector,
-            },
-        );
+        this.onTouched = onTouched;
     }
 
     public setDisabledState(disabled: boolean): void {
@@ -357,25 +337,64 @@ export class DatatableComponent
         );
         effect(
             (): void => {
+                if (this.localStore.adding() || this.localStore.editing()) {
+                    return;
+                }
+
+                const value: Value = this.localStore.value();
+
+                untracked((): void => {
+                    if (!this.onChange) {
+                        return;
+                    }
+
+                    this.onChange(value);
+                });
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            (): void => {
+                this.localStore.editing();
+                this.localStore.value();
+
+                untracked((): void => {
+                    if (!this.onTouched) {
+                        return;
+                    }
+
+                    this.onTouched();
+                });
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            (): void => {
                 const rowScheme: RowScheme = this.localStore.rowScheme();
                 const ids: string[] = this.localStore.ids();
                 const toDisable: boolean = !this.localStore.adding();
 
                 untracked((): void => {
                     ids.forEach((id: string): void => {
-                        if (!rowScheme[id]!.editable) {
-                            const control: FormControl = this.control.get(
-                                id,
-                            ) as FormControl;
-
-                            if (toDisable) {
-                                control.disable();
-
-                                return;
-                            }
-
-                            control.enable();
+                        if (rowScheme[id]!.editable) {
+                            return;
                         }
+
+                        const control: FormControl = this.control.get(
+                            id,
+                        ) as FormControl;
+
+                        if (toDisable) {
+                            control.disable();
+
+                            return;
+                        }
+
+                        control.enable();
                     });
                 });
             },

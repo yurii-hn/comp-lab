@@ -1,6 +1,16 @@
-import { Injectable } from '@angular/core';
+import {
+  ApplicationRef,
+  ComponentRef,
+  createComponent,
+  EnvironmentInjector,
+  inject,
+  Injectable,
+} from '@angular/core';
 import { Compartment, Flow } from '@core/types/model.types';
+import { EdgeCollection, EdgeSingular, NodeSingular } from 'cytoscape';
 import klay from 'cytoscape-klay';
+import { CompartmentComponent } from 'src/app/components/graph/compartment/compartment.component';
+import { FlowComponent } from 'src/app/components/graph/flow/flow.component';
 
 interface Diff<Type extends { id: string }> {
     added: Type[];
@@ -27,6 +37,10 @@ const cytoscapeLayoutOptions: klay.KlayLayoutOptions = {
 
 @Injectable()
 export class GraphService {
+    private readonly appRef: ApplicationRef = inject(ApplicationRef);
+    private readonly environmentInjector: EnvironmentInjector =
+        inject(EnvironmentInjector);
+
     public layout(cytoscapeObj: cytoscape.Core): void {
         cytoscapeObj.layout(cytoscapeLayoutOptions).run();
     }
@@ -84,12 +98,14 @@ export class GraphService {
         cytoscapeObj: cytoscape.Core,
         compartment: Compartment,
     ): void {
+        const componentRef: ComponentRef<CompartmentComponent> =
+            this.createNodeComponent(compartment);
+
         cytoscapeObj.add({
             group: 'nodes',
             data: {
                 id: compartment.id,
-                name: compartment.name,
-                value: compartment.value,
+                componentRef,
             },
             classes: 'compartment',
             renderedPosition: {
@@ -103,40 +119,58 @@ export class GraphService {
         cytoscapeObj: cytoscape.Core,
         compartment: Compartment,
     ): void {
-        const node: cytoscape.NodeSingular = cytoscapeObj
-            .nodes()
+        const node: NodeSingular = cytoscapeObj
+            .nodes('.compartment[componentRef]')
             .$id(compartment.id);
+        const componentRef: ComponentRef<CompartmentComponent> =
+            node.data('componentRef');
+        const componentData: Compartment = componentRef.instance.data();
 
-        const name: string = node.data('name');
-        const expressionRegExp: RegExp = new RegExp(`\\b${name}\\b`, 'g');
+        const expressionRegExp: RegExp = new RegExp(
+            `\\b${componentData.name}\\b`,
+            'g',
+        );
 
-        cytoscapeObj.edges().forEach((edge: cytoscape.EdgeSingular): void => {
-            edge.data(
-                'equation',
-                edge
-                    .data('equation')
-                    .replace(expressionRegExp, compartment.name),
-            );
-        });
+        componentRef.setInput('data', compartment);
 
-        node.data({
-            name: compartment.name,
-            value: compartment.value,
-        });
+        cytoscapeObj
+            .edges('.flow[componentRef]')
+            .forEach((edge: EdgeSingular): void => {
+                const componentRef: ComponentRef<FlowComponent> =
+                    edge.data('componentRef');
+                const componentData: Flow = componentRef.instance.data();
+
+                componentRef.setInput('data', {
+                    ...componentData,
+                    equation: componentData.equation.replace(
+                        expressionRegExp,
+                        compartment.name,
+                    ),
+                });
+            });
     }
 
     private removeCompartment(cytoscapeObj: cytoscape.Core, id: string): void {
-        const node: cytoscape.NodeSingular = cytoscapeObj.nodes().$id(id);
+        const node: NodeSingular = cytoscapeObj
+            .nodes('.compartment[componentRef]')
+            .$id(id);
+        const componentRef: ComponentRef<CompartmentComponent> =
+            node.data('componentRef');
+        const componentData: Compartment = componentRef.instance.data();
 
         const expressionRegExp: RegExp = new RegExp(
-            `\\b${node.data('name')}\\b`,
+            `\\b${componentData.name}\\b`,
             'g',
         );
-        const edges: cytoscape.EdgeCollection = cytoscapeObj
-            .edges()
-            .filter((edge: cytoscape.EdgeSingular): boolean =>
-                edge.data('equation').match(expressionRegExp),
-            );
+        const edges: EdgeCollection = cytoscapeObj
+            .edges('.flow[componentRef]')
+            .filter((edge: EdgeSingular): boolean => {
+                const componentRef: ComponentRef<FlowComponent> =
+                    edge.data('componentRef');
+                const componentData: Flow = componentRef.instance.data();
+
+                return !!componentData.equation.match(expressionRegExp);
+            });
 
         edges.remove();
         node.remove();
@@ -163,29 +197,37 @@ export class GraphService {
     }
 
     private addFlow(cytoscapeObj: cytoscape.Core, flow: Flow): void {
+        const componentRef: ComponentRef<FlowComponent> =
+            this.createFlowComponent(flow);
+
         cytoscapeObj.add({
             group: 'edges',
             data: {
                 id: flow.id,
                 source: flow.source,
                 target: flow.target,
-                equation: flow.equation,
+                componentRef,
             },
+            classes: 'flow',
         });
     }
 
     private updateFlow(cytoscapeObj: cytoscape.Core, flow: Flow): void {
-        const edge: cytoscape.EdgeSingular = cytoscapeObj.edges().$id(flow.id);
+        const edge: EdgeSingular = cytoscapeObj
+            .edges('.flow[componentRef]')
+            .$id(flow.id);
+        const componentRef: ComponentRef<FlowComponent> =
+            edge.data('componentRef');
 
-        edge.data('equation', flow.equation);
         edge.move({
             source: flow.source,
             target: flow.target,
         });
+        componentRef.setInput('data', flow);
     }
 
     private removeFlow(cytoscapeObj: cytoscape.Core, id: string): void {
-        cytoscapeObj.edges().$id(id).remove();
+        cytoscapeObj.edges('.flow[componentRef]').$id(id).remove();
     }
 
     private getDiff<Type extends { id: string }>(
@@ -222,5 +264,40 @@ export class GraphService {
         );
 
         return diff;
+    }
+
+    private createNodeComponent(
+        data: Compartment,
+    ): ComponentRef<CompartmentComponent> {
+        const hostElement: HTMLElement =
+            document.createElement('app-compartment');
+
+        const componentRef: ComponentRef<CompartmentComponent> =
+            createComponent(CompartmentComponent, {
+                environmentInjector: this.environmentInjector,
+                hostElement,
+            });
+
+        componentRef.setInput('data', data);
+        this.appRef.attachView(componentRef.hostView);
+
+        return componentRef;
+    }
+
+    private createFlowComponent(data: Flow): ComponentRef<FlowComponent> {
+        const hostElement: HTMLElement = document.createElement('app-flow');
+
+        const componentRef: ComponentRef<FlowComponent> = createComponent(
+            FlowComponent,
+            {
+                environmentInjector: this.environmentInjector,
+                hostElement,
+            },
+        );
+
+        componentRef.setInput('data', data);
+        this.appRef.attachView(componentRef.hostView);
+
+        return componentRef;
     }
 }

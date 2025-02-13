@@ -14,6 +14,8 @@ import { Option } from 'src/app/components/shared/datatable/datatable.store';
 import { selectCompartments } from 'src/app/state/selectors/workspace.selectors';
 import { v4 as uuid } from 'uuid';
 
+export type EmptyFlow = Omit<Flow, 'id' | 'equation'>;
+
 export type Value = Flow;
 
 export interface FormValue {
@@ -23,12 +25,15 @@ export interface FormValue {
 }
 
 export interface State {
-    _initialData: Flow | null;
+    _initialData: Flow | EmptyFlow;
     _value: FormValue;
 }
 
 const initialState: State = {
-    _initialData: null,
+    _initialData: {
+        source: '',
+        target: '',
+    },
     _value: {
         source: '',
         target: '',
@@ -50,10 +55,15 @@ export const FlowDialogStore = signalStore(
     }),
     withComputed((store) => {
         const value: Signal<Value> = computed(
-            (): Value => ({
-                ...store._value(),
-                id: store._initialData()?.id ?? uuid(),
-            }),
+            (): Value => {
+                const initialData: Flow | EmptyFlow = store._initialData();
+                const formValue: FormValue = store._value();
+
+                return {
+                    ...formValue,
+                    id: 'id' in initialData ? initialData.id : uuid(),
+                };
+            },
             {
                 equal: areEqual,
             },
@@ -66,7 +76,7 @@ export const FlowDialogStore = signalStore(
         );
 
         const editMode: Signal<boolean> = computed(
-            (): boolean => !!store._initialData,
+            (): boolean => 'id' in store._initialData(),
         );
 
         const sources: Signal<Option[]> = computed((): Option[] =>
@@ -109,12 +119,10 @@ export const FlowDialogStore = signalStore(
         };
     }),
     withMethods((store) => {
-        const setInitialData = (initialData: Flow | null): void =>
+        const setInitialData = (initialData: Flow | EmptyFlow): void =>
             patchState(store, {
                 _initialData: initialData,
-                _value: initialData
-                    ? { ...store._value(), ...initialData }
-                    : store._value(),
+                _value: { ...store._value(), ...initialData },
             });
         const setValueFromForm = (value: FormValue): void => {
             patchState(store, { _value: value });

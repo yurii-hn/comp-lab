@@ -1,6 +1,7 @@
 import {
   AfterViewInit,
   Component,
+  ComponentRef,
   ElementRef,
   Injector,
   OnInit,
@@ -14,10 +15,14 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { Compartment, Flow } from '@core/types/model.types';
 import { Store } from '@ngrx/store';
-import { EdgeSingular, NodeSingular, SingularElementArgument } from 'cytoscape';
+import { EdgeSingular, NodeSingular } from 'cytoscape';
 import { filter, tap } from 'rxjs';
 import { AppStore } from 'src/app/app.store';
+import { CompartmentComponent } from 'src/app/components/graph/compartment/compartment.component';
+import { EmptyFlow } from 'src/app/components/graph/flow-dialog/flow-dialog.store';
+import { FlowComponent } from 'src/app/components/graph/flow/flow.component';
 import { WorkspacesPanelComponent } from 'src/app/components/workspaces-panel/workspaces-panel.component';
 import { GraphService } from 'src/app/services/graph.service';
 import { AppActions } from 'src/app/state/actions/app.actions';
@@ -54,7 +59,7 @@ export class AppComponent implements OnInit, AfterViewInit {
     public ngOnInit(): void {
         effect(
             (): void => {
-                const openedElement: SingularElementArgument | null =
+                const openedElement: NodeSingular | EdgeSingular | null =
                     this.localStore.openedElement();
 
                 if (!openedElement) {
@@ -62,13 +67,13 @@ export class AppComponent implements OnInit, AfterViewInit {
                 }
 
                 untracked((): void => {
-                    if (openedElement.group() === 'nodes') {
-                        this.onCompartmentOpen(openedElement as NodeSingular);
+                    if (openedElement.isNode()) {
+                        this.onCompartmentOpen(openedElement);
 
                         return;
                     }
 
-                    this.onFlowOpen(openedElement as EdgeSingular);
+                    this.onFlowOpen(openedElement);
                 });
             },
             {
@@ -166,25 +171,25 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
     public onDelete(): void {
-        const selectedElement: SingularElementArgument | null =
+        const selectedElement: NodeSingular | EdgeSingular | null =
             this.localStore.selectedElement();
 
         if (!selectedElement) {
             return;
         }
 
-        const isCompartment: boolean = selectedElement.group() === 'nodes';
         const id: string = selectedElement.id();
+        const isCompartment: boolean = selectedElement.isNode();
 
-        const deletionSubject: string = isCompartment ? 'compartment' : 'flow';
+        const subject: string = isCompartment ? 'compartment' : 'flow';
 
         const dialog: MatDialogRef<ConfirmationDialogComponent, boolean> =
             this.dialogService.open(ConfirmationDialogComponent, {
                 autoFocus: false,
                 disableClose: true,
                 data: {
-                    title: `Delete ${deletionSubject}`,
-                    message: `Are you sure you want to delete the selected ${deletionSubject}?`,
+                    title: `Delete ${subject}`,
+                    message: `Are you sure you want to delete the selected ${subject}?`,
                 },
             });
 
@@ -214,11 +219,15 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
     public onCompartmentOpen(node?: NodeSingular): void {
+        const componentRef: ComponentRef<CompartmentComponent> | undefined =
+            node?.data('componentRef');
+        const data: Compartment | undefined = componentRef?.instance.data();
+
         const dialog: MatDialogRef<CompartmentDialogComponent, void> =
             this.dialogService.open(CompartmentDialogComponent, {
                 autoFocus: false,
                 disableClose: true,
-                data: node?.data(),
+                data,
             });
 
         dialog
@@ -232,17 +241,24 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
     private onFlowOpen(edge: EdgeSingular): void {
+        const componentRef: ComponentRef<FlowComponent> | undefined =
+            edge.data('componentRef');
+        const data: Flow | EmptyFlow = componentRef?.instance.data() ?? {
+            source: edge.data('source'),
+            target: edge.data('target'),
+        };
+
         const dialog: MatDialogRef<FlowDialogComponent, void> =
             this.dialogService.open(FlowDialogComponent, {
                 autoFocus: false,
-                data: edge.data(),
+                data,
             });
 
         dialog
             .afterClosed()
             .pipe(
                 tap((): void => {
-                    if (edge.data('equation') === undefined) {
+                    if (componentRef === undefined) {
                         edge.remove();
                     }
 

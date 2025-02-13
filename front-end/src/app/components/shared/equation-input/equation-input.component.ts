@@ -83,6 +83,10 @@ export class EquationInputComponent
     private readonly store: Store = inject(Store);
     private readonly localStore = inject(EquationInputStore);
 
+    private onChange: OnChangeFn | null = null;
+    private onTouched: OnTouchedFn | null = null;
+    private onValidatorChange: OnValidatorChangeFn | null = null;
+
     private equationInput: Signal<ElementRef<HTMLTextAreaElement>> =
         viewChild.required<ElementRef<HTMLTextAreaElement>>('input');
 
@@ -126,29 +130,11 @@ export class EquationInputComponent
     }
 
     public registerOnChange(onChange: OnChangeFn<Value>): void {
-        effect(
-            () => {
-                const value: Value = this.localStore.value();
-
-                untracked((): void => onChange(value));
-            },
-            {
-                injector: this.injector,
-            },
-        );
+        this.onChange = onChange;
     }
 
     public registerOnTouched(onTouched: OnTouchedFn): void {
-        effect(
-            () => {
-                this.localStore.value();
-
-                untracked((): void => onTouched());
-            },
-            {
-                injector: this.injector,
-            },
-        );
+        this.onTouched = onTouched;
     }
 
     public setDisabledState(disabled: boolean): void {
@@ -168,27 +154,7 @@ export class EquationInputComponent
     public registerOnValidatorChange(
         onValidatorChange: OnValidatorChangeFn,
     ): void {
-        const statusChanges: Signal<FormControlStatus | undefined> = toSignal(
-            this.control.statusChanges,
-            {
-                injector: this.injector,
-            },
-        );
-
-        effect(
-            (): void => {
-                const status: FormControlStatus | undefined = statusChanges();
-
-                if (status === undefined) {
-                    return;
-                }
-
-                untracked((): void => onValidatorChange());
-            },
-            {
-                injector: this.injector,
-            },
-        );
+        this.onValidatorChange = onValidatorChange;
     }
 
     public onChipInput(name: string): void {
@@ -232,11 +198,27 @@ export class EquationInputComponent
                 injector: this.injector,
             },
         );
+        const statusChanges: Signal<FormControlStatus | undefined> = toSignal(
+            this.control.statusChanges,
+            {
+                injector: this.injector,
+            },
+        );
         const validationResult: Signal<ValidationErrors | null | undefined> =
             toSignal(this.localStore.validationResult, {
                 injector: this.injector,
             });
 
+        effect(
+            () => {
+                const formValue: FormValue = this.localStore.formValue();
+
+                untracked((): void => this.control.setValue(formValue));
+            },
+            {
+                injector: this.injector,
+            },
+        );
         effect(
             (): void => {
                 const change: string | null | undefined = valueChanges();
@@ -246,6 +228,24 @@ export class EquationInputComponent
                 }
 
                 untracked((): void => this.localStore.setValueFromForm(change));
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            () => {
+                const value: Value = this.localStore.value();
+
+                untracked((): void => {
+                    if (this.onChange) {
+                        this.onChange(value);
+                    }
+
+                    if (this.onTouched) {
+                        this.onTouched();
+                    }
+                });
             },
             {
                 injector: this.injector,
@@ -267,12 +267,21 @@ export class EquationInputComponent
                 injector: this.injector,
             },
         );
-
         effect(
-            () => {
-                const formValue: FormValue = this.localStore.formValue();
+            (): void => {
+                const status: FormControlStatus | undefined = statusChanges();
 
-                untracked((): void => this.control.setValue(formValue));
+                if (status === undefined) {
+                    return;
+                }
+
+                untracked((): void => {
+                    if (!this.onValidatorChange) {
+                        return;
+                    }
+
+                    this.onValidatorChange();
+                });
             },
             {
                 injector: this.injector,

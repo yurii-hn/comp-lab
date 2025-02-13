@@ -73,6 +73,10 @@ export class OptimalControlParametersInputComponent
     private readonly injector: Injector = inject(Injector);
     private readonly localStore = inject(OptimalControlParametersInputStore);
 
+    private onChange: OnChangeFn | null = null;
+    private onTouched: OnTouchedFn | null = null;
+    private onValidatorChange: OnValidatorChangeFn | null = null;
+
     public readonly control: FormGroup = new FormGroup({
         time: new FormControl<number | null>(null, [
             Validators.required,
@@ -119,17 +123,8 @@ export class OptimalControlParametersInputComponent
                 injector: this.injector,
             },
         );
-
-        effect(
-            (): void => {
-                const change: FormValue | undefined = valueChanges();
-
-                if (change === undefined) {
-                    return;
-                }
-
-                untracked((): void => this.localStore.setValueFromForm(change));
-            },
+        const statusChanges: Signal<FormControlStatus | undefined> = toSignal(
+            this.control.statusChanges,
             {
                 injector: this.injector,
             },
@@ -145,6 +140,59 @@ export class OptimalControlParametersInputComponent
                 injector: this.injector,
             },
         );
+        effect(
+            (): void => {
+                const change: FormValue | undefined = valueChanges();
+
+                if (change === undefined) {
+                    return;
+                }
+
+                untracked((): void => this.localStore.setValueFromForm(change));
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            (): void => {
+                const value: Value = this.localStore.value();
+
+                untracked((): void => {
+                    if (this.onChange) {
+                        this.onChange(value);
+                    }
+
+                    if (this.onTouched) {
+                        this.onTouched();
+                    }
+                });
+            },
+            {
+                injector: this.injector,
+            },
+        );
+
+        effect(
+            (): void => {
+                const status: FormControlStatus | undefined = statusChanges();
+
+                if (status === undefined) {
+                    return;
+                }
+
+                untracked((): void => {
+                    if (!this.onValidatorChange) {
+                        return;
+                    }
+
+                    this.onValidatorChange();
+                });
+            },
+            {
+                injector: this.injector,
+            },
+        );
     }
 
     public writeValue(value: Value | null): void {
@@ -152,29 +200,11 @@ export class OptimalControlParametersInputComponent
     }
 
     public registerOnChange(onChange: OnChangeFn<Value>): void {
-        effect(
-            (): void => {
-                const value: Value = this.localStore.value();
-
-                untracked((): void => onChange(value));
-            },
-            {
-                injector: this.injector,
-            },
-        );
+        this.onChange = onChange;
     }
 
     public registerOnTouched(onTouched: OnTouchedFn): void {
-        effect(
-            (): void => {
-                this.localStore.value();
-
-                untracked((): void => onTouched());
-            },
-            {
-                injector: this.injector,
-            },
-        );
+        this.onTouched = onTouched;
     }
 
     public setDisabledState(disabled: boolean): void {
@@ -194,26 +224,6 @@ export class OptimalControlParametersInputComponent
     public registerOnValidatorChange(
         onValidatorChange: OnValidatorChangeFn,
     ): void {
-        const statusChanges: Signal<FormControlStatus | undefined> = toSignal(
-            this.control.statusChanges,
-            {
-                injector: this.injector,
-            },
-        );
-
-        effect(
-            (): void => {
-                const status: FormControlStatus | undefined = statusChanges();
-
-                if (status === undefined) {
-                    return;
-                }
-
-                untracked((): void => onValidatorChange());
-            },
-            {
-                injector: this.injector,
-            },
-        );
+        this.onValidatorChange = onValidatorChange;
     }
 }

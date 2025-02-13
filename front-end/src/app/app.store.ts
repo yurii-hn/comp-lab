@@ -1,6 +1,11 @@
 import { computed, effect, inject, Signal, untracked } from '@angular/core';
 import { Compartment, Flow } from '@core/types/model.types';
-import { areEqual, fromResizeObserver } from '@core/utils';
+import {
+  areEqual,
+  CytoscapeEventHandlerFnParams,
+  fromCytoscapeObjEvent,
+  observeResizes,
+} from '@core/utils';
 import {
   patchState,
   signalStore,
@@ -11,7 +16,7 @@ import {
   withState,
 } from '@ngrx/signals';
 import { Store } from '@ngrx/store';
-import cytoscape from 'cytoscape';
+import cytoscape, { EdgeSingular, NodeSingular } from 'cytoscape';
 import edgehandles, { EdgeHandlesInstance } from 'cytoscape-edgehandles';
 import klay from 'cytoscape-klay';
 import {
@@ -19,27 +24,22 @@ import {
   debounceTime,
   distinctUntilChanged,
   map,
-  Observable,
-  Observer,
   Subscription,
   tap,
 } from 'rxjs';
 import { GraphModel, GraphService } from 'src/app/services/graph.service';
 import { Workspace } from 'src/app/state/reducers/workspace.reducer';
 import { selectCurrentWorkspace } from 'src/app/state/selectors/workspace.selectors';
+import dom from './core/cytoscape-dom';
 
 cytoscape.use(klay);
 cytoscape.use(edgehandles);
-
-type CytoscapeEventHandlerFnParams = [
-    event: cytoscape.EventObject,
-    ...extraParams: any,
-];
+cytoscape.use(dom);
 
 export interface State {
-    cytoscapeObj: cytoscape.Core | null;
-    selectedElement: cytoscape.SingularElementArgument | null;
-    openedElement: cytoscape.SingularElementArgument | null;
+    _cytoscapeObj: cytoscape.Core | null;
+    selectedElement: NodeSingular | EdgeSingular | null;
+    openedElement: NodeSingular | EdgeSingular | null;
 }
 
 const cytoscapeOptions: cytoscape.CytoscapeOptions = {
@@ -47,45 +47,33 @@ const cytoscapeOptions: cytoscape.CytoscapeOptions = {
     maxZoom: 3,
     zoom: 1,
     wheelSensitivity: 0.1,
+    selectionType: 'single',
+    boxSelectionEnabled: false,
+    styleEnabled: true,
     style: [
         {
             selector: 'node.compartment',
             style: {
-                label: 'data(name)',
-                'font-weight': 'bold',
-                color: 'white',
-                width: '100px',
-                height: '50px',
-                backgroundColor: '#d60053',
-                'background-blacken': 0.2,
-                shape: 'round-rectangle',
+                shape: 'rectangle',
+                'background-opacity': 0,
+                'overlay-padding': 0,
             },
         },
         {
-            selector: 'node:selected',
-            style: {
-                backgroundColor: 'blue',
-                'background-blacken': 0,
-            },
-        },
-        {
-            selector: 'edge',
+            selector: 'edge.flow',
             style: {
                 width: 3,
                 'curve-style': 'bezier',
                 'target-arrow-shape': 'triangle-backcurve',
                 'arrow-scale': 2,
-                color: 'white',
+                'overlay-padding': 0,
             },
         },
     ],
-    selectionType: 'single',
-    boxSelectionEnabled: false,
-    styleEnabled: true,
 };
 
 const initialState: State = {
-    cytoscapeObj: null,
+    _cytoscapeObj: null,
     selectedElement: null,
     openedElement: null,
 };
@@ -95,10 +83,12 @@ export const AppStore = signalStore(
     withProps(() => {
         const globalStore: Store = inject(Store);
         const graphService: GraphService = inject(GraphService);
+        const subscription: Subscription = new Subscription();
 
         return {
             _globalStore: globalStore,
             _graphService: graphService,
+            _subscription: subscription,
         };
     }),
     withComputed((store) => {
@@ -113,21 +103,21 @@ export const AppStore = signalStore(
     withMethods((store) => {
         const initGraph = (container: HTMLElement): void =>
             patchState(store, {
-                cytoscapeObj: cytoscape({
+                _cytoscapeObj: cytoscape({
                     container: container,
                     ...cytoscapeOptions,
                 }),
             });
 
         const setSelectedElement = (
-            element: cytoscape.SingularElementArgument | null,
+            element: NodeSingular | EdgeSingular | null,
         ): void =>
             patchState(store, {
                 selectedElement: element,
             });
 
         const setOpenedElement = (
-            element: cytoscape.SingularElementArgument | null,
+            element: NodeSingular | EdgeSingular | null,
         ): void =>
             patchState(store, {
                 openedElement: element,
@@ -139,7 +129,7 @@ export const AppStore = signalStore(
             });
 
         const layoutGraph = (): void => {
-            const cytoscapeObj: cytoscape.Core | null = store.cytoscapeObj();
+            const cytoscapeObj: cytoscape.Core | null = store._cytoscapeObj();
 
             if (!cytoscapeObj) {
                 return;
@@ -158,23 +148,26 @@ export const AppStore = signalStore(
         };
     }),
     withHooks((store) => {
-        let subscription: Subscription = new Subscription();
-
         const onInit = (): void => {
             // TODO: Refactor this
             effect((): void => {
                 const cytoscapeObj: cytoscape.Core | null =
-                    store.cytoscapeObj();
+                    store._cytoscapeObj();
 
                 untracked((): void => {
-                    subscription.unsubscribe();
-                    subscription = new Subscription();
+                    store._subscription.unsubscribe();
+                    store._subscription = new Subscription();
 
                     if (!cytoscapeObj) {
                         return;
                     }
 
-                    const windowResizeSub: Subscription = fromResizeObserver(
+                    const edgehandles: EdgeHandlesInstance =
+                        cytoscapeObj!.edgehandles();
+
+                    cytoscapeObj!.dom();
+
+                    const windowResizeSub: Subscription = observeResizes(
                         window.document.body,
                     )
                         .pipe(
@@ -189,16 +182,24 @@ export const AppStore = signalStore(
                         fromCytoscapeObjEvent(
                             cytoscapeObj,
                             'select',
-                            'node, edge',
+                            'node.compartment[componentRef], edge.flow[componentRef]',
                         )
                             .pipe(
                                 tap({
                                     next: (
                                         params: CytoscapeEventHandlerFnParams,
-                                    ) =>
-                                        store._setSelectedElement(
-                                            params[0].target,
-                                        ),
+                                    ) => {
+                                        const element:
+                                            | NodeSingular
+                                            | EdgeSingular = params[0].target;
+
+                                        cytoscapeObj
+                                            .elements(':selected')
+                                            .not(element)
+                                            .unselect();
+
+                                        store._setSelectedElement(element);
+                                    },
                                     unsubscribe: (): void =>
                                         store._setSelectedElement(null),
                                 }),
@@ -209,7 +210,7 @@ export const AppStore = signalStore(
                         fromCytoscapeObjEvent(
                             cytoscapeObj,
                             'unselect',
-                            'node, edge',
+                            'node.compartment[componentRef], edge.flow[componentRef]',
                         )
                             .pipe(
                                 tap({
@@ -221,7 +222,7 @@ export const AppStore = signalStore(
                     const openElementSub: Subscription = fromCytoscapeObjEvent(
                         cytoscapeObj,
                         'dblclick',
-                        'node, edge',
+                        'node.compartment[componentRef], edge.flow[componentRef]',
                     )
                         .pipe(
                             tap({
@@ -234,15 +235,17 @@ export const AppStore = signalStore(
                         .subscribe();
 
                     const startFlowCreationSub: Subscription =
-                        fromCytoscapeObjEvent(cytoscapeObj, 'cxttap', 'node')
+                        fromCytoscapeObjEvent(
+                            cytoscapeObj,
+                            'cxttap',
+                            'node.compartment[componentRef]',
+                        )
                             .pipe(
                                 tap(
                                     (
                                         params: CytoscapeEventHandlerFnParams,
                                     ): void => {
-                                        const edgehandles: EdgeHandlesInstance =
-                                            cytoscapeObj.edgehandles();
-                                        const node: cytoscape.NodeSingular =
+                                        const node: NodeSingular =
                                             params[0].target;
 
                                         edgehandles.start(node);
@@ -290,19 +293,19 @@ export const AppStore = signalStore(
                         )
                         .subscribe();
 
-                    subscription.add(windowResizeSub);
-                    subscription.add(selectElementSub);
-                    subscription.add(unselectElementSub);
-                    subscription.add(openElementSub);
-                    subscription.add(startFlowCreationSub);
-                    subscription.add(createFlowSub);
-                    subscription.add(updateGraphSub);
+                    store._subscription.add(windowResizeSub);
+                    store._subscription.add(selectElementSub);
+                    store._subscription.add(unselectElementSub);
+                    store._subscription.add(openElementSub);
+                    store._subscription.add(startFlowCreationSub);
+                    store._subscription.add(createFlowSub);
+                    store._subscription.add(updateGraphSub);
                 });
             });
         };
 
         const onDestroy = (): void => {
-            subscription.unsubscribe();
+            store._subscription.unsubscribe();
         };
 
         return {
@@ -311,34 +314,6 @@ export const AppStore = signalStore(
         };
     }),
 );
-
-function fromCytoscapeObjEvent(
-    cytoscapeObj: cytoscape.Core,
-    event: string,
-    selector?: cytoscape.Selector,
-): Observable<CytoscapeEventHandlerFnParams> {
-    return new Observable(
-        (observer: Observer<CytoscapeEventHandlerFnParams>): void => {
-            if (selector) {
-                cytoscapeObj.on(
-                    event,
-                    selector,
-                    (...args: CytoscapeEventHandlerFnParams): void => {
-                        observer.next(args);
-                    },
-                );
-
-                return;
-            }
-            cytoscapeObj.on(
-                event,
-                (...args: CytoscapeEventHandlerFnParams): void => {
-                    observer.next(args);
-                },
-            );
-        },
-    );
-}
 
 function areModelsEqual(modelA: GraphModel, modelB: GraphModel): boolean {
     const modelAClone: GraphModel = structuredClone(modelA);

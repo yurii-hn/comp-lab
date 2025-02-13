@@ -20,15 +20,11 @@
         overflow: auto;
 
         .title {
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
+            font: var(--mat-sys-title-medium);
             margin-bottom: 10px;
         }
 
         .no-content-message {
-            color: white;
-            font-size: 14px;
             font-style: italic;
         }
     }

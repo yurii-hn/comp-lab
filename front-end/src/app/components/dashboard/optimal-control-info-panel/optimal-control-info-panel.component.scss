@@ -13,7 +13,6 @@
     .field {
         white-space: nowrap;
         margin: 0;
-        color: white;
 
         .name {
             font-weight: bold;
@@ -26,10 +25,8 @@
         gap: 10px;
 
         .title {
-            font-size: 18px;
-            font-weight: bold;
+            font: var(--mat-sys-title-large);
             margin: 0;
-            color: white;
         }
 
         .body {
@@ -46,10 +43,8 @@
         gap: 10px;
 
         .title {
-            font-size: 18px;
-            font-weight: bold;
+            font: var(--mat-sys-title-large);
             margin: 0;
-            color: white;
         }
     }
 }

@@ -14,6 +14,7 @@ import { Flow } from '@core/types/model.types';
 import { Store } from '@ngrx/store';
 import { skip } from 'rxjs';
 import {
+  EmptyFlow,
   FlowDialogStore,
   FormValue,
 } from 'src/app/components/graph/flow-dialog/flow-dialog.store';
@@ -54,7 +55,7 @@ export class FlowDialogComponent {
         const valueChanges: Signal<FormValue | undefined> = toSignal(
             this.control.valueChanges.pipe(skip(1)),
         );
-        const initialData: Flow | undefined = inject(MAT_DIALOG_DATA);
+        const initialData: Flow | EmptyFlow = inject(MAT_DIALOG_DATA);
 
         effect((): void => {
             const change: FormValue | undefined = valueChanges();
@@ -72,7 +73,7 @@ export class FlowDialogComponent {
             untracked((): void => this.control.patchValue(formValue));
         });
 
-        this.localStore.setInitialData(initialData ?? null);
+        this.localStore.setInitialData(initialData);
     }
 
     public onClose(): void {
