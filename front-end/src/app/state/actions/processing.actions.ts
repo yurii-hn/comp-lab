@@ -23,8 +23,8 @@ interface PIProps {
 
 type ProcessModelProps = SimulationProps | OptimalControlProps | PIProps;
 
-export const ProcessingDialogActions = createActionGroup({
-    source: 'Processing Dialog',
+export const ProcessingActions = createActionGroup({
+    source: 'Processing Component',
     events: {
         'Process Model': props<ProcessModelProps>(),
     },

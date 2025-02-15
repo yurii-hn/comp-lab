@@ -15,29 +15,47 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import {
+  MAT_TOOLTIP_DEFAULT_OPTIONS,
+  MatTooltipModule,
+} from '@angular/material/tooltip';
+import { TOOLTIP_DEFAULT_OPTIONS } from '@core/constants';
 import { Compartment, Flow } from '@core/types/model.types';
 import { Store } from '@ngrx/store';
 import { EdgeSingular, NodeSingular } from 'cytoscape';
 import { filter, tap } from 'rxjs';
 import { AppStore } from 'src/app/app.store';
 import { CompartmentComponent } from 'src/app/components/graph/compartment/compartment.component';
-import { EmptyFlow } from 'src/app/components/graph/flow-dialog/flow-dialog.store';
+import { EmptyFlow } from 'src/app/components/graph/edit-flow/edit-flow.store';
 import { FlowComponent } from 'src/app/components/graph/flow/flow.component';
+import { SettingsComponent } from 'src/app/components/settings/settings.component';
 import { WorkspacesPanelComponent } from 'src/app/components/workspaces-panel/workspaces-panel.component';
 import { GraphService } from 'src/app/services/graph.service';
 import { AppActions } from 'src/app/state/actions/app.actions';
 import { selectHasCompartments } from 'src/app/state/selectors/workspace.selectors';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
-import { DefinitionsTableDialogComponent } from './components/definitions-table-dialog/definitions-table-dialog.component';
-import { CompartmentDialogComponent } from './components/graph/compartment-dialog/compartment-dialog.component';
-import { FlowDialogComponent } from './components/graph/flow-dialog/flow-dialog.component';
-import { ProcessingDialogComponent } from './components/processing/processing-dialog/processing-dialog.component';
+import { DefinitionsTableComponent } from './components/definitions-table/definitions-table.component';
+import { EditCompartmentComponent } from './components/graph/edit-compartment/edit-compartment.component';
+import { EditFlowComponent } from './components/graph/edit-flow/edit-flow.component';
+import { ProcessingComponent } from './components/processing/processing/processing.component';
 import { ConfirmationDialogComponent } from './components/shared/confirmation-dialog/confirmation-dialog.component';
 
 @Component({
     selector: 'app-root',
-    imports: [MatIconModule, MatButtonModule, WorkspacesPanelComponent],
-    providers: [GraphService, AppStore],
+    imports: [
+        MatIconModule,
+        MatButtonModule,
+        MatTooltipModule,
+        WorkspacesPanelComponent,
+    ],
+    providers: [
+        {
+            provide: MAT_TOOLTIP_DEFAULT_OPTIONS,
+            useValue: TOOLTIP_DEFAULT_OPTIONS,
+        },
+        GraphService,
+        AppStore,
+    ],
     templateUrl: './app.component.html',
     styleUrls: ['./app.component.scss'],
 })
@@ -85,28 +103,35 @@ export class AppComponent implements OnInit, AfterViewInit {
     public ngAfterViewInit(): void {
         this.localStore.initGraph(this.canvas().nativeElement);
 
-        this.store.dispatch(
-            AppActions.importSampleModel({
-                path: 'sir.scm',
-                createNewWorkspace: false,
-            }),
-        );
-        this.store.dispatch(
-            AppActions.importSampleModel({
-                path: 'interventions.scm',
-                createNewWorkspace: true,
-            }),
-        );
-        this.store.dispatch(
-            AppActions.importSampleModel({
-                path: 'seird.scm',
-                createNewWorkspace: true,
-            }),
-        );
+        this.store.dispatch(AppActions.loadWorkspacesFromLocalStorage());
+        this.store.dispatch(AppActions.loadRunsFromLocalStorage());
+        this.store.dispatch(AppActions.loadSettingsFromLocalStorage());
+
+        this.store.dispatch(AppActions.syncInit());
+
+        // TODO: Make some kind of menu to select samples from
+        // this.store.dispatch(
+        //     AppActions.importSampleModel({
+        //         path: 'sir.scm',
+        //         select: true,
+        //     }),
+        // );
+        // this.store.dispatch(
+        //     AppActions.importSampleModel({
+        //         path: 'interventions.scm',
+        //         select: false,
+        //     }),
+        // );
+        // this.store.dispatch(
+        //     AppActions.importSampleModel({
+        //         path: 'seird.scm',
+        //         select: false,
+        //     }),
+        // );
     }
 
     public onDefinitionsTable(): void {
-        this.dialogService.open(DefinitionsTableDialogComponent, {
+        this.dialogService.open(DefinitionsTableComponent, {
             autoFocus: false,
             disableClose: true,
         });
@@ -154,17 +179,22 @@ export class AppComponent implements OnInit, AfterViewInit {
         this.store.dispatch(AppActions.exportModel());
     }
 
+    public onSettings(): void {
+        this.dialogService.open(SettingsComponent, {
+            autoFocus: false,
+            disableClose: true,
+        });
+    }
+
     public onDashboard(): void {
         this.dialogService.open(DashboardComponent, {
             autoFocus: false,
             disableClose: true,
-            maxWidth: '100vw',
-            maxHeight: '100vh',
         });
     }
 
     public onProcess(): void {
-        this.dialogService.open(ProcessingDialogComponent, {
+        this.dialogService.open(ProcessingComponent, {
             autoFocus: false,
             disableClose: true,
         });
@@ -223,8 +253,8 @@ export class AppComponent implements OnInit, AfterViewInit {
             node?.data('componentRef');
         const data: Compartment | undefined = componentRef?.instance.data();
 
-        const dialog: MatDialogRef<CompartmentDialogComponent, void> =
-            this.dialogService.open(CompartmentDialogComponent, {
+        const dialog: MatDialogRef<EditCompartmentComponent, void> =
+            this.dialogService.open(EditCompartmentComponent, {
                 autoFocus: false,
                 disableClose: true,
                 data,
@@ -248,8 +278,8 @@ export class AppComponent implements OnInit, AfterViewInit {
             target: edge.data('target'),
         };
 
-        const dialog: MatDialogRef<FlowDialogComponent, void> =
-            this.dialogService.open(FlowDialogComponent, {
+        const dialog: MatDialogRef<EditFlowComponent, void> =
+            this.dialogService.open(EditFlowComponent, {
                 autoFocus: false,
                 data,
             });

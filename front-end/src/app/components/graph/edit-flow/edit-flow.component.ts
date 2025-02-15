@@ -8,56 +8,55 @@ import {
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { Compartment } from '@core/types/model.types';
-import { definitionName } from '@core/validators';
+import { MatSelectModule } from '@angular/material/select';
+import { Flow } from '@core/types/model.types';
 import { Store } from '@ngrx/store';
 import { skip } from 'rxjs';
 import {
-  CompartmentDialogStore,
+  EditFlowStore,
+  EmptyFlow,
   FormValue,
-} from 'src/app/components/graph/compartment-dialog/compartment-dialog.store';
-import { CompartmentDialogActions } from 'src/app/state/actions/compartment-dialog.actions';
+} from 'src/app/components/graph/edit-flow/edit-flow.store';
+import { Option } from 'src/app/components/shared/datatable/datatable.store';
+import { EquationInputComponent } from 'src/app/components/shared/equation-input/equation-input.component';
+import { EditFlowActions } from 'src/app/state/actions/flow.actions';
 
 @Component({
-    selector: 'app-compartment-dialog',
+    selector: 'app-edit-flow',
     imports: [
         ReactiveFormsModule,
         MatIconModule,
         MatButtonModule,
-        MatFormFieldModule,
-        MatInputModule,
+        MatSelectModule,
+        EquationInputComponent,
     ],
-    providers: [CompartmentDialogStore],
-    templateUrl: './compartment-dialog.component.html',
-    styleUrls: ['./compartment-dialog.component.scss'],
+    providers: [EditFlowStore],
+    templateUrl: './edit-flow.component.html',
+    styleUrls: ['./edit-flow.component.scss'],
 })
-export class CompartmentDialogComponent {
+export class EditFlowComponent {
     private readonly store: Store = inject(Store);
-    private readonly localStore = inject(CompartmentDialogStore);
-    private readonly dialogRef: MatDialogRef<CompartmentDialogComponent, void> =
-        inject(MatDialogRef<CompartmentDialogComponent, void>);
+    private readonly localStore = inject(EditFlowStore);
+    private readonly dialogRef: MatDialogRef<EditFlowComponent, void> = inject(
+        MatDialogRef<EditFlowComponent, void>,
+    );
 
     public readonly editMode: Signal<boolean> = this.localStore.editMode;
+    public readonly sources: Signal<Option[]> = this.localStore.sources;
+    public readonly targets: Signal<Option[]> = this.localStore.targets;
 
     public readonly control: FormGroup = new FormGroup({
-        name: new FormControl<string>('', [
-            Validators.required,
-            definitionName(this.localStore.symbols),
-        ]),
-        value: new FormControl<number>(0, [
-            Validators.required,
-            Validators.min(0),
-        ]),
+        equation: new FormControl<string>('', [Validators.required]),
+        source: new FormControl<string>('', [Validators.required]),
+        target: new FormControl<string>('', [Validators.required]),
     });
 
     constructor() {
         const valueChanges: Signal<FormValue | undefined> = toSignal(
             this.control.valueChanges.pipe(skip(1)),
         );
-        const initialData: Compartment | undefined = inject(MAT_DIALOG_DATA);
+        const initialData: Flow | EmptyFlow = inject(MAT_DIALOG_DATA);
 
         effect((): void => {
             const change: FormValue | undefined = valueChanges();
@@ -75,7 +74,7 @@ export class CompartmentDialogComponent {
             untracked((): void => this.control.patchValue(formValue));
         });
 
-        this.localStore.setInitialData(initialData ?? null);
+        this.localStore.setInitialData(initialData);
     }
 
     public onClose(): void {
@@ -84,10 +83,11 @@ export class CompartmentDialogComponent {
 
     public onAccept(): void {
         this.store.dispatch(
-            CompartmentDialogActions.upsertCompartment({
-                compartment: this.localStore.value(),
+            EditFlowActions.upsertFlow({
+                flow: this.localStore.value(),
             }),
         );
+
         this.dialogRef.close();
     }
 }

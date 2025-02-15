@@ -41,7 +41,7 @@ const initialState: State = {
     },
 };
 
-export const FlowDialogStore = signalStore(
+export const EditFlowStore = signalStore(
     withState(initialState),
     withProps(() => {
         const globalStore: Store = inject(Store);

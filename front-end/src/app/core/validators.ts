@@ -9,10 +9,33 @@ import {
 
 const DEFINITION_NAME_REGEX: RegExp = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
-export function definitionName(
-    existingSymbols: Signal<string[]>,
-    initialName?: string | null,
-): ValidatorFn {
+export function uniqueName(existingSymbols: Signal<string[]>): ValidatorFn {
+    let initialName: string | null | undefined;
+
+    return (control: AbstractControl): ValidationErrors | null => {
+        const name: string | null = control.value;
+
+        if (control.pristine) {
+            initialName = name;
+
+            return null;
+        }
+
+        if (!name || typeof name !== 'string' || name === initialName) {
+            return null;
+        }
+
+        return existingSymbols().some(
+            (symbol: string): boolean => symbol === name,
+        )
+            ? { nameExists: true }
+            : null;
+    };
+}
+
+export function definitionName(existingSymbols: Signal<string[]>): ValidatorFn {
+    let initialName: string | null | undefined;
+
     return (control: AbstractControl): ValidationErrors | null => {
         const name: string | null = control.value;
 

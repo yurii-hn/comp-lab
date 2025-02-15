@@ -13,7 +13,7 @@ interface ReplaceModelProps {
 
 interface ImportSampleModelProps {
     model: Model;
-    createNewWorkspace: boolean;
+    select: boolean;
 }
 
 export const FilesServiceActions = createActionGroup({

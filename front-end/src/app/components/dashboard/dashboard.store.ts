@@ -15,12 +15,14 @@ import {
 import { signalStore, withComputed, withProps, withState } from '@ngrx/signals';
 import { Store } from '@ngrx/store';
 import { Config, Layout, Data as PlotData } from 'plotly.js-dist-min';
+import { DashboardSettings } from 'src/app/state/reducers/settings.reducer';
 import {
   selectCurrentRunData,
   selectCurrentRunName,
   selectIsRunsEmpty,
   selectRunNames,
 } from 'src/app/state/selectors/runs.selectors';
+import { selectDashboardSettings } from 'src/app/state/selectors/settings.selectors';
 
 export interface Plot {
     data: PlotData[];
@@ -51,6 +53,9 @@ export const DashboardStore = signalStore(
         };
     }),
     withComputed((store) => {
+        const settings: Signal<DashboardSettings> =
+            store._globalStore.selectSignal(selectDashboardSettings);
+
         const noRuns: Signal<boolean> =
             store._globalStore.selectSignal(selectIsRunsEmpty);
 
@@ -64,6 +69,7 @@ export const DashboardStore = signalStore(
             store._globalStore.selectSignal(selectCurrentRunData);
 
         const currentRunPlotsData: Signal<Plot[]> = computed((): Plot[] => {
+            const dashboardSettings: DashboardSettings = settings();
             const data: Data | null = currentRunData();
 
             if (!data) {
@@ -72,13 +78,16 @@ export const DashboardStore = signalStore(
 
             switch (data.type) {
                 case ProcessingType.Simulation:
-                    return getSimulationRunPlotData(data);
+                    return getSimulationRunPlotData(data, dashboardSettings);
 
                 case ProcessingType.OptimalControl:
-                    return getOptimalControlRunPlotData(data);
+                    return getOptimalControlRunPlotData(
+                        data,
+                        dashboardSettings,
+                    );
 
                 case ProcessingType.PI:
-                    return getPIRunPlotData(data);
+                    return getPIRunPlotData(data, dashboardSettings);
 
                 default:
                     throw new Error('Unknown processing mode');
@@ -86,6 +95,7 @@ export const DashboardStore = signalStore(
         });
 
         return {
+            settings,
             noRuns,
             runsNames,
             currentRunName,
@@ -95,7 +105,10 @@ export const DashboardStore = signalStore(
     }),
 );
 
-function getSimulationRunPlotData(data: SimulationData): Plot[] {
+function getSimulationRunPlotData(
+    data: SimulationData,
+    settings: DashboardSettings,
+): Plot[] {
     return data.result.compartments.reduce(
         (plotsData: Plot[], compartment: Values): Plot[] => {
             const x: number[] = [];
@@ -133,7 +146,7 @@ function getSimulationRunPlotData(data: SimulationData): Plot[] {
                         },
                     },
                     yaxis: {
-                        rangemode: 'tozero',
+                        rangemode: settings.yAxisRangeMode,
                         title: {
                             text: compartment.name,
                         },
@@ -167,7 +180,10 @@ function getSimulationRunPlotData(data: SimulationData): Plot[] {
     );
 }
 
-function getOptimalControlRunPlotData(data: OptimalControlData): Plot[] {
+function getOptimalControlRunPlotData(
+    data: OptimalControlData,
+    settings: DashboardSettings,
+): Plot[] {
     const plots: Plot[] = [];
 
     const parameters: OptimalControlParameters = data.parameters;
@@ -231,7 +247,7 @@ function getOptimalControlRunPlotData(data: OptimalControlData): Plot[] {
                         },
                     },
                     yaxis: {
-                        rangemode: 'tozero',
+                        rangemode: settings.yAxisRangeMode,
                         title: {
                             text: compartment.name,
                         },
@@ -279,7 +295,7 @@ function getOptimalControlRunPlotData(data: OptimalControlData): Plot[] {
                         },
                     },
                     yaxis: {
-                        rangemode: 'tozero',
+                        rangemode: settings.yAxisRangeMode,
                         title: {
                             text: intervention.name,
                         },
@@ -292,7 +308,7 @@ function getOptimalControlRunPlotData(data: OptimalControlData): Plot[] {
     return plots;
 }
 
-function getPIRunPlotData(data: PIData): Plot[] {
+function getPIRunPlotData(data: PIData, settings: DashboardSettings): Plot[] {
     interface ProvidedValues {
         compartments: Values[];
         interventions: Values[];
@@ -378,7 +394,7 @@ function getPIRunPlotData(data: PIData): Plot[] {
                         },
                     },
                     yaxis: {
-                        rangemode: 'tozero',
+                        rangemode: settings.yAxisRangeMode,
                         title: {
                             text: compartment.name,
                         },
@@ -421,7 +437,7 @@ function getPIRunPlotData(data: PIData): Plot[] {
                         },
                     },
                     yaxis: {
-                        rangemode: 'tozero',
+                        rangemode: settings.yAxisRangeMode,
                         title: {
                             text: intervention.name,
                         },

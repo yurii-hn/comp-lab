@@ -6,7 +6,7 @@ interface ClearModelProps {
 
 interface ImportSampleModelProps {
     path: string;
-    createNewWorkspace: boolean;
+    select: boolean;
 }
 
 interface RemoveModelCompartmentProps {
@@ -26,5 +26,9 @@ export const AppActions = createActionGroup({
         'Export Model': emptyProps(),
         'Remove Compartment': props<RemoveModelCompartmentProps>(),
         'Remove Flow': props<RemoveModelFlowProps>(),
+        'Sync Init': emptyProps(),
+        'Load Workspaces from LocalStorage': emptyProps(),
+        'Load Runs from LocalStorage': emptyProps(),
+        'Load Settings from LocalStorage': emptyProps(),
     },
 });

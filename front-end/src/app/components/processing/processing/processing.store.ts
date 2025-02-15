@@ -20,7 +20,7 @@ const initialState: State = {
     _value: 0,
 };
 
-export const ProcessingDialogStore = signalStore(
+export const ProcessingStore = signalStore(
     withState(initialState),
     withComputed((store) => {
         const value: Signal<Value> = computed((): Value => {

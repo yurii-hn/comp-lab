@@ -5,6 +5,10 @@ interface AddWorkspaceProps {
     model?: Model;
 }
 
+interface RenameWorkspaceProps {
+    name: string;
+}
+
 interface SelectWorkspaceProps {
     name: string;
 }
@@ -13,6 +17,7 @@ export const WorkspaceActions = createActionGroup({
     source: 'Workspace Component',
     events: {
         'Add Workspace': props<AddWorkspaceProps>(),
+        'Rename Workspace': props<RenameWorkspaceProps>(),
         'Select Workspace': props<SelectWorkspaceProps>(),
         'Remove Workspace': emptyProps(),
     },

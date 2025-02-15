@@ -13,12 +13,12 @@ import {
 import { Store } from '@ngrx/store';
 import { OptimalControlParametersInputComponent } from 'src/app/components/processing/optimal-control-parameters-input/optimal-control-parameters-input.component';
 import { ParametersIdentificationParametersInputComponent } from 'src/app/components/processing/parameters-identification-parameters-input/parameters-identification-parameters-input.component';
-import { ProcessingDialogStore } from 'src/app/components/processing/processing-dialog/processing-dialog.store';
+import { ProcessingStore } from 'src/app/components/processing/processing/processing.store';
 import { SimulationParametersInputComponent } from 'src/app/components/processing/simulation-parameters-input/simulation-parameters-input.component';
-import { ProcessingDialogActions } from 'src/app/state/actions/processing-dialog.actions';
+import { ProcessingActions } from 'src/app/state/actions/processing.actions';
 
 @Component({
-    selector: 'app-processing-dialog',
+    selector: 'app-processing',
     imports: [
         ReactiveFormsModule,
         MatIconModule,
@@ -28,15 +28,15 @@ import { ProcessingDialogActions } from 'src/app/state/actions/processing-dialog
         OptimalControlParametersInputComponent,
         ParametersIdentificationParametersInputComponent,
     ],
-    providers: [ProcessingDialogStore],
-    templateUrl: './processing-dialog.component.html',
-    styleUrls: ['./processing-dialog.component.scss'],
+    providers: [ProcessingStore],
+    templateUrl: './processing.component.html',
+    styleUrls: ['./processing.component.scss'],
 })
-export class ProcessingDialogComponent {
+export class ProcessingComponent {
     private readonly store: Store = inject(Store);
-    private readonly localStore = inject(ProcessingDialogStore);
-    private readonly dialogRef: MatDialogRef<ProcessingDialogComponent, void> =
-        inject(MatDialogRef<ProcessingDialogComponent, void>);
+    private readonly localStore = inject(ProcessingStore);
+    private readonly dialogRef: MatDialogRef<ProcessingComponent, void> =
+        inject(MatDialogRef<ProcessingComponent, void>);
 
     public typeIndex: Signal<number> = this.localStore.formValue;
 
@@ -71,7 +71,7 @@ export class ProcessingDialogComponent {
 
     public onProcess(): void {
         this.store.dispatch(
-            ProcessingDialogActions.processModel({
+            ProcessingActions.processModel({
                 parameters: this.currentControl().value,
                 mode: this.localStore.value(),
             }),

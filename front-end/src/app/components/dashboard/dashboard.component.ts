@@ -14,7 +14,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
+import {
+  MAT_TOOLTIP_DEFAULT_OPTIONS,
+  MatTooltipModule,
+} from '@angular/material/tooltip';
+import { TOOLTIP_DEFAULT_OPTIONS } from '@core/constants';
 import { Data } from '@core/types/run.types';
+import { uniqueName } from '@core/validators';
 import { Store } from '@ngrx/store';
 import { PlotlyComponent, PlotlyModule } from 'angular-plotly.js';
 import { AngularSplitModule } from 'angular-split';
@@ -27,6 +33,7 @@ import {
 import { OptimalControlInfoPanelComponent } from 'src/app/components/dashboard/optimal-control-info-panel/optimal-control-info-panel.component';
 import { ParametersIdentificationInfoPanelComponent } from 'src/app/components/dashboard/parameters-identification-info-panel/parameters-identification-info-panel.component';
 import { SimulationInfoPanelComponent } from 'src/app/components/dashboard/simulation-info-panel/simulation-info-panel.component';
+import { EditDialogComponent } from 'src/app/components/shared/edit-dialog/edit-dialog.component';
 import { DashboardActions } from 'src/app/state/actions/dashboard.actions';
 import { ConfirmationDialogComponent } from '../shared/confirmation-dialog/confirmation-dialog.component';
 
@@ -39,13 +46,20 @@ PlotlyModule.plotlyjs = PlotlyJS;
         MatIconModule,
         MatSelectModule,
         MatButtonModule,
+        MatTooltipModule,
         PlotlyModule,
         AngularSplitModule,
         SimulationInfoPanelComponent,
         OptimalControlInfoPanelComponent,
         ParametersIdentificationInfoPanelComponent,
     ],
-    providers: [DashboardStore],
+    providers: [
+        {
+            provide: MAT_TOOLTIP_DEFAULT_OPTIONS,
+            useValue: TOOLTIP_DEFAULT_OPTIONS,
+        },
+        DashboardStore,
+    ],
     templateUrl: './dashboard.component.html',
     styleUrls: ['./dashboard.component.scss'],
 })
@@ -56,7 +70,7 @@ export class DashboardComponent implements OnInit {
     private readonly dialogRef: MatDialogRef<DashboardComponent, void> = inject(
         MatDialogRef<DashboardComponent, void>,
     );
-    private readonly dialog: MatDialog = inject(MatDialog);
+    private readonly dialogService: MatDialog = inject(MatDialog);
 
     private readonly plotsComponents: Signal<readonly PlotlyComponent[]> =
         viewChildren(PlotlyComponent);
@@ -124,7 +138,7 @@ export class DashboardComponent implements OnInit {
 
     public get(): void {
         const dialog: MatDialogRef<ConfirmationDialogComponent, boolean> =
-            this.dialog.open(ConfirmationDialogComponent, {
+            this.dialogService.open(ConfirmationDialogComponent, {
                 data: {
                     title: 'Export run',
                     message: 'What you want to export?',
@@ -148,6 +162,37 @@ export class DashboardComponent implements OnInit {
                     }
 
                     this.store.dispatch(DashboardActions.exportRunValues());
+                }),
+            )
+            .subscribe();
+    }
+
+    public edit(): void {
+        const dialog: MatDialogRef<EditDialogComponent, string> =
+            this.dialogService.open(EditDialogComponent, {
+                autoFocus: false,
+                disableClose: true,
+                data: {
+                    title: 'Run rename',
+                    message: 'Enter new run name',
+                    value: this.localStore.currentRunName(),
+                    validationFns: [uniqueName(this.localStore.runsNames)],
+                },
+            });
+
+        dialog
+            .afterClosed()
+            .pipe(
+                filter(
+                    (newName?: string): newName is string =>
+                        newName !== undefined,
+                ),
+                tap((newName: string): void => {
+                    this.store.dispatch(
+                        DashboardActions.renameRun({
+                            name: newName,
+                        }),
+                    );
                 }),
             )
             .subscribe();

@@ -5,8 +5,8 @@ interface UpsertModelCompartmentProps {
     compartment: Compartment;
 }
 
-export const CompartmentDialogActions = createActionGroup({
-    source: 'Compartment Dialog Component',
+export const EditCompartmentActions = createActionGroup({
+    source: 'Edit Compartment Component',
     events: {
         'Upsert Compartment': props<UpsertModelCompartmentProps>(),
     },

@@ -1,9 +1,5 @@
 @let data = this.data();
 
-<span
-    matTooltipPositionAtOrigin
-    matTooltipShowDelay="350"
-    [matTooltip]="data.equation"
->
+<span matTooltipPositionAtOrigin [matTooltip]="data.equation">
     {{ data.equation }}
 </span>

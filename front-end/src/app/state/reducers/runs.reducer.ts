@@ -2,11 +2,20 @@ import { Data, Run } from '@core/types/run.types';
 import { createReducer, on } from '@ngrx/store';
 import { DashboardActions } from 'src/app/state/actions/dashboard.actions';
 import { FilesServiceActions } from 'src/app/state/actions/files.service.actions';
+import { LocalStorageActions } from 'src/app/state/actions/local-storage.actions';
 import { ProcessingServiceActions } from 'src/app/state/actions/processing.service.actions';
+
+interface LoadRunsProps {
+    state: RunsState;
+}
 
 interface AddRunProps {
     data: Data;
     set: boolean;
+}
+
+interface RenameRunProps {
+    name: string;
 }
 
 interface SelectRunProps {
@@ -16,6 +25,7 @@ interface SelectRunProps {
 export interface RunsState {
     runs: Run[];
     selectedRunName: string | null;
+    _nextEntityId: number;
 }
 
 export const runsFeatureKey = 'runs';
@@ -23,16 +33,23 @@ export const runsFeatureKey = 'runs';
 const initialState: RunsState = {
     runs: [],
     selectedRunName: null,
+    _nextEntityId: 1,
 };
 
 export const runsReducer = createReducer<RunsState>(
     initialState,
     on(
+        LocalStorageActions.loadRuns,
+        (_: RunsState, { state }: LoadRunsProps): RunsState => ({
+            ...state,
+        }),
+    ),
+    on(
         ProcessingServiceActions.modelProcessingSuccess,
         FilesServiceActions.runImportSuccess,
         (state: RunsState, { data, set }: AddRunProps): RunsState => {
             const newRun: Run = {
-                name: `Run ${state.runs.length + 1}`,
+                name: `Run ${state._nextEntityId}`,
                 data,
             } as Run;
 
@@ -43,6 +60,29 @@ export const runsReducer = createReducer<RunsState>(
                     set || state.runs.length === 0
                         ? newRun.name
                         : state.selectedRunName,
+                _nextEntityId: state._nextEntityId + 1,
+            };
+        },
+    ),
+    on(
+        DashboardActions.renameRun,
+        (state: RunsState, { name }: RenameRunProps): RunsState => {
+            const currentRunIndex: number = state.runs.findIndex(
+                (run: Run): boolean => run.name === state.selectedRunName,
+            );
+            const currentRun: Run = state.runs[currentRunIndex];
+
+            return {
+                ...state,
+                runs: [
+                    ...state.runs.slice(0, currentRunIndex),
+                    {
+                        ...currentRun,
+                        name,
+                    },
+                    ...state.runs.slice(currentRunIndex + 1),
+                ],
+                selectedRunName: name,
             };
         },
     ),
@@ -71,19 +111,20 @@ export const runsReducer = createReducer<RunsState>(
         const currentRunIndex: number = state.runs.findIndex(
             (run: Run): boolean => run.name === state.selectedRunName,
         );
-        const newSelectedRunName: string =
-            state.runs[Math.max(currentRunIndex - 1, 0)].name;
+        const newSelectedRunName: string | null =
+            state.runs.length === 1
+                ? null
+                : state.runs[
+                      currentRunIndex === 0
+                          ? 1
+                          : Math.max(currentRunIndex - 1, 0)
+                  ].name;
 
         return {
             ...state,
             runs: [
                 ...state.runs.slice(0, currentRunIndex),
-                ...state.runs.slice(currentRunIndex + 1).map(
-                    (run: Run, index: number): Run => ({
-                        ...run,
-                        name: `Run ${currentRunIndex + index + 1}`,
-                    }),
-                ),
+                ...state.runs.slice(currentRunIndex + 1),
             ],
             selectedRunName: newSelectedRunName,
         };

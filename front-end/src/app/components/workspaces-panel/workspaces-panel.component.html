@@ -12,13 +12,28 @@
     </mat-select>
 </mat-form-field>
 
-<button mat-mini-fab color="primary" (click)="add()">
+<button
+    mat-mini-fab
+    color="primary"
+    matTooltip="Add new workspace"
+    (click)="add()"
+>
     <mat-icon>add_box</mat-icon>
 </button>
 
 <button
     mat-mini-fab
     color="primary"
+    matTooltip="Rename current workspace"
+    (click)="edit()"
+>
+    <mat-icon>edit</mat-icon>
+</button>
+
+<button
+    mat-mini-fab
+    color="primary"
+    matTooltip="Delete current workspace"
     [disabled]="workspacesCount === 1"
     (click)="remove()"
 >

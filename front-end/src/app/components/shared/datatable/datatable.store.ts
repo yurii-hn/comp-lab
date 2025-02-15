@@ -70,6 +70,7 @@ export interface State {
     disabled: boolean;
     enumerate: boolean;
     compact: boolean;
+    showEmptyColumns: boolean;
 
     adding: boolean;
 }
@@ -83,6 +84,7 @@ const initialState: State = {
     disabled: false,
     enumerate: false,
     compact: false,
+    showEmptyColumns: false,
 
     adding: false,
 };
@@ -90,6 +92,22 @@ const initialState: State = {
 export const DatatableStore = signalStore(
     withState(initialState),
     withComputed((store) => {
+        const _nonEmptyIds: Signal<string[]> = computed((): string[] => {
+            const rows: FormValue = store.rows();
+
+            return ids().reduce((nonEmptyIds: string[], id: string) => {
+                if (
+                    rows.some(
+                        (row: SingularFormValue): boolean => id in row.data,
+                    )
+                ) {
+                    return nonEmptyIds.concat(id);
+                }
+
+                return nonEmptyIds;
+            }, []);
+        });
+
         const value: Signal<Value> = computed(
             (): Value =>
                 store
@@ -106,7 +124,11 @@ export const DatatableStore = signalStore(
                 columns.push('index');
             }
 
-            columns.push(...ids());
+            columns.push(
+                ...(store.showEmptyColumns() || editing()
+                    ? ids()
+                    : _nonEmptyIds()),
+            );
 
             if (!store.compact()) {
                 columns.push('placeholder');
@@ -242,6 +264,10 @@ export const DatatableStore = signalStore(
             patchState(store, {
                 compact,
             });
+        const setShowEmptyColumns = (showEmptyColumns: boolean): void =>
+            patchState(store, {
+                showEmptyColumns,
+            });
 
         const getOptionLabel = (id: string, value: string): string => {
             const scheme: SelectColumnScheme = store.rowScheme()[
@@ -281,6 +307,9 @@ export const DatatableStore = signalStore(
 
         const saveRow = (value: SingularValue): void => {
             const rowScheme: RowScheme = store.rowScheme();
+            const editedValue: SingularValue = structuredClone(
+                store.editedRow()!.data,
+            ) as SingularValue;
 
             store.ids().forEach((id: string): void => {
                 const scheme: ColumnScheme = rowScheme[id] as ColumnScheme;
@@ -289,9 +318,20 @@ export const DatatableStore = signalStore(
                     return;
                 }
 
+                if (value[id] === null || value[id] === '') {
+                    delete editedValue[id];
+
+                    return;
+                }
+
                 switch (scheme.type) {
                     case InputType.Number:
-                        value[id] = parseFloat(value[id] as string);
+                        editedValue[id] = parseFloat(value[id] as string);
+
+                        break;
+
+                    default:
+                        editedValue[id] = value[id];
 
                         break;
                 }
@@ -303,10 +343,7 @@ export const DatatableStore = signalStore(
                         row.editing
                             ? {
                                   ...row,
-                                  data: {
-                                      ...row.data,
-                                      ...value,
-                                  },
+                                  data: editedValue,
                                   editing: false,
                               }
                             : row,
@@ -337,16 +374,7 @@ export const DatatableStore = signalStore(
                 rows: [
                     ...store.rows(),
                     {
-                        data: store.ids().reduce(
-                            (
-                                data: SingularValue,
-                                id: string,
-                            ): SingularValue => ({
-                                ...data,
-                                [id]: null,
-                            }),
-                            {},
-                        ),
+                        data: {},
                         editing: true,
                     },
                 ],
@@ -362,6 +390,7 @@ export const DatatableStore = signalStore(
             setDisabled,
             setEnumerate,
             setCompact,
+            setShowEmptyColumns,
 
             getOptionLabel,
             getAvailableOptions,

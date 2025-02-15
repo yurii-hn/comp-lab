@@ -49,7 +49,7 @@ const initialValue: FormValue = {
     flows: [],
 };
 
-export const DefinitionsTableDialogStore = signalStore(
+export const DefinitionsTableStore = signalStore(
     withState(initialValue),
     withComputed((store) => {
         const value: Signal<Value> = computed(

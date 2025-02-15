@@ -1,0 +1,44 @@
+:host {
+    display: flex;
+    flex-direction: column;
+
+    .header,
+    .footer {
+        display: flex;
+        align-items: center;
+        padding: 20px;
+        border-width: 0;
+        border-style: solid;
+    }
+
+    .header {
+        justify-content: space-between;
+        border-bottom-width: 1px;
+
+        .title {
+            font: var(--mat-sys-title-large);
+            margin: 0;
+        }
+    }
+
+    .body {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 20px;
+
+        .message {
+            font: var(--mat-sys-label-large);
+            white-space: pre-wrap;
+        }
+    }
+
+    .footer {
+        justify-content: flex-end;
+        border-top-width: 1px;
+
+        .button:not(:last-child) {
+            margin-right: 10px;
+        }
+    }
+}

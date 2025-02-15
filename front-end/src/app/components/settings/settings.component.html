@@ -1,0 +1,50 @@
+<div class="header">
+    <p class="title">Settings</p>
+
+    <button mat-mini-fab color="primary" (click)="onClose()">
+        <mat-icon>close</mat-icon>
+    </button>
+</div>
+
+<div class="body" [formGroup]="control">
+    <div class="group">
+        <p class="title">Dashboard</p>
+
+        <div class="group-body" formGroupName="dashboard">
+            <p class="name">Y Axis Range Mode</p>
+
+            <mat-form-field subscriptSizing="dynamic">
+                <mat-select formControlName="yAxisRangeMode">
+                    @for (mode of yAxisRangeModes; track mode.value) {
+                        <mat-option [value]="mode.value">
+                            {{ mode.text }}
+                        </mat-option>
+                    }
+                </mat-select>
+            </mat-form-field>
+
+            <p class="description">
+                <mat-icon>info</mat-icon>
+
+                Sets plots y axis range mode: 'normal' uses data extrema,
+                'tozero' extends to 0.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    <button mat-raised-button class="button" color="accent" (click)="onClose()">
+        Cancel
+    </button>
+
+    <button
+        mat-raised-button
+        class="button"
+        color="primary"
+        [disabled]="control.invalid || control.pristine"
+        (click)="onSave()"
+    >
+        Save
+    </button>
+</div>

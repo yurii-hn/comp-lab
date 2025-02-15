@@ -8,6 +8,8 @@
         mat-mini-fab
         class="button"
         color="primary"
+        matTooltipPosition="right"
+        matTooltip="Open definitions table"
         (click)="onDefinitionsTable()"
     >
         <mat-icon>tune</mat-icon>
@@ -19,12 +21,21 @@
         mat-mini-fab
         class="button"
         color="primary"
+        matTooltipPosition="left"
+        matTooltip="Add new compartment"
         (click)="onCompartmentOpen()"
     >
         <mat-icon>add</mat-icon>
     </button>
 
-    <button mat-mini-fab class="button" color="primary" (click)="onLayout()">
+    <button
+        mat-mini-fab
+        class="button"
+        color="primary"
+        matTooltipPosition="left"
+        matTooltip="Layout the model"
+        (click)="onLayout()"
+    >
         <mat-icon>account_tree</mat-icon>
     </button>
 
@@ -32,6 +43,8 @@
         mat-mini-fab
         class="button"
         color="primary"
+        matTooltipPosition="left"
+        matTooltip="Delete selected element"
         [disabled]="!isElementSelected"
         (click)="onDelete()"
     >
@@ -42,29 +55,70 @@
         mat-mini-fab
         class="button"
         color="primary"
+        matTooltipPosition="left"
+        matTooltip="Clear current workspace"
         [disabled]="!hasCompartments"
         (click)="onClear()"
     >
         <mat-icon>delete_forever</mat-icon>
     </button>
 
-    <button mat-mini-fab class="button" color="primary" (click)="onImport()">
+    <button
+        mat-mini-fab
+        class="button"
+        color="primary"
+        matTooltipPosition="left"
+        matTooltip="Import model"
+        (click)="onImport()"
+    >
         <mat-icon>upload</mat-icon>
     </button>
 
-    <button mat-mini-fab class="button" color="primary" (click)="onExport()">
+    <button
+        mat-mini-fab
+        class="button"
+        color="primary"
+        matTooltipPosition="left"
+        matTooltip="Export model"
+        (click)="onExport()"
+    >
         <mat-icon>download</mat-icon>
+    </button>
+
+    <button
+        mat-mini-fab
+        class="button"
+        color="primary"
+        matTooltipPosition="left"
+        matTooltip="Open app settings"
+        (click)="onSettings()"
+    >
+        <mat-icon>settings</mat-icon>
     </button>
 </div>
 
 <div class="buttons-container bottom-left-buttons">
-    <button mat-mini-fab class="button" color="primary" (click)="onDashboard()">
+    <button
+        mat-mini-fab
+        class="button"
+        color="primary"
+        matTooltipPosition="right"
+        matTooltip="Open dashboard with processing results"
+        (click)="onDashboard()"
+    >
         <mat-icon>query_stats</mat-icon>
     </button>
 </div>
 
 <div class="buttons-container bottom-right-buttons">
-    <button mat-mini-fab class="button" color="primary" (click)="onProcess()">
+    <button
+        mat-mini-fab
+        class="button"
+        color="primary"
+        matTooltipPosition="left"
+        matTooltip="Open model processing panel"
+        (click)="onProcess()"
+    >
         <mat-icon>memory</mat-icon>
     </button>
 </div>

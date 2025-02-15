@@ -1,0 +1,44 @@
+@let title = this.title();
+@let message = this.message();
+@let type = this.type();
+@let confirmText = this.confirmText();
+@let cancelText = this.cancelText();
+
+<div class="header">
+    <p class="title">{{ title }}</p>
+
+    <button mat-mini-fab color="primary" (click)="onClose()">
+        <mat-icon>close</mat-icon>
+    </button>
+</div>
+
+<div class="body">
+    <p class="message">{{ message }}</p>
+
+    <mat-form-field subscriptSizing="dynamic">
+        <mat-label>New Value</mat-label>
+
+        <input
+            matInput
+            placeholder="Enter value"
+            [type]="type"
+            [formControl]="control"
+        />
+    </mat-form-field>
+</div>
+
+<div class="footer">
+    <button mat-raised-button class="button" color="accent" (click)="onClose()">
+        {{ cancelText }}
+    </button>
+
+    <button
+        mat-raised-button
+        class="button"
+        color="primary"
+        [disabled]="control.invalid || control.pristine"
+        (click)="onSave()"
+    >
+        {{ confirmText }}
+    </button>
+</div>

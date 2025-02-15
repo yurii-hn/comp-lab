@@ -33,7 +33,7 @@ const initialState: State = {
     },
 };
 
-export const CompartmentDialogStore = signalStore(
+export const EditCompartmentStore = signalStore(
     withState(initialState),
     withProps(() => {
         const globalStore: Store = inject(Store);

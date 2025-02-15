@@ -18,7 +18,7 @@ import { SamplesService } from 'src/app/services/samples.service';
 import { SnackBarService } from 'src/app/services/snack-bar.service';
 import { AppActions } from 'src/app/state/actions/app.actions';
 import { FilesServiceActions } from 'src/app/state/actions/files.service.actions';
-import { ProcessingDialogActions } from 'src/app/state/actions/processing-dialog.actions';
+import { ProcessingActions } from 'src/app/state/actions/processing.actions';
 import { ProcessingServiceActions } from 'src/app/state/actions/processing.service.actions';
 import {
   selectCurrentModel,
@@ -27,7 +27,7 @@ import {
 
 interface ImportSampleModelProps {
     path: string;
-    createNewWorkspace: boolean;
+    select: boolean;
 }
 
 @Injectable()
@@ -45,12 +45,12 @@ export class AppEffects {
     private readonly importSampleModel$ = createEffect(() =>
         this.actions$.pipe(
             ofType(AppActions.importSampleModel),
-            concatMap(({ path, createNewWorkspace }: ImportSampleModelProps) =>
+            concatMap(({ path, select }: ImportSampleModelProps) =>
                 this.sampleService.getSample<Model>(path).pipe(
                     map((model: Model) =>
                         FilesServiceActions.sampleModelImportSuccess({
                             model,
-                            createNewWorkspace,
+                            select,
                         }),
                     ),
                 ),
@@ -117,7 +117,7 @@ export class AppEffects {
     private readonly processModel$ = createEffect(
         () =>
             this.actions$.pipe(
-                ofType(ProcessingDialogActions.processModel),
+                ofType(ProcessingActions.processModel),
                 concatLatestFrom(
                     (): Observable<Model> =>
                         this.store.select(selectCurrentModel),

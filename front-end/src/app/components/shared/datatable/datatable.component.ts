@@ -105,6 +105,9 @@ export class DatatableComponent
     public readonly compactInput: InputSignal<boolean> = input(false, {
         alias: 'compact',
     });
+    public readonly showEmptyColumnsInput: InputSignal<boolean> = input(false, {
+        alias: 'showEmptyColumns',
+    });
 
     public control: FormGroup = new FormGroup({});
 
@@ -265,6 +268,18 @@ export class DatatableComponent
                 const compact: boolean = this.compactInput();
 
                 untracked((): void => this.localStore.setCompact(compact));
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            (): void => {
+                const showEmptyColumns: boolean = this.showEmptyColumnsInput();
+
+                untracked((): void =>
+                    this.localStore.setShowEmptyColumns(showEmptyColumns),
+                );
             },
             {
                 injector: this.injector,

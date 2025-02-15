@@ -5,8 +5,8 @@ interface UpsertModelFlowProps {
     flow: Flow;
 }
 
-export const FlowDialogActions = createActionGroup({
-    source: 'Flow Dialog Component',
+export const EditFlowActions = createActionGroup({
+    source: 'Edit Flow Component',
     events: {
         'Upsert Flow': props<UpsertModelFlowProps>(),
     },

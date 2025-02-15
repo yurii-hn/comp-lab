@@ -22,6 +22,7 @@
         <app-datatable
             formControlName="selectedConstants"
             [rowScheme]="constantsRowScheme"
+            [showEmptyColumns]="true"
         />
     </div>
 
@@ -29,7 +30,11 @@
         <div class="header">
             <div class="title">Solution Data</div>
 
-            <button mat-mini-fab (click)="onDataImport()">
+            <button
+                mat-mini-fab
+                matTooltip="Import data from file"
+                (click)="onDataImport()"
+            >
                 <mat-icon>upload_file</mat-icon>
             </button>
         </div>

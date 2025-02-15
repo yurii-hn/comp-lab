@@ -23,36 +23,34 @@ import { skip } from 'rxjs';
 import {
   CompartmentDefinition,
   ConstantDefinition,
-  DefinitionsTableDialogStore,
+  DefinitionsTableStore,
   FlowDefinition,
   FormValue,
   InterventionDefinition,
-} from 'src/app/components/definitions-table-dialog/definitions-table-dialog.store';
+} from 'src/app/components/definitions-table/definitions-table.store';
 import { DatatableComponent } from 'src/app/components/shared/datatable/datatable.component';
 import { RowScheme } from 'src/app/components/shared/datatable/datatable.store';
 import { DefinitionsTableActions } from 'src/app/state/actions/definitions-table.actions';
 import { selectCurrentModel } from 'src/app/state/selectors/workspace.selectors';
 
 @Component({
-    selector: 'app-definitions-table-dialog',
+    selector: 'app-definitions-table',
     imports: [
         ReactiveFormsModule,
         MatIconModule,
         MatButtonModule,
         DatatableComponent,
     ],
-    providers: [DefinitionsTableDialogStore],
-    templateUrl: './definitions-table-dialog.component.html',
-    styleUrls: ['./definitions-table-dialog.component.scss'],
+    providers: [DefinitionsTableStore],
+    templateUrl: './definitions-table.component.html',
+    styleUrls: ['./definitions-table.component.scss'],
 })
-export class DefinitionsTableDialogComponent implements OnInit {
+export class DefinitionsTableComponent implements OnInit {
     private readonly injector: Injector = inject(Injector);
     private readonly store: Store = inject(Store);
-    private readonly localStore = inject(DefinitionsTableDialogStore);
-    private readonly dialogRef: MatDialogRef<
-        DefinitionsTableDialogComponent,
-        void
-    > = inject(MatDialogRef<DefinitionsTableDialogComponent, void>);
+    private readonly localStore = inject(DefinitionsTableStore);
+    private readonly dialogRef: MatDialogRef<DefinitionsTableComponent, void> =
+        inject(MatDialogRef<DefinitionsTableComponent, void>);
 
     public readonly control: FormGroup = new FormGroup({
         compartments: new FormControl<(Compartment | CompartmentDefinition)[]>(

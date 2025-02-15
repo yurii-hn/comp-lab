@@ -1,4 +1,4 @@
-import { computed, effect, inject, Signal, untracked } from '@angular/core';
+import { computed, inject, Signal } from '@angular/core';
 import { Compartment, Flow } from '@core/types/model.types';
 import {
   areEqual,
@@ -101,7 +101,147 @@ export const AppStore = signalStore(
         };
     }),
     withMethods((store) => {
-        const initGraph = (container: HTMLElement): void =>
+        const _setSelectedElement = (
+            element: NodeSingular | EdgeSingular | null,
+        ): void =>
+            patchState(store, {
+                selectedElement: element,
+            });
+
+        const _setOpenedElement = (
+            element: NodeSingular | EdgeSingular | null,
+        ): void =>
+            patchState(store, {
+                openedElement: element,
+            });
+
+        const _initCytoscapeListeners = (): void => {
+            store._subscription.unsubscribe();
+            store._subscription = new Subscription();
+
+            const cytoscapeObj: cytoscape.Core =
+                store._cytoscapeObj() as cytoscape.Core;
+            const edgehandles: EdgeHandlesInstance =
+                cytoscapeObj!.edgehandles();
+
+            cytoscapeObj!.dom();
+
+            const windowResizeSub: Subscription = observeResizes(
+                window.document.body,
+            )
+                .pipe(
+                    debounceTime(500),
+                    tap((): void => store._graphService.layout(cytoscapeObj)),
+                )
+                .subscribe();
+
+            const selectElementSub: Subscription = fromCytoscapeObjEvent(
+                cytoscapeObj,
+                'select',
+                'node.compartment[componentRef], edge.flow[componentRef]',
+            )
+                .pipe(
+                    tap({
+                        next: (params: CytoscapeEventHandlerFnParams) => {
+                            const element: NodeSingular | EdgeSingular =
+                                params[0].target;
+
+                            cytoscapeObj
+                                .elements(':selected')
+                                .not(element)
+                                .unselect();
+
+                            _setSelectedElement(element);
+                        },
+                        unsubscribe: (): void => _setSelectedElement(null),
+                    }),
+                )
+                .subscribe();
+
+            const unselectElementSub: Subscription = fromCytoscapeObjEvent(
+                cytoscapeObj,
+                'unselect',
+                'node.compartment[componentRef], edge.flow[componentRef]',
+            )
+                .pipe(
+                    tap({
+                        next: () => _setSelectedElement(null),
+                    }),
+                )
+                .subscribe();
+
+            const openElementSub: Subscription = fromCytoscapeObjEvent(
+                cytoscapeObj,
+                'dblclick',
+                'node.compartment[componentRef], edge.flow[componentRef]',
+            )
+                .pipe(
+                    tap({
+                        next: (params: CytoscapeEventHandlerFnParams) =>
+                            _setOpenedElement(params[0].target),
+                        unsubscribe: (): void => _setOpenedElement(null),
+                    }),
+                )
+                .subscribe();
+
+            const startFlowCreationSub: Subscription = fromCytoscapeObjEvent(
+                cytoscapeObj,
+                'cxttap',
+                'node.compartment[componentRef]',
+            )
+                .pipe(
+                    tap((params: CytoscapeEventHandlerFnParams): void => {
+                        const node: NodeSingular = params[0].target;
+
+                        edgehandles.start(node);
+                    }),
+                )
+                .subscribe();
+
+            const createFlowSub: Subscription = fromCytoscapeObjEvent(
+                cytoscapeObj,
+                'ehcomplete',
+            )
+                .pipe(
+                    tap({
+                        next: (params: CytoscapeEventHandlerFnParams) =>
+                            _setOpenedElement(params[3]),
+                        unsubscribe: (): void => _setOpenedElement(null),
+                    }),
+                )
+                .subscribe();
+
+            const updateGraphSub: Subscription = store._globalStore
+                .select(selectCurrentWorkspace)
+                .pipe(
+                    map(
+                        (workspace: Workspace): GraphModel => ({
+                            compartments: workspace.model.compartments,
+                            flows: workspace.model.flows,
+                        }),
+                    ),
+                    distinctUntilChanged(areModelsEqual),
+                    bufferCount(2, 1),
+                    tap(([previousModel, currentModel]: GraphModel[]): void =>
+                        store._graphService.updateGraph(
+                            previousModel,
+                            currentModel,
+                            cytoscapeObj,
+                        ),
+                    ),
+                )
+                .subscribe();
+
+            store._subscription.add(windowResizeSub);
+            store._subscription.add(selectElementSub);
+            store._subscription.add(unselectElementSub);
+            store._subscription.add(openElementSub);
+            store._subscription.add(startFlowCreationSub);
+            store._subscription.add(createFlowSub);
+            store._subscription.add(updateGraphSub);
+        };
+
+        const initGraph = (container: HTMLElement): void => {
             patchState(store, {
                 _cytoscapeObj: cytoscape({
                     container: container,
@@ -109,19 +249,8 @@ export const AppStore = signalStore(
                 }),
             });
 
-        const setSelectedElement = (
-            element: NodeSingular | EdgeSingular | null,
-        ): void =>
-            patchState(store, {
-                selectedElement: element,
-            });
-
-        const setOpenedElement = (
-            element: NodeSingular | EdgeSingular | null,
-        ): void =>
-            patchState(store, {
-                openedElement: element,
-            });
+            _initCytoscapeListeners();
+        };
 
         const resetOpenedElement = (): void =>
             patchState(store, {
@@ -142,174 +271,14 @@ export const AppStore = signalStore(
             initGraph,
             layoutGraph,
             resetOpenedElement,
-
-            _setSelectedElement: setSelectedElement,
-            _setOpenedElement: setOpenedElement,
         };
     }),
     withHooks((store) => {
-        const onInit = (): void => {
-            // TODO: Refactor this
-            effect((): void => {
-                const cytoscapeObj: cytoscape.Core | null =
-                    store._cytoscapeObj();
-
-                untracked((): void => {
-                    store._subscription.unsubscribe();
-                    store._subscription = new Subscription();
-
-                    if (!cytoscapeObj) {
-                        return;
-                    }
-
-                    const edgehandles: EdgeHandlesInstance =
-                        cytoscapeObj!.edgehandles();
-
-                    cytoscapeObj!.dom();
-
-                    const windowResizeSub: Subscription = observeResizes(
-                        window.document.body,
-                    )
-                        .pipe(
-                            debounceTime(500),
-                            tap((): void =>
-                                store._graphService.layout(cytoscapeObj),
-                            ),
-                        )
-                        .subscribe();
-
-                    const selectElementSub: Subscription =
-                        fromCytoscapeObjEvent(
-                            cytoscapeObj,
-                            'select',
-                            'node.compartment[componentRef], edge.flow[componentRef]',
-                        )
-                            .pipe(
-                                tap({
-                                    next: (
-                                        params: CytoscapeEventHandlerFnParams,
-                                    ) => {
-                                        const element:
-                                            | NodeSingular
-                                            | EdgeSingular = params[0].target;
-
-                                        cytoscapeObj
-                                            .elements(':selected')
-                                            .not(element)
-                                            .unselect();
-
-                                        store._setSelectedElement(element);
-                                    },
-                                    unsubscribe: (): void =>
-                                        store._setSelectedElement(null),
-                                }),
-                            )
-                            .subscribe();
-
-                    const unselectElementSub: Subscription =
-                        fromCytoscapeObjEvent(
-                            cytoscapeObj,
-                            'unselect',
-                            'node.compartment[componentRef], edge.flow[componentRef]',
-                        )
-                            .pipe(
-                                tap({
-                                    next: () => store._setSelectedElement(null),
-                                }),
-                            )
-                            .subscribe();
-
-                    const openElementSub: Subscription = fromCytoscapeObjEvent(
-                        cytoscapeObj,
-                        'dblclick',
-                        'node.compartment[componentRef], edge.flow[componentRef]',
-                    )
-                        .pipe(
-                            tap({
-                                next: (params: CytoscapeEventHandlerFnParams) =>
-                                    store._setOpenedElement(params[0].target),
-                                unsubscribe: (): void =>
-                                    store._setOpenedElement(null),
-                            }),
-                        )
-                        .subscribe();
-
-                    const startFlowCreationSub: Subscription =
-                        fromCytoscapeObjEvent(
-                            cytoscapeObj,
-                            'cxttap',
-                            'node.compartment[componentRef]',
-                        )
-                            .pipe(
-                                tap(
-                                    (
-                                        params: CytoscapeEventHandlerFnParams,
-                                    ): void => {
-                                        const node: NodeSingular =
-                                            params[0].target;
-
-                                        edgehandles.start(node);
-                                    },
-                                ),
-                            )
-                            .subscribe();
-
-                    const createFlowSub: Subscription = fromCytoscapeObjEvent(
-                        cytoscapeObj,
-                        'ehcomplete',
-                    )
-                        .pipe(
-                            tap({
-                                next: (params: CytoscapeEventHandlerFnParams) =>
-                                    store._setOpenedElement(params[3]),
-                                unsubscribe: (): void =>
-                                    store._setOpenedElement(null),
-                            }),
-                        )
-                        .subscribe();
-
-                    const updateGraphSub: Subscription = store._globalStore
-                        .select(selectCurrentWorkspace)
-                        .pipe(
-                            map(
-                                (workspace: Workspace): GraphModel => ({
-                                    compartments: workspace.model.compartments,
-                                    flows: workspace.model.flows,
-                                }),
-                            ),
-                            distinctUntilChanged(areModelsEqual),
-                            bufferCount(2, 1),
-                            tap(
-                                ([
-                                    previousModel,
-                                    currentModel,
-                                ]: GraphModel[]): void =>
-                                    store._graphService.updateGraph(
-                                        previousModel,
-                                        currentModel,
-                                        cytoscapeObj,
-                                    ),
-                            ),
-                        )
-                        .subscribe();
-
-                    store._subscription.add(windowResizeSub);
-                    store._subscription.add(selectElementSub);
-                    store._subscription.add(unselectElementSub);
-                    store._subscription.add(openElementSub);
-                    store._subscription.add(startFlowCreationSub);
-                    store._subscription.add(createFlowSub);
-                    store._subscription.add(updateGraphSub);
-                });
-            });
-        };
-
         const onDestroy = (): void => {
             store._subscription.unsubscribe();
         };
 
         return {
-            onInit,
             onDestroy,
         };
     }),

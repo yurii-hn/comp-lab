@@ -1,14 +1,23 @@
 import { Compartment, Flow, Model } from '@core/types/model.types';
 import { createReducer, on } from '@ngrx/store';
 import { AppActions } from 'src/app/state/actions/app.actions';
-import { CompartmentDialogActions } from 'src/app/state/actions/compartment-dialog.actions';
+import { EditCompartmentActions } from 'src/app/state/actions/compartment.actions';
 import { DefinitionsTableActions } from 'src/app/state/actions/definitions-table.actions';
 import { FilesServiceActions } from 'src/app/state/actions/files.service.actions';
-import { FlowDialogActions } from 'src/app/state/actions/flow-dialog.actions';
+import { EditFlowActions } from 'src/app/state/actions/flow.actions';
+import { LocalStorageActions } from 'src/app/state/actions/local-storage.actions';
 import { WorkspaceActions } from 'src/app/state/actions/workspace.actions';
+
+interface LoadWorkspacesProps {
+    state: WorkspacesState;
+}
 
 interface AddWorkspaceProps {
     model?: Model;
+}
+
+interface RenameWorkspaceProps {
+    name: string;
 }
 
 interface SelectWorkspaceProps {
@@ -21,7 +30,7 @@ interface ReplaceModelProps {
 
 interface ImportSampleModelProps {
     model: Model;
-    createNewWorkspace: boolean;
+    select: boolean;
 }
 
 interface ClearModelProps {
@@ -52,6 +61,7 @@ export interface Workspace {
 export interface WorkspacesState {
     workspaces: Workspace[];
     selectedWorkspaceName: string;
+    _nextEntityId: number;
 }
 
 export const workspacesFeatureKey = 'workspaces';
@@ -69,10 +79,20 @@ const initialState: WorkspacesState = {
         },
     ],
     selectedWorkspaceName: 'Workspace 1',
+    _nextEntityId: 2,
 };
 
 export const workspacesReducer = createReducer<WorkspacesState>(
     initialState,
+    on(
+        LocalStorageActions.loadWorkspaces,
+        (
+            _: WorkspacesState,
+            { state }: LoadWorkspacesProps,
+        ): WorkspacesState => ({
+            ...state,
+        }),
+    ),
     on(
         WorkspaceActions.addWorkspace,
         (
@@ -80,7 +100,7 @@ export const workspacesReducer = createReducer<WorkspacesState>(
             { model }: AddWorkspaceProps,
         ): WorkspacesState => {
             const newWorkspace: Workspace = {
-                name: `Workspace ${state.workspaces.length + 1}`,
+                name: `Workspace ${state._nextEntityId}`,
                 model: model ?? {
                     compartments: [],
                     constants: [],
@@ -90,8 +110,37 @@ export const workspacesReducer = createReducer<WorkspacesState>(
             };
 
             return {
+                ...state,
                 workspaces: [...state.workspaces, newWorkspace],
                 selectedWorkspaceName: newWorkspace.name,
+                _nextEntityId: state._nextEntityId + 1,
+            };
+        },
+    ),
+    on(
+        WorkspaceActions.renameWorkspace,
+        (
+            state: WorkspacesState,
+            { name }: RenameWorkspaceProps,
+        ): WorkspacesState => {
+            const currentWorkspaceIndex: number = state.workspaces.findIndex(
+                (workspace: Workspace): boolean =>
+                    workspace.name === state.selectedWorkspaceName,
+            );
+            const currentWorkspace: Workspace =
+                state.workspaces[currentWorkspaceIndex];
+
+            return {
+                ...state,
+                workspaces: [
+                    ...state.workspaces.slice(0, currentWorkspaceIndex),
+                    {
+                        ...currentWorkspace,
+                        name,
+                    },
+                    ...state.workspaces.slice(currentWorkspaceIndex + 1),
+                ],
+                selectedWorkspaceName: name,
             };
         },
     ),
@@ -146,26 +195,35 @@ export const workspacesReducer = createReducer<WorkspacesState>(
         FilesServiceActions.sampleModelImportSuccess,
         (
             state: WorkspacesState,
-            { model, createNewWorkspace }: ImportSampleModelProps,
+            { model, select }: ImportSampleModelProps,
         ): WorkspacesState => {
-            if (createNewWorkspace) {
-                const newWorkspace: Workspace = {
-                    name: `Workspace ${state.workspaces.length + 1}`,
-                    model,
-                };
-
-                return {
-                    workspaces: [...state.workspaces, newWorkspace],
-                    selectedWorkspaceName: newWorkspace.name,
-                };
-            }
-
             const currentWorkspaceIndex: number = state.workspaces.findIndex(
                 (workspace: Workspace): boolean =>
                     workspace.name === state.selectedWorkspaceName,
             );
             const currentWorkspace: Workspace =
                 state.workspaces[currentWorkspaceIndex];
+
+            const isWorkspaceEmpty: boolean =
+                currentWorkspace.model.compartments.length === 0 &&
+                currentWorkspace.model.constants.length === 0 &&
+                currentWorkspace.model.flows.length === 0 &&
+                currentWorkspace.model.interventions.length === 0;
+
+            if (!isWorkspaceEmpty) {
+                const newWorkspace: Workspace = {
+                    name: `Workspace ${state._nextEntityId}`,
+                    model,
+                };
+
+                return {
+                    workspaces: [...state.workspaces, newWorkspace],
+                    selectedWorkspaceName: select
+                        ? newWorkspace.name
+                        : state.selectedWorkspaceName,
+                    _nextEntityId: state._nextEntityId + 1,
+                };
+            }
 
             return {
                 ...state,
@@ -192,18 +250,17 @@ export const workspacesReducer = createReducer<WorkspacesState>(
                     workspace.name === state.selectedWorkspaceName,
             );
             const newSelectedWorkspaceName: string =
-                state.workspaces[Math.max(currentWorkspaceIndex - 1, 0)].name;
+                state.workspaces[
+                    currentWorkspaceIndex === 0
+                        ? 1
+                        : Math.max(currentWorkspaceIndex - 1, 0)
+                ].name;
 
             return {
                 ...state,
                 workspaces: [
                     ...state.workspaces.slice(0, currentWorkspaceIndex),
-                    ...state.workspaces.slice(currentWorkspaceIndex + 1).map(
-                        (workspace: Workspace, index: number): Workspace => ({
-                            ...workspace,
-                            name: `Workspace ${currentWorkspaceIndex + index + 1}`,
-                        }),
-                    ),
+                    ...state.workspaces.slice(currentWorkspaceIndex + 1),
                 ],
                 selectedWorkspaceName: newSelectedWorkspaceName,
             };
@@ -243,7 +300,7 @@ export const workspacesReducer = createReducer<WorkspacesState>(
         },
     ),
     on(
-        CompartmentDialogActions.upsertCompartment,
+        EditCompartmentActions.upsertCompartment,
         (
             state: WorkspacesState,
             { compartment }: UpsertModelCompartmentProps,
@@ -363,7 +420,7 @@ export const workspacesReducer = createReducer<WorkspacesState>(
         },
     ),
     on(
-        FlowDialogActions.upsertFlow,
+        EditFlowActions.upsertFlow,
         (
             state: WorkspacesState,
             { flow }: UpsertModelFlowProps,

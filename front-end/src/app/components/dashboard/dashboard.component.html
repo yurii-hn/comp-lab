@@ -28,13 +28,9 @@
             mat-mini-fab
             class="button"
             color="primary"
-            [disabled]="noRuns"
-            (click)="remove()"
+            matTooltip="Import run"
+            (click)="add()"
         >
-            <mat-icon>delete</mat-icon>
-        </button>
-
-        <button mat-mini-fab class="button" color="primary" (click)="add()">
             <mat-icon>upload</mat-icon>
         </button>
 
@@ -42,6 +38,7 @@
             mat-mini-fab
             class="button"
             color="primary"
+            matTooltip="Export current run"
             [disabled]="noRuns"
             (click)="get()"
         >
@@ -50,10 +47,25 @@
 
         <button
             mat-mini-fab
-            class="close-button"
             color="primary"
-            (click)="onClose()"
+            matTooltip="Rename current run"
+            (click)="edit()"
         >
+            <mat-icon>edit</mat-icon>
+        </button>
+
+        <button
+            mat-mini-fab
+            class="button"
+            color="primary"
+            matTooltip="Remove current run"
+            [disabled]="noRuns"
+            (click)="remove()"
+        >
+            <mat-icon>delete</mat-icon>
+        </button>
+
+        <button mat-mini-fab color="primary" (click)="onClose()">
             <mat-icon>close</mat-icon>
         </button>
     </div>

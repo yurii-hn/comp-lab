@@ -24,6 +24,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import {
+  MAT_TOOLTIP_DEFAULT_OPTIONS,
+  MatTooltipModule,
+} from '@angular/material/tooltip';
+import { TOOLTIP_DEFAULT_OPTIONS } from '@core/constants';
 import { OnChangeFn, OnTouchedFn } from '@core/types/util.types';
 import { skip } from 'rxjs';
 import {
@@ -42,11 +47,16 @@ import { RowScheme } from 'src/app/components/shared/datatable/datatable.store';
         MatIconModule,
         MatButtonModule,
         MatFormFieldModule,
+        MatTooltipModule,
         MatInputModule,
         DatatableComponent,
     ],
     providers: [
         PIParametersInputStore,
+        {
+            provide: MAT_TOOLTIP_DEFAULT_OPTIONS,
+            useValue: TOOLTIP_DEFAULT_OPTIONS,
+        },
         {
             provide: NG_VALUE_ACCESSOR,
             useExisting: ParametersIdentificationParametersInputComponent,
