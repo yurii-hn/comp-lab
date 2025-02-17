@@ -1,0 +1,45 @@
+:host {
+    display: block;
+    overflow: auto;
+    padding: 20px;
+
+    .section {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+
+        .title {
+            font: var(--mat-sys-title-large);
+            margin: 0;
+        }
+
+        .body {
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            gap: 10px;
+
+            .group {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+
+                .title {
+                    font: var(--mat-sys-title-medium);
+                    margin: 0;
+                }
+
+                .body {
+                    display: flex;
+                    flex-direction: column;
+                    padding: 10px;
+                    gap: 10px;
+
+                    .equation {
+                        font: var(--mat-sys-headline-medium);
+                    }
+                }
+            }
+        }
+    }
+}

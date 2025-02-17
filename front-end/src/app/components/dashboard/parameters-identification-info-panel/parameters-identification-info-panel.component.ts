@@ -15,6 +15,7 @@ import { AngularSplitModule } from 'angular-split';
 import {
   DisplayData,
   PIInfoPanelStore,
+  SplitAreasSizes,
 } from 'src/app/components/dashboard/parameters-identification-info-panel/parameters-identification-info-panel.store';
 import { DatatableComponent } from 'src/app/components/shared/datatable/datatable.component';
 import { RowScheme } from 'src/app/components/shared/datatable/datatable.store';
@@ -46,6 +47,8 @@ export class ParametersIdentificationInfoPanelComponent implements OnInit {
     > = this.localStore.selectedConstantsRowScheme;
     public readonly dataRowScheme: Signal<RowScheme> =
         this.localStore.dataRowScheme;
+    public readonly splitSizes: Signal<SplitAreasSizes> =
+        this.localStore.splitAreasSizes;
 
     public ngOnInit(): void {
         effect(
@@ -58,5 +61,9 @@ export class ParametersIdentificationInfoPanelComponent implements OnInit {
                 injector: this.injector,
             },
         );
+    }
+
+    public onGutterDBClick(): void {
+        this.localStore.alternateSplitAreasSizes();
     }
 }

@@ -1,0 +1,71 @@
+@let compartmentsExpressions = this.compartmentsExpressions();
+@let constantsExpressions = this.constantsExpressions();
+@let interventionsExpressions = this.interventionsExpressions();
+
+<div class="section">
+    @if (
+        compartmentsExpressions.length ||
+        constantsExpressions.length ||
+        interventionsExpressions.length
+    ) {
+        <p class="title">Model equations</p>
+
+        <div class="body">
+            @if (compartmentsExpressions.length) {
+                <div class="group">
+                    <p class="title">Compartments</p>
+
+                    <div class="body">
+                        @for (
+                            expression of compartmentsExpressions;
+                            track expression
+                        ) {
+                            <app-equation-display
+                                class="equation"
+                                [equation]="expression"
+                            />
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (constantsExpressions.length) {
+                <div class="group">
+                    <p class="title">Constants</p>
+
+                    <div class="body">
+                        @for (
+                            expression of constantsExpressions;
+                            track expression
+                        ) {
+                            <app-equation-display
+                                class="equation"
+                                [equation]="expression"
+                            />
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (interventionsExpressions.length) {
+                <div class="group">
+                    <p class="title">Interventions</p>
+
+                    <div class="body">
+                        @for (
+                            expression of interventionsExpressions;
+                            track expression
+                        ) {
+                            <app-equation-display
+                                class="equation"
+                                [equation]="expression"
+                            />
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    } @else {
+        <p class="title">&lt;Model is empty&gt;</p>
+    }
+</div>

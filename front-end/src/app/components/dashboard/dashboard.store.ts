@@ -12,7 +12,14 @@ import {
   PIData,
   SimulationData,
 } from '@core/types/run.types';
-import { signalStore, withComputed, withProps, withState } from '@ngrx/signals';
+import {
+  patchState,
+  signalStore,
+  withComputed,
+  withMethods,
+  withProps,
+  withState,
+} from '@ngrx/signals';
 import { Store } from '@ngrx/store';
 import { Config, Layout, Data as PlotData } from 'plotly.js-dist-min';
 import { DashboardSettings } from 'src/app/state/reducers/settings.reducer';
@@ -24,17 +31,27 @@ import {
 } from 'src/app/state/selectors/runs.selectors';
 import { selectDashboardSettings } from 'src/app/state/selectors/settings.selectors';
 
+export interface SplitAreasSizes {
+    plots: number;
+    info: number;
+}
+
 export interface Plot {
     data: PlotData[];
     layout: Partial<Layout>;
 }
 
 export interface State {
+    splitAreasSizes: SplitAreasSizes;
     plotsConfig: Partial<Config>;
     plotStyle: Record<string, string>;
 }
 
 const initialState: State = {
+    splitAreasSizes: {
+        plots: 70,
+        info: 30,
+    },
     plotsConfig: {},
     plotStyle: {
         position: 'relative',
@@ -48,29 +65,34 @@ export const DashboardStore = signalStore(
     withProps(() => {
         const globalStore: Store = inject(Store);
 
+        const settings: Signal<DashboardSettings> = globalStore.selectSignal(
+            selectDashboardSettings,
+        );
+
+        const noRuns: Signal<boolean> =
+            globalStore.selectSignal(selectIsRunsEmpty);
+
+        const runsNames: Signal<string[]> =
+            globalStore.selectSignal(selectRunNames);
+
+        const currentRunName: Signal<string | null> =
+            globalStore.selectSignal(selectCurrentRunName);
+
+        const currentRunData: Signal<Data | null> =
+            globalStore.selectSignal(selectCurrentRunData);
+
         return {
-            _globalStore: globalStore,
+            settings,
+            noRuns,
+            runsNames,
+            currentRunName,
+            currentRunData,
         };
     }),
     withComputed((store) => {
-        const settings: Signal<DashboardSettings> =
-            store._globalStore.selectSignal(selectDashboardSettings);
-
-        const noRuns: Signal<boolean> =
-            store._globalStore.selectSignal(selectIsRunsEmpty);
-
-        const runsNames: Signal<string[]> =
-            store._globalStore.selectSignal(selectRunNames);
-
-        const currentRunName: Signal<string | null> =
-            store._globalStore.selectSignal(selectCurrentRunName);
-
-        const currentRunData: Signal<Data | null> =
-            store._globalStore.selectSignal(selectCurrentRunData);
-
         const currentRunPlotsData: Signal<Plot[]> = computed((): Plot[] => {
-            const dashboardSettings: DashboardSettings = settings();
-            const data: Data | null = currentRunData();
+            const dashboardSettings: DashboardSettings = store.settings();
+            const data: Data | null = store.currentRunData();
 
             if (!data) {
                 return [];
@@ -95,12 +117,27 @@ export const DashboardStore = signalStore(
         });
 
         return {
-            settings,
-            noRuns,
-            runsNames,
-            currentRunName,
-            currentRunData,
             currentRunPlotsData,
+        };
+    }),
+    withMethods((store) => {
+        let alternator: 1 | -1 = -1;
+
+        const alternateSplitAreasSizes = (): void => {
+            const splitAreasSizes: SplitAreasSizes = store.splitAreasSizes();
+
+            patchState(store, {
+                splitAreasSizes: {
+                    plots: splitAreasSizes.plots + 1e-10 * alternator,
+                    info: splitAreasSizes.info - 1e-10 * alternator,
+                },
+            });
+
+            alternator *= -1;
+        };
+
+        return {
+            alternateSplitAreasSizes,
         };
     }),
 );

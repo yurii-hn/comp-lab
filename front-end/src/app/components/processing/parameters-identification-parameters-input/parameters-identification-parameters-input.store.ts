@@ -42,14 +42,14 @@ export interface FormValue {
     data: Record<string, number>[] | null;
 }
 
-const initialValue: FormValue = {
+const initialState: FormValue = {
     nodesAmount: null,
     selectedConstants: null,
     data: null,
 };
 
 export const PIParametersInputStore = signalStore(
-    withState(initialValue),
+    withState(initialState),
     withProps(() => {
         const globalStore: Store = inject(Store);
 

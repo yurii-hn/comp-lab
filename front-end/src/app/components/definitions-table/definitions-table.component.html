@@ -1,7 +1,6 @@
 @let compartmentsRowScheme = this.compartmentsRowScheme();
 @let constantsRowScheme = this.constantsRowScheme();
 @let interventionsRowScheme = this.interventionsRowScheme();
-@let flowsRowScheme = this.flowsRowScheme();
 
 <div class="header">
     <p class="title">Definitions Table</p>
@@ -37,12 +36,6 @@
             formControlName="interventions"
             [rowScheme]="interventionsRowScheme"
         />
-    </div>
-
-    <div class="section flows">
-        <div class="title">Flows</div>
-
-        <app-datatable formControlName="flows" [rowScheme]="flowsRowScheme" />
     </div>
 </div>
 

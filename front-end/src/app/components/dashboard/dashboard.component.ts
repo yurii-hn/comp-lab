@@ -14,11 +14,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
-import {
-  MAT_TOOLTIP_DEFAULT_OPTIONS,
-  MatTooltipModule,
-} from '@angular/material/tooltip';
-import { TOOLTIP_DEFAULT_OPTIONS } from '@core/constants';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Data } from '@core/types/run.types';
 import { uniqueName } from '@core/validators';
 import { Store } from '@ngrx/store';
@@ -29,6 +25,7 @@ import { combineLatest, filter, take, tap } from 'rxjs';
 import {
   DashboardStore,
   Plot,
+  SplitAreasSizes,
 } from 'src/app/components/dashboard/dashboard.store';
 import { OptimalControlInfoPanelComponent } from 'src/app/components/dashboard/optimal-control-info-panel/optimal-control-info-panel.component';
 import { ParametersIdentificationInfoPanelComponent } from 'src/app/components/dashboard/parameters-identification-info-panel/parameters-identification-info-panel.component';
@@ -53,13 +50,7 @@ PlotlyModule.plotlyjs = PlotlyJS;
         OptimalControlInfoPanelComponent,
         ParametersIdentificationInfoPanelComponent,
     ],
-    providers: [
-        {
-            provide: MAT_TOOLTIP_DEFAULT_OPTIONS,
-            useValue: TOOLTIP_DEFAULT_OPTIONS,
-        },
-        DashboardStore,
-    ],
+    providers: [DashboardStore],
     templateUrl: './dashboard.component.html',
     styleUrls: ['./dashboard.component.scss'],
 })
@@ -75,6 +66,8 @@ export class DashboardComponent implements OnInit {
     private readonly plotsComponents: Signal<readonly PlotlyComponent[]> =
         viewChildren(PlotlyComponent);
 
+    public readonly splitSizes: Signal<SplitAreasSizes> =
+        this.localStore.splitAreasSizes;
     public readonly noRuns: Signal<boolean> = this.localStore.noRuns;
     public readonly names: Signal<string[]> = this.localStore.runsNames;
     public readonly name: Signal<string | null> =
@@ -126,6 +119,10 @@ export class DashboardComponent implements OnInit {
                 injector: this.injector,
             },
         );
+    }
+
+    public onGutterDBClick(): void {
+        this.localStore.alternateSplitAreasSizes();
     }
 
     public onClose(): void {

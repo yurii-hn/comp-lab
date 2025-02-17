@@ -1,18 +1,19 @@
 {
     "cSpell.words": [
-        "cytoscape",
-        "Datatable",
-        "dydt",
-        "edgehandles",
-        "jsonify",
-        "klay",
-        "lambdify",
-        "nsimplify",
-        "outgoers",
-        "Plotly",
-        "plotlyjs",
-        "sympify",
-        "sympy"
+      "cytoscape",
+      "Datatable",
+      "dydt",
+      "edgehandles",
+      "jsonify",
+      "KATEX",
+      "klay",
+      "lambdify",
+      "nsimplify",
+      "outgoers",
+      "Plotly",
+      "plotlyjs",
+      "sympify",
+      "sympy"
     ],
     "python.analysis.autoImportCompletions": true,
     "python.analysis.extraPaths": [

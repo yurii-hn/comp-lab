@@ -36,15 +36,22 @@
         white-space: pre;
     }
 
-    as-split.as-init {
+    as-split {
+        --as-transition-duration: 300ms;
+        --as-gutter-background-color: var(--mat-sys-on-surface);
+
         .as-split-gutter {
             &:hover {
-                filter: brightness(0.8);
+                filter: brightness(
+                    calc(1 - var(--mat-sys-hover-state-layer-opacity))
+                );
             }
 
             &.as-dragged,
             &:active {
-                filter: brightness(0.6);
+                filter: brightness(
+                    calc(1 - var(--mat-sys-pressed-state-layer-opacity))
+                );
             }
         }
     }

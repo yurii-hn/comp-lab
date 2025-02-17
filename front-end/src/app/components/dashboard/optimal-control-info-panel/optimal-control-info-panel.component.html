@@ -1,13 +1,15 @@
 @let displayData = this.displayData();
 @let interventionsRowScheme = this.interventionsRowScheme();
+@let splitSizes = this.splitSizes();
 
 <as-split
     direction="vertical"
-    [gutterSize]="7"
-    [gutterDblClickDuration]="400"
-    [restrictMove]="true"
+    useTransition
+    gutterSize="7"
+    gutterDblClickDuration="400"
+    (gutterDblClick)="onGutterDBClick()"
 >
-    <as-split-area class="split-area" [size]="50">
+    <as-split-area class="split-area" [size]="splitSizes.results">
         <div class="wrapper">
             <div class="group">
                 <div class="title">Result</div>
@@ -48,7 +50,7 @@
         </div>
     </as-split-area>
 
-    <as-split-area class="split-area" [size]="50">
+    <as-split-area class="split-area" [size]="splitSizes.parameters">
         <div class="wrapper">
             <div class="group">
                 <div class="title">Parameters</div>

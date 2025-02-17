@@ -1,3 +1,4 @@
+@let splitSizes = this.splitSizes();
 @let noRuns = this.noRuns();
 @let names = this.names();
 @let name = this.name();
@@ -71,8 +72,14 @@
     </div>
 </div>
 
-<as-split class="content" gutterSize="7" gutterDblClickDuration="400">
-    <as-split-area class="split-area" size="70">
+<as-split
+    class="content"
+    useTransition
+    gutterSize="7"
+    gutterDblClickDuration="400"
+    (gutterDblClick)="onGutterDBClick()"
+>
+    <as-split-area class="split-area" [size]="splitSizes.plots">
         <div class="plots" [class.no-data]="!plots.length">
             @for (plot of plots; track plot) {
                 <plotly-plot
@@ -88,7 +95,7 @@
         </div>
     </as-split-area>
 
-    <as-split-area class="split-area" size="30">
+    <as-split-area class="split-area" [size]="splitSizes.info">
         @if (data) {
             @switch (data.type) {
                 @case ("Simulation") {

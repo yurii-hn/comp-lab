@@ -36,10 +36,16 @@ cytoscape.use(klay);
 cytoscape.use(edgehandles);
 cytoscape.use(dom);
 
+export interface SplitAreasSizes {
+    side: number;
+    main: number;
+}
+
 export interface State {
     _cytoscapeObj: cytoscape.Core | null;
     selectedElement: NodeSingular | EdgeSingular | null;
     openedElement: NodeSingular | EdgeSingular | null;
+    splitAreasSizes: SplitAreasSizes;
 }
 
 const cytoscapeOptions: cytoscape.CytoscapeOptions = {
@@ -76,6 +82,10 @@ const initialState: State = {
     _cytoscapeObj: null,
     selectedElement: null,
     openedElement: null,
+    splitAreasSizes: {
+        side: 0,
+        main: 100,
+    },
 };
 
 export const AppStore = signalStore(
@@ -126,8 +136,8 @@ export const AppStore = signalStore(
 
             cytoscapeObj!.dom();
 
-            const windowResizeSub: Subscription = observeResizes(
-                window.document.body,
+            const canvasResizeSub: Subscription = observeResizes(
+                cytoscapeObj.container() as HTMLElement,
             )
                 .pipe(
                     debounceTime(500),
@@ -232,13 +242,35 @@ export const AppStore = signalStore(
                 )
                 .subscribe();
 
-            store._subscription.add(windowResizeSub);
+            store._subscription.add(canvasResizeSub);
             store._subscription.add(selectElementSub);
             store._subscription.add(unselectElementSub);
             store._subscription.add(openElementSub);
             store._subscription.add(startFlowCreationSub);
             store._subscription.add(createFlowSub);
             store._subscription.add(updateGraphSub);
+        };
+
+        const alternateSplitAreas = (): void => {
+            const splitAreasSizes: SplitAreasSizes = store.splitAreasSizes();
+
+            if (splitAreasSizes.side) {
+                patchState(store, {
+                    splitAreasSizes: {
+                        side: 0,
+                        main: 100,
+                    },
+                });
+
+                return;
+            }
+
+            patchState(store, {
+                splitAreasSizes: {
+                    side: 50,
+                    main: 50,
+                },
+            });
         };
 
         const initGraph = (container: HTMLElement): void => {
@@ -268,6 +300,7 @@ export const AppStore = signalStore(
         };
 
         return {
+            alternateSplitAreas,
             initGraph,
             layoutGraph,
             resetOpenedElement,

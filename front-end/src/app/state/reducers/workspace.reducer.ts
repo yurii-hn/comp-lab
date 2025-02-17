@@ -1,4 +1,11 @@
-import { Compartment, Flow, Model } from '@core/types/model.types';
+import {
+  Compartment,
+  Constant,
+  Flow,
+  Intervention,
+  Model,
+} from '@core/types/model.types';
+import { Diff, getDiff } from '@core/utils';
 import { createReducer, on } from '@ngrx/store';
 import { AppActions } from 'src/app/state/actions/app.actions';
 import { EditCompartmentActions } from 'src/app/state/actions/compartment.actions';
@@ -31,6 +38,10 @@ interface ReplaceModelProps {
 interface ImportSampleModelProps {
     model: Model;
     select: boolean;
+}
+
+interface UpdateDefinitionsProps {
+    definitions: Omit<Model, 'flows'>;
 }
 
 interface ClearModelProps {
@@ -166,7 +177,6 @@ export const workspacesReducer = createReducer<WorkspacesState>(
     ),
     on(
         FilesServiceActions.modelImportSuccess,
-        DefinitionsTableActions.updateModel,
         (
             state: WorkspacesState,
             { model }: ReplaceModelProps,
@@ -232,6 +242,86 @@ export const workspacesReducer = createReducer<WorkspacesState>(
                     {
                         ...currentWorkspace,
                         model,
+                    },
+                    ...state.workspaces.slice(currentWorkspaceIndex + 1),
+                ],
+            };
+        },
+    ),
+    on(
+        DefinitionsTableActions.updateDefinitions,
+        (
+            state: WorkspacesState,
+            { definitions }: UpdateDefinitionsProps,
+        ): WorkspacesState => {
+            interface DiffDefinitionsPair<
+                DefinitionType extends {
+                    id: string;
+                    name: string;
+                },
+            > {
+                diff: Diff<DefinitionType>;
+                definitions: DefinitionType[];
+            }
+
+            const currentWorkspaceIndex: number = state.workspaces.findIndex(
+                (workspace: Workspace): boolean =>
+                    workspace.name === state.selectedWorkspaceName,
+            );
+            const currentWorkspace: Workspace =
+                state.workspaces[currentWorkspaceIndex];
+
+            const compartmentsDiff: Diff<Compartment> = getDiff(
+                currentWorkspace.model.compartments,
+                definitions.compartments,
+            );
+            const constantsDiff: Diff<Constant> = getDiff(
+                currentWorkspace.model.constants,
+                definitions.constants,
+            );
+            const interventionsDiff: Diff<Intervention> = getDiff(
+                currentWorkspace.model.interventions,
+                definitions.interventions,
+            );
+
+            const flowsWithDiffsApplied = [
+                {
+                    diff: compartmentsDiff,
+                    definitions: currentWorkspace.model.compartments,
+                },
+                {
+                    diff: constantsDiff,
+                    definitions: currentWorkspace.model.constants,
+                },
+                {
+                    diff: interventionsDiff,
+                    definitions: currentWorkspace.model.interventions,
+                },
+            ].reduce(
+                (
+                    flows: Flow[],
+                    {
+                        diff,
+                        definitions,
+                    }: DiffDefinitionsPair<
+                        Compartment | Constant | Intervention
+                    >,
+                ): Flow[] =>
+                    applyDefinitionsDiffToFlows(flows, diff, definitions),
+                currentWorkspace.model.flows,
+            );
+
+            return {
+                ...state,
+                workspaces: [
+                    ...state.workspaces.slice(0, currentWorkspaceIndex),
+                    {
+                        ...currentWorkspace,
+                        model: {
+                            ...currentWorkspace.model,
+                            ...definitions,
+                            flows: flowsWithDiffsApplied,
+                        },
                     },
                     ...state.workspaces.slice(currentWorkspaceIndex + 1),
                 ],
@@ -517,6 +607,41 @@ export const workspacesReducer = createReducer<WorkspacesState>(
 );
 
 const removedDefinitionPlaceholder: string = '<REMOVED_DEFINITION>';
+
+function applyDefinitionsDiffToFlows<
+    DefinitionType extends {
+        id: string;
+        name: string;
+    },
+>(
+    flows: Flow[],
+    diff: Diff<DefinitionType>,
+    currentDefinitions: DefinitionType[],
+): Flow[] {
+    const flowsWithUpdatedDefinitions: Flow[] = diff.updated.reduce(
+        (updatedFlows: Flow[], definition: DefinitionType): Flow[] =>
+            renameDefinitionInFlows(
+                updatedFlows,
+                currentDefinitions.find(
+                    (currentDefinition: DefinitionType): boolean =>
+                        currentDefinition.id === definition.id,
+                )!.name,
+                definition.name,
+            ),
+        flows,
+    );
+    const flowsWithoutRemovedDefinitions: Flow[] = diff.removed.reduce(
+        (updatedFlows: Flow[], definition: DefinitionType): Flow[] =>
+            renameDefinitionInFlows(
+                updatedFlows,
+                definition.name,
+                removedDefinitionPlaceholder,
+            ),
+        flowsWithUpdatedDefinitions,
+    );
+
+    return flowsWithoutRemovedDefinitions;
+}
 
 function renameDefinitionInFlows(
     flows: Flow[],

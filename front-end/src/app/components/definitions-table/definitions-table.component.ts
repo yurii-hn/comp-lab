@@ -12,19 +12,13 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import {
-  Compartment,
-  Constant,
-  Flow,
-  Intervention,
-} from '@core/types/model.types';
+import { Compartment, Constant, Intervention } from '@core/types/model.types';
 import { Store } from '@ngrx/store';
 import { skip } from 'rxjs';
 import {
   CompartmentDefinition,
   ConstantDefinition,
   DefinitionsTableStore,
-  FlowDefinition,
   FormValue,
   InterventionDefinition,
 } from 'src/app/components/definitions-table/definitions-table.store';
@@ -60,7 +54,6 @@ export class DefinitionsTableComponent implements OnInit {
         interventions: new FormControl<
             (Intervention | InterventionDefinition)[]
         >([]),
-        flows: new FormControl<(Flow | FlowDefinition)[]>([]),
     });
 
     public readonly compartmentsRowScheme: Signal<
@@ -71,8 +64,6 @@ export class DefinitionsTableComponent implements OnInit {
     public readonly interventionsRowScheme: Signal<
         RowScheme<InterventionDefinition>
     > = this.localStore.interventionsRowScheme;
-    public readonly flowsRowScheme: Signal<RowScheme<FlowDefinition>> =
-        this.localStore.flowsRowScheme;
 
     public ngOnInit(): void {
         const valueChanges: Signal<FormValue | undefined> = toSignal(
@@ -119,8 +110,8 @@ export class DefinitionsTableComponent implements OnInit {
 
     public onSave(): void {
         this.store.dispatch(
-            DefinitionsTableActions.updateModel({
-                model: this.localStore.value(),
+            DefinitionsTableActions.updateDefinitions({
+                definitions: this.localStore.value(),
             }),
         );
 

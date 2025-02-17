@@ -16,14 +16,14 @@ export type Value = SettingsState;
 
 export type FormValue = Value;
 
-const initialValue: FormValue = {
+const initialState: FormValue = {
     dashboard: {
         yAxisRangeMode: PlotYAxisRangeMode.Normal,
     },
 };
 
 export const SettingsStore = signalStore(
-    withState(initialValue),
+    withState(initialState),
     withComputed((store) => {
         const value: Signal<Value> = computed(() => formValue(), {
             equal: areEqual,

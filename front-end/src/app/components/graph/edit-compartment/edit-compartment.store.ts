@@ -42,7 +42,7 @@ export const EditCompartmentStore = signalStore(
             globalStore.selectSignal(selectSymbols);
 
         return {
-            symbols: symbols,
+            symbols,
         };
     }),
     withComputed((store) => {

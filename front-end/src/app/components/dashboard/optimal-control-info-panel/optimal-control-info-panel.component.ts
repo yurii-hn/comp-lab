@@ -15,6 +15,7 @@ import { AngularSplitModule } from 'angular-split';
 import {
   DisplayData,
   OptimalControlInfoPanelStore,
+  SplitAreasSizes,
 } from 'src/app/components/dashboard/optimal-control-info-panel/optimal-control-info-panel.store';
 import { DatatableComponent } from 'src/app/components/shared/datatable/datatable.component';
 import { RowScheme } from 'src/app/components/shared/datatable/datatable.store';
@@ -40,6 +41,8 @@ export class OptimalControlInfoPanelComponent implements OnInit {
 
     public interventionsRowScheme: Signal<RowScheme> =
         this.localStore.interventionsRowScheme;
+    public readonly splitSizes: Signal<SplitAreasSizes> =
+        this.localStore.splitAreasSizes;
 
     public ngOnInit(): void {
         effect(
@@ -52,5 +55,9 @@ export class OptimalControlInfoPanelComponent implements OnInit {
                 injector: this.injector,
             },
         );
+    }
+
+    public onGutterDBClick(): void {
+        this.localStore.alternateSplitAreasSizes();
     }
 }

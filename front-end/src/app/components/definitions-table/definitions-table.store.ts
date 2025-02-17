@@ -1,12 +1,7 @@
 import { computed, Signal } from '@angular/core';
 import { Validators } from '@angular/forms';
 
-import {
-  Compartment,
-  Constant,
-  Flow,
-  Intervention,
-} from '@core/types/model.types';
+import { Compartment, Constant, Intervention } from '@core/types/model.types';
 import { areEqual } from '@core/utils';
 import { definitionName } from '@core/validators';
 import {
@@ -18,7 +13,6 @@ import {
 } from '@ngrx/signals';
 import {
   InputType,
-  Option,
   RowScheme,
 } from 'src/app/components/shared/datatable/datatable.store';
 import { v4 as uuid } from 'uuid';
@@ -26,31 +20,27 @@ import { v4 as uuid } from 'uuid';
 export type CompartmentDefinition = Omit<Compartment, 'id'>;
 export type ConstantDefinition = Omit<Constant, 'id'>;
 export type InterventionDefinition = Omit<Intervention, 'id'>;
-export type FlowDefinition = Omit<Flow, 'id' | 'equation'>;
 
 export interface Value {
     compartments: Compartment[];
     constants: Constant[];
     interventions: Intervention[];
-    flows: Flow[];
 }
 
 export interface FormValue {
     compartments: (Compartment | CompartmentDefinition)[];
     constants: (Constant | ConstantDefinition)[];
     interventions: (Intervention | InterventionDefinition)[];
-    flows: (Flow | FlowDefinition)[];
 }
 
-const initialValue: FormValue = {
+const initialState: FormValue = {
     compartments: [],
     constants: [],
     interventions: [],
-    flows: [],
 };
 
 export const DefinitionsTableStore = signalStore(
-    withState(initialValue),
+    withState(initialState),
     withComputed((store) => {
         const value: Signal<Value> = computed(
             (): Value => {
@@ -97,25 +87,11 @@ export const DefinitionsTableStore = signalStore(
                             };
                         },
                     );
-                const flows: Flow[] = rawValue.flows.map(
-                    (flow: Flow | FlowDefinition): Flow => {
-                        if ('id' in flow) {
-                            return flow;
-                        }
-
-                        return {
-                            ...flow,
-                            id: uuid(),
-                            equation: '',
-                        };
-                    },
-                );
 
                 return {
                     compartments,
                     constants,
                     interventions,
-                    flows,
                 };
             },
             {
@@ -127,7 +103,6 @@ export const DefinitionsTableStore = signalStore(
                 compartments: store.compartments(),
                 constants: store.constants(),
                 interventions: store.interventions(),
-                flows: store.flows(),
             }),
             {
                 equal: areEqual,
@@ -217,36 +192,6 @@ export const DefinitionsTableStore = signalStore(
             }),
         );
 
-        const flowsRowScheme: Signal<RowScheme<FlowDefinition>> = computed(
-            (): RowScheme<FlowDefinition> => {
-                const options: Option[] = value().compartments.map(
-                    (compartment: Compartment): Option => ({
-                        value: compartment.id,
-                        label: compartment.name,
-                    }),
-                );
-
-                return {
-                    source: {
-                        name: 'Source',
-                        type: InputType.Select,
-                        exclusive: false,
-                        options,
-                        editable: true,
-                        validationFns: [Validators.required],
-                    },
-                    target: {
-                        name: 'Target',
-                        type: InputType.Select,
-                        exclusive: false,
-                        options,
-                        editable: true,
-                        validationFns: [Validators.required],
-                    },
-                };
-            },
-        );
-
         return {
             value,
             formValue,
@@ -256,7 +201,6 @@ export const DefinitionsTableStore = signalStore(
             compartmentsRowScheme,
             constantsRowScheme,
             interventionsRowScheme,
-            flowsRowScheme,
         };
     }),
     withMethods((store) => {

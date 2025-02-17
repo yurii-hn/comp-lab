@@ -14,6 +14,11 @@ import {
   RowScheme,
 } from 'src/app/components/shared/datatable/datatable.store';
 
+export interface SplitAreasSizes {
+    results: number;
+    parameters: number;
+}
+
 export type InputData = PIData | null;
 
 export type DisplayData = {
@@ -27,14 +32,25 @@ export type DisplayData = {
     };
 };
 
-const initialState: DisplayData = {
-    parameters: {
-        nodesAmount: null,
-        selectedConstants: [],
-        data: [],
+export interface State {
+    splitAreasSizes: SplitAreasSizes;
+    displayData: DisplayData;
+}
+
+const initialState: State = {
+    splitAreasSizes: {
+        results: 50,
+        parameters: 50,
     },
-    result: {
-        constants: [],
+    displayData: {
+        parameters: {
+            nodesAmount: null,
+            selectedConstants: [],
+            data: [],
+        },
+        result: {
+            constants: [],
+        },
     },
 };
 
@@ -63,7 +79,8 @@ export const PIInfoPanelStore = signalStore(
                 }),
             );
         const dataRowScheme: Signal<RowScheme> = computed((): RowScheme => {
-            const data: Record<string, number>[] = store.parameters().data;
+            const data: Record<string, number>[] =
+                store.displayData().parameters.data;
 
             if (!data.length) {
                 return {};
@@ -103,47 +120,58 @@ export const PIInfoPanelStore = signalStore(
             }),
         );
 
-        const displayData = computed(
-            (): DisplayData => ({
-                parameters: store.parameters(),
-                result: store.result(),
-            }),
-        );
-
         return {
-            displayData,
             selectedConstantsRowScheme,
             dataRowScheme,
             identifiedConstantsRowScheme,
         };
     }),
     withMethods((store) => {
+        let alternator: 1 | -1 = -1;
+
+        const alternateSplitAreasSizes = (): void => {
+            const splitAreasSizes: SplitAreasSizes = store.splitAreasSizes();
+
+            patchState(store, {
+                splitAreasSizes: {
+                    results: splitAreasSizes.results + 1e-10 * alternator,
+                    parameters: splitAreasSizes.parameters - 1e-10 * alternator,
+                },
+            });
+
+            alternator *= -1;
+        };
+
         const setData = (inputData: InputData): void =>
             patchState(store, {
-                parameters: {
-                    nodesAmount: inputData && inputData.parameters.nodesAmount,
-                    selectedConstants: inputData
-                        ? (inputData.parameters
-                              .selectedConstants as unknown as Record<
-                              string,
-                              string | number
-                          >[])
-                        : [],
-                    data: inputData
-                        ? valuesToRowData(inputData.parameters.data)
-                        : [],
-                },
-                result: {
-                    constants: inputData
-                        ? (inputData.result.constants as unknown as Record<
-                              string,
-                              string | number
-                          >[])
-                        : [],
+                displayData: {
+                    parameters: {
+                        nodesAmount:
+                            inputData && inputData.parameters.nodesAmount,
+                        selectedConstants: inputData
+                            ? (inputData.parameters
+                                  .selectedConstants as unknown as Record<
+                                  string,
+                                  string | number
+                              >[])
+                            : [],
+                        data: inputData
+                            ? valuesToRowData(inputData.parameters.data)
+                            : [],
+                    },
+                    result: {
+                        constants: inputData
+                            ? (inputData.result.constants as unknown as Record<
+                                  string,
+                                  string | number
+                              >[])
+                            : [],
+                    },
                 },
             });
 
         return {
+            alternateSplitAreasSizes,
             setData,
         };
     }),

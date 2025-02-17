@@ -27,7 +27,7 @@
         display: grid;
         grid:
             "compartments constants" 1fr
-            "interventions flows" 1fr / 1fr 1fr;
+            "interventions -" 1fr / 1fr 1fr;
         overflow: hidden;
         padding: 20px;
         gap: 20px;
@@ -53,10 +53,6 @@
 
         .interventions {
             grid-area: interventions;
-        }
-
-        .flows {
-            grid-area: flows;
         }
     }
 

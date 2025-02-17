@@ -7,16 +7,11 @@ import {
   Injectable,
 } from '@angular/core';
 import { Compartment, Flow } from '@core/types/model.types';
+import { Diff, getDiff } from '@core/utils';
 import { EdgeCollection, EdgeSingular, NodeSingular } from 'cytoscape';
 import klay from 'cytoscape-klay';
 import { CompartmentComponent } from 'src/app/components/graph/compartment/compartment.component';
 import { FlowComponent } from 'src/app/components/graph/flow/flow.component';
-
-interface Diff<Type extends { id: string }> {
-    added: Type[];
-    updated: Type[];
-    removed: Type[];
-}
 
 export interface GraphModel {
     compartments: Compartment[];
@@ -76,7 +71,7 @@ export class GraphService {
         previousCompartments: Compartment[],
         currentCompartments: Compartment[],
     ): void {
-        const diff: Diff<Compartment> = this.getDiff(
+        const diff: Diff<Compartment> = getDiff(
             previousCompartments,
             currentCompartments,
         );
@@ -181,7 +176,7 @@ export class GraphService {
         previousFlows: Flow[],
         currentFlows: Flow[],
     ): void {
-        const diff: Diff<Flow> = this.getDiff(previousFlows, currentFlows);
+        const diff: Diff<Flow> = getDiff(previousFlows, currentFlows);
 
         diff.added.forEach((flow: Flow): void => {
             this.addFlow(cytoscapeObj, flow);
@@ -228,42 +223,6 @@ export class GraphService {
 
     private removeFlow(cytoscapeObj: cytoscape.Core, id: string): void {
         cytoscapeObj.edges('.flow[componentRef]').$id(id).remove();
-    }
-
-    private getDiff<Type extends { id: string }>(
-        oldArray: Type[],
-        newArray: Type[],
-    ): Diff<Type> {
-        const diff: Diff<Type> = {
-            added: [],
-            updated: [],
-            removed: [],
-        };
-
-        newArray.forEach((newItem: Type): void => {
-            if (
-                oldArray.find(
-                    (oldItem: Type): boolean => oldItem.id === newItem.id,
-                )
-            ) {
-                diff.updated.push(newItem);
-
-                return;
-            }
-
-            diff.added.push(newItem);
-        });
-
-        diff.removed.push(
-            ...oldArray.filter(
-                (oldItem: Type): boolean =>
-                    !newArray.find(
-                        (newItem: Type): boolean => newItem.id === oldItem.id,
-                    ),
-            ),
-        );
-
-        return diff;
     }
 
     private createNodeComponent(

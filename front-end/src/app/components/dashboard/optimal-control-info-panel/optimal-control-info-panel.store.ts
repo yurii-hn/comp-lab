@@ -14,6 +14,11 @@ import {
   RowScheme,
 } from 'src/app/components/shared/datatable/datatable.store';
 
+export interface SplitAreasSizes {
+    results: number;
+    parameters: number;
+}
+
 export type InputData = OptimalControlData | null;
 
 export type DisplayInterventionData = {
@@ -37,22 +42,33 @@ export type DisplayData = {
     };
 };
 
-const initialState: DisplayData = {
-    parameters: {
-        time: null,
-        nodesAmount: null,
-        objectiveFunction: null,
-        intervention: {
-            nodesAmount: null,
-            approximationType: null,
-            lowerBoundary: null,
-            upperBoundary: null,
-        },
+export interface State {
+    splitAreasSizes: SplitAreasSizes;
+    displayData: DisplayData;
+}
+
+const initialState: State = {
+    splitAreasSizes: {
+        results: 50,
+        parameters: 50,
     },
-    result: {
-        noControlObjective: null,
-        optimalObjective: null,
-        interventions: [],
+    displayData: {
+        parameters: {
+            time: null,
+            nodesAmount: null,
+            objectiveFunction: null,
+            intervention: {
+                nodesAmount: null,
+                approximationType: null,
+                lowerBoundary: null,
+                upperBoundary: null,
+            },
+        },
+        result: {
+            noControlObjective: null,
+            optimalObjective: null,
+            interventions: [],
+        },
     },
 };
 
@@ -62,7 +78,7 @@ export const OptimalControlInfoPanelStore = signalStore(
         const interventionsRowScheme: Signal<RowScheme> = computed(
             (): RowScheme => {
                 const interventions: Record<string, number>[] =
-                    store.result().interventions;
+                    store.displayData().result.interventions;
 
                 return interventions.length
                     ? Object.keys(interventions[0]).reduce(
@@ -82,49 +98,63 @@ export const OptimalControlInfoPanelStore = signalStore(
             },
         );
 
-        const displayData: Signal<DisplayData> = computed(
-            (): DisplayData => ({
-                parameters: store.parameters(),
-                result: store.result(),
-            }),
-        );
-
         return {
-            displayData,
             interventionsRowScheme,
         };
     }),
     withMethods((store) => {
+        let alternator: 1 | -1 = -1;
+
+        const alternateSplitAreasSizes = (): void => {
+            const splitAreasSizes: SplitAreasSizes = store.splitAreasSizes();
+
+            patchState(store, {
+                splitAreasSizes: {
+                    results: splitAreasSizes.results + 1e-10 * alternator,
+                    parameters: splitAreasSizes.parameters - 1e-10 * alternator,
+                },
+            });
+
+            alternator *= -1;
+        };
+
         const setData = (data: InputData): void =>
             patchState(store, {
-                parameters: {
-                    time: data && data.parameters.time,
-                    nodesAmount: data && data.parameters.nodesAmount,
-                    objectiveFunction:
-                        data && data.parameters.objectiveFunction,
-                    intervention: {
-                        nodesAmount:
-                            data && data.parameters.intervention.nodesAmount,
-                        approximationType:
-                            data &&
-                            data.parameters.intervention.approximationType,
-                        lowerBoundary:
-                            data && data.parameters.intervention.lowerBoundary,
-                        upperBoundary:
-                            data && data.parameters.intervention.upperBoundary,
+                displayData: {
+                    parameters: {
+                        time: data && data.parameters.time,
+                        nodesAmount: data && data.parameters.nodesAmount,
+                        objectiveFunction:
+                            data && data.parameters.objectiveFunction,
+                        intervention: {
+                            nodesAmount:
+                                data &&
+                                data.parameters.intervention.nodesAmount,
+                            approximationType:
+                                data &&
+                                data.parameters.intervention.approximationType,
+                            lowerBoundary:
+                                data &&
+                                data.parameters.intervention.lowerBoundary,
+                            upperBoundary:
+                                data &&
+                                data.parameters.intervention.upperBoundary,
+                        },
                     },
-                },
-                result: {
-                    noControlObjective:
-                        data && data.result[1].noControlObjective,
-                    optimalObjective: data && data.result[1].optimalObjective,
-                    interventions: data
-                        ? valuesToRowData(data.result[1].interventions)
-                        : [],
+                    result: {
+                        noControlObjective:
+                            data && data.result[1].noControlObjective,
+                        optimalObjective:
+                            data && data.result[1].optimalObjective,
+                        interventions: data
+                            ? valuesToRowData(data.result[1].interventions)
+                            : [],
+                    },
                 },
             });
 
         return {
+            alternateSplitAreasSizes,
             setData,
         };
     }),

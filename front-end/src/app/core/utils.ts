@@ -157,3 +157,43 @@ export function rowDataToValues(rowData: Record<string, number>[]): Values[] {
 export function getSetArray<Type>(array: Type[]): Type[] {
     return Array.from(new Set(array));
 }
+
+export interface Diff<Type extends { id: string }> {
+    added: Type[];
+    updated: Type[];
+    removed: Type[];
+}
+
+export function getDiff<Type extends { id: string }>(
+    oldArray: Type[],
+    newArray: Type[],
+): Diff<Type> {
+    const diff: Diff<Type> = {
+        added: [],
+        updated: [],
+        removed: [],
+    };
+
+    newArray.forEach((newItem: Type): void => {
+        if (
+            oldArray.find((oldItem: Type): boolean => oldItem.id === newItem.id)
+        ) {
+            diff.updated.push(newItem);
+
+            return;
+        }
+
+        diff.added.push(newItem);
+    });
+
+    diff.removed.push(
+        ...oldArray.filter(
+            (oldItem: Type): boolean =>
+                !newArray.find(
+                    (newItem: Type): boolean => newItem.id === oldItem.id,
+                ),
+        ),
+    );
+
+    return diff;
+}

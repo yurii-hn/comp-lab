@@ -15,19 +15,17 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import {
-  MAT_TOOLTIP_DEFAULT_OPTIONS,
-  MatTooltipModule,
-} from '@angular/material/tooltip';
-import { TOOLTIP_DEFAULT_OPTIONS } from '@core/constants';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Compartment, Flow } from '@core/types/model.types';
 import { Store } from '@ngrx/store';
+import { AngularSplitModule } from 'angular-split';
 import { EdgeSingular, NodeSingular } from 'cytoscape';
 import { filter, tap } from 'rxjs';
-import { AppStore } from 'src/app/app.store';
+import { AppStore, SplitAreasSizes } from 'src/app/app.store';
 import { CompartmentComponent } from 'src/app/components/graph/compartment/compartment.component';
 import { EmptyFlow } from 'src/app/components/graph/edit-flow/edit-flow.store';
 import { FlowComponent } from 'src/app/components/graph/flow/flow.component';
+import { InfoComponent } from 'src/app/components/info/info.component';
 import { SettingsComponent } from 'src/app/components/settings/settings.component';
 import { WorkspacesPanelComponent } from 'src/app/components/workspaces-panel/workspaces-panel.component';
 import { GraphService } from 'src/app/services/graph.service';
@@ -46,16 +44,11 @@ import { ConfirmationDialogComponent } from './components/shared/confirmation-di
         MatIconModule,
         MatButtonModule,
         MatTooltipModule,
+        AngularSplitModule,
+        InfoComponent,
         WorkspacesPanelComponent,
     ],
-    providers: [
-        {
-            provide: MAT_TOOLTIP_DEFAULT_OPTIONS,
-            useValue: TOOLTIP_DEFAULT_OPTIONS,
-        },
-        GraphService,
-        AppStore,
-    ],
+    providers: [GraphService, AppStore],
     templateUrl: './app.component.html',
     styleUrls: ['./app.component.scss'],
 })
@@ -73,6 +66,8 @@ export class AppComponent implements OnInit, AfterViewInit {
     public readonly hasCompartments: Signal<boolean> = this.store.selectSignal(
         selectHasCompartments,
     );
+    public readonly splitSizes: Signal<SplitAreasSizes> =
+        this.localStore.splitAreasSizes;
 
     public ngOnInit(): void {
         effect(
@@ -128,6 +123,10 @@ export class AppComponent implements OnInit, AfterViewInit {
         //         select: false,
         //     }),
         // );
+    }
+
+    public onGutterDBClick(): void {
+        this.localStore.alternateSplitAreas();
     }
 
     public onDefinitionsTable(): void {

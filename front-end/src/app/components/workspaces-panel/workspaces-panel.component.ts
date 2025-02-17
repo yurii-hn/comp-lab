@@ -4,11 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
-import {
-  MAT_TOOLTIP_DEFAULT_OPTIONS,
-  MatTooltipModule,
-} from '@angular/material/tooltip';
-import { TOOLTIP_DEFAULT_OPTIONS } from '@core/constants';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { uniqueName } from '@core/validators';
 import { Store } from '@ngrx/store';
 import { filter, tap } from 'rxjs';
@@ -28,12 +24,6 @@ import {
         MatButtonModule,
         MatTooltipModule,
         ReactiveFormsModule,
-    ],
-    providers: [
-        {
-            provide: MAT_TOOLTIP_DEFAULT_OPTIONS,
-            useValue: TOOLTIP_DEFAULT_OPTIONS,
-        },
     ],
     templateUrl: './workspaces-panel.component.html',
     styleUrls: ['./workspaces-panel.component.scss'],

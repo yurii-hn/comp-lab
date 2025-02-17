@@ -1,126 +1,142 @@
 @let isElementSelected = this.isElementSelected();
 @let hasCompartments = this.hasCompartments();
+@let splitSizes = this.splitSizes();
 
-<div class="buttons-container top-left-buttons">
-    <app-workspaces-panel class="workspaces-panel" />
+<as-split
+    useTransition
+    gutterSize="15"
+    gutterDblClickDuration="400"
+    (gutterDblClick)="onGutterDBClick()"
+>
+    <as-split-area class="split-area" [size]="splitSizes.side">
+        <app-info />
+    </as-split-area>
 
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        matTooltipPosition="right"
-        matTooltip="Open definitions table"
-        (click)="onDefinitionsTable()"
-    >
-        <mat-icon>tune</mat-icon>
-    </button>
-</div>
+    <as-split-area class="split-area" [size]="splitSizes.main">
+        <div class="main">
+            <div class="buttons-container top-left-buttons">
+                <app-workspaces-panel class="workspaces-panel" />
 
-<div class="buttons-container top-right-buttons">
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        matTooltipPosition="left"
-        matTooltip="Add new compartment"
-        (click)="onCompartmentOpen()"
-    >
-        <mat-icon>add</mat-icon>
-    </button>
+                <button
+                    mat-mini-fab
+                    class="button"
+                    color="primary"
+                    matTooltipPosition="right"
+                    matTooltip="Open definitions table"
+                    (click)="onDefinitionsTable()"
+                >
+                    <mat-icon>tune</mat-icon>
+                </button>
+            </div>
 
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        matTooltipPosition="left"
-        matTooltip="Layout the model"
-        (click)="onLayout()"
-    >
-        <mat-icon>account_tree</mat-icon>
-    </button>
+            <div class="buttons-container top-right-buttons">
+                <button
+                    mat-mini-fab
+                    class="button"
+                    color="primary"
+                    matTooltipPosition="left"
+                    matTooltip="Add new compartment"
+                    (click)="onCompartmentOpen()"
+                >
+                    <mat-icon>add</mat-icon>
+                </button>
 
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        matTooltipPosition="left"
-        matTooltip="Delete selected element"
-        [disabled]="!isElementSelected"
-        (click)="onDelete()"
-    >
-        <mat-icon>delete</mat-icon>
-    </button>
+                <button
+                    mat-mini-fab
+                    class="button"
+                    color="primary"
+                    matTooltipPosition="left"
+                    matTooltip="Layout the model"
+                    (click)="onLayout()"
+                >
+                    <mat-icon>account_tree</mat-icon>
+                </button>
 
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        matTooltipPosition="left"
-        matTooltip="Clear current workspace"
-        [disabled]="!hasCompartments"
-        (click)="onClear()"
-    >
-        <mat-icon>delete_forever</mat-icon>
-    </button>
+                <button
+                    mat-mini-fab
+                    class="button"
+                    color="primary"
+                    matTooltipPosition="left"
+                    matTooltip="Delete selected element"
+                    [disabled]="!isElementSelected"
+                    (click)="onDelete()"
+                >
+                    <mat-icon>delete</mat-icon>
+                </button>
 
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        matTooltipPosition="left"
-        matTooltip="Import model"
-        (click)="onImport()"
-    >
-        <mat-icon>upload</mat-icon>
-    </button>
+                <button
+                    mat-mini-fab
+                    class="button"
+                    color="primary"
+                    matTooltipPosition="left"
+                    matTooltip="Clear current workspace"
+                    [disabled]="!hasCompartments"
+                    (click)="onClear()"
+                >
+                    <mat-icon>delete_forever</mat-icon>
+                </button>
 
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        matTooltipPosition="left"
-        matTooltip="Export model"
-        (click)="onExport()"
-    >
-        <mat-icon>download</mat-icon>
-    </button>
+                <button
+                    mat-mini-fab
+                    class="button"
+                    color="primary"
+                    matTooltipPosition="left"
+                    matTooltip="Import model"
+                    (click)="onImport()"
+                >
+                    <mat-icon>upload</mat-icon>
+                </button>
 
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        matTooltipPosition="left"
-        matTooltip="Open app settings"
-        (click)="onSettings()"
-    >
-        <mat-icon>settings</mat-icon>
-    </button>
-</div>
+                <button
+                    mat-mini-fab
+                    class="button"
+                    color="primary"
+                    matTooltipPosition="left"
+                    matTooltip="Export model"
+                    (click)="onExport()"
+                >
+                    <mat-icon>download</mat-icon>
+                </button>
 
-<div class="buttons-container bottom-left-buttons">
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        matTooltipPosition="right"
-        matTooltip="Open dashboard with processing results"
-        (click)="onDashboard()"
-    >
-        <mat-icon>query_stats</mat-icon>
-    </button>
-</div>
+                <button
+                    mat-mini-fab
+                    class="button"
+                    color="primary"
+                    matTooltipPosition="left"
+                    matTooltip="Open app settings"
+                    (click)="onSettings()"
+                >
+                    <mat-icon>settings</mat-icon>
+                </button>
+            </div>
 
-<div class="buttons-container bottom-right-buttons">
-    <button
-        mat-mini-fab
-        class="button"
-        color="primary"
-        matTooltipPosition="left"
-        matTooltip="Open model processing panel"
-        (click)="onProcess()"
-    >
-        <mat-icon>memory</mat-icon>
-    </button>
-</div>
+            <div class="buttons-container bottom-left-buttons">
+                <button
+                    mat-mini-fab
+                    class="button"
+                    color="primary"
+                    matTooltipPosition="right"
+                    matTooltip="Open dashboard with processing results"
+                    (click)="onDashboard()"
+                >
+                    <mat-icon>query_stats</mat-icon>
+                </button>
+            </div>
 
-<div #canvas class="canvas"></div>
+            <div class="buttons-container bottom-right-buttons">
+                <button
+                    mat-mini-fab
+                    class="button"
+                    color="primary"
+                    matTooltipPosition="left"
+                    matTooltip="Open model processing panel"
+                    (click)="onProcess()"
+                >
+                    <mat-icon>memory</mat-icon>
+                </button>
+            </div>
+
+            <div #canvas class="canvas"></div>
+        </div>
+    </as-split-area>
+</as-split>
