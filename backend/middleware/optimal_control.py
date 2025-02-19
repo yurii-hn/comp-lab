@@ -9,12 +9,10 @@ from core.classes.model.model import Model
 from core.classes.model.variables_datatable import VariablesDatatable
 from core.classes.optimal_control.adjoint_model import AdjointModel
 from core.classes.optimal_control.parameters import OptimalControlParameters
-from core.classes.optimal_control.response import OptimalControlResponse
 from core.classes.optimal_control.success_response import \
     OptimalControlSuccessResponse
+from core.definitions.common.approximation_type import ApproximationType
 from core.definitions.model.continuity_type import ContinuityType
-from core.definitions.optimal_control.approximation_type import \
-    ApproximationType
 from core.definitions.optimal_control.result import \
     OptimalControlResultDefinition
 from core.definitions.simulation.result import SimulationResultDefinition
@@ -24,7 +22,7 @@ from sympy import Interval, Symbol, oo
 
 def optimal_control(
     parameters: OptimalControlParameters, model: Model
-) -> OptimalControlResponse:
+) -> OptimalControlSuccessResponse | ErrorResponse:
     """Optimal Control"""
 
     for compartment in model.compartments:
@@ -39,8 +37,14 @@ def optimal_control(
                 str(symbol): compartment.equation.check_continuity(
                     symbol,
                     Interval(
-                        parameters.intervention.lower_boundary,
-                        parameters.intervention.upper_boundary,
+                        *next(
+                            [
+                                boundary.lower_boundary,
+                                boundary.upper_boundary,
+                            ]
+                            for boundary in parameters.intervention.boundaries
+                            if boundary.name == str(symbol)
+                        )
                     ),
                     True,
                 )
@@ -99,8 +103,14 @@ def optimal_control(
             str(symbol): cost_function.check_continuity(
                 symbol,
                 Interval(
-                    parameters.intervention.lower_boundary,
-                    parameters.intervention.upper_boundary,
+                    *next(
+                        [
+                            boundary.lower_boundary,
+                            boundary.upper_boundary,
+                        ]
+                        for boundary in parameters.intervention.boundaries
+                        if boundary.name == str(symbol)
+                    )
                 ),
                 True,
             )
@@ -152,6 +162,21 @@ def optimal_control(
     try:
         variables_datatable: VariablesDatatable = VariablesDatatable()
 
+        variables_datatable.update_constants(
+            {
+                constant.name: Values(
+                    {
+                        "name": constant.name,
+                        "values": [
+                            {"time": 0, "value": constant.value},
+                        ],
+                    },
+                    ApproximationType.PIECEWISE_CONSTANT,
+                )
+                for constant in model.constants
+            }
+        )
+
         variables_datatable.update_interventions(
             {
                 intervention.name: Values(
@@ -161,7 +186,7 @@ def optimal_control(
                             {"time": 0, "value": 0},
                         ],
                     },
-                    parameters.intervention.approximation_type,
+                    ApproximationType.PIECEWISE_CONSTANT,
                 )
                 for intervention in model.interventions
             }
@@ -202,13 +227,23 @@ def optimal_control(
                     variables_datatable,
                 ),
                 bounds=[
-                    (
-                        parameters.intervention.lower_boundary,
-                        parameters.intervention.upper_boundary,
-                    )
-                    for _ in range(parameters.intervention.nodes_amount)
-                ]
-                * len(model.interventions),
+                    boundary
+                    for boundaries in [
+                        [
+                            next(
+                                (
+                                    boundary.lower_boundary,
+                                    boundary.upper_boundary,
+                                )
+                                for boundary in parameters.intervention.boundaries
+                                if boundary.name == intervention.name
+                            )
+                        ]
+                        * parameters.intervention.nodes_amount
+                        for intervention in model.interventions
+                    ]
+                    for boundary in boundaries
+                ],
                 method="L-BFGS-B",
                 tol=1e-3,
             ),
@@ -220,25 +255,11 @@ def optimal_control(
             variables_datatable,
         )
 
-        result: OptimalControlResultDefinition = {
-            "compartments": variables_datatable.compartments_definition,
-            "interventions": [
-                {
-                    "name": intervention.name,
-                    "values": list(
-                        optimal_result.x[
-                            i
-                            * parameters.intervention.nodes_amount : (i + 1)
-                            * parameters.intervention.nodes_amount
-                        ]
-                    ),
-                }
-                for i, intervention in enumerate(model.interventions)
-            ],
-            "approximatedInterventions": variables_datatable.interventions_definition,
-            "noControlObjective": no_control_cost,
-            "optimalObjective": optimal_cost,
-        }
+        if (
+            parameters.intervention.approximation_type
+            == ApproximationType.PIECEWISE_LINEAR
+        ):
+            parameters.intervention.nodes_amount -= 1
 
         result: OptimalControlResultDefinition = {
             "compartments": variables_datatable.compartments_definition,
@@ -271,6 +292,7 @@ def optimal_control(
         return OptimalControlSuccessResponse(
             {
                 "parameters": parameters.definition,
+                "model": model.definition,
                 "result": (no_control_result, result),
             },
             parameters.intervention.approximation_type,
@@ -291,8 +313,6 @@ def optimization_criteria(
     """Optimization criteria"""
 
     step_size: float = parameters.time / parameters.nodes_amount
-
-    variables_datatable.clear()
 
     variables_datatable.update_interventions(
         {

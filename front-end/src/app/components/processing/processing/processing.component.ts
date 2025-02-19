@@ -1,7 +1,7 @@
-import { Component, computed, inject, Signal } from '@angular/core';
+import { Component, computed, inject, OnInit, Signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
 import {
@@ -10,12 +10,15 @@ import {
   ProcessingType,
   SimulationParameters,
 } from '@core/types/processing';
+import { Data } from '@core/types/run.types';
 import { Store } from '@ngrx/store';
 import { OptimalControlParametersInputComponent } from 'src/app/components/processing/optimal-control-parameters-input/optimal-control-parameters-input.component';
 import { ParametersIdentificationParametersInputComponent } from 'src/app/components/processing/parameters-identification-parameters-input/parameters-identification-parameters-input.component';
 import { ProcessingStore } from 'src/app/components/processing/processing/processing.store';
 import { SimulationParametersInputComponent } from 'src/app/components/processing/simulation-parameters-input/simulation-parameters-input.component';
 import { ProcessingActions } from 'src/app/state/actions/processing.actions';
+
+export type Parameters = Omit<Data, 'model' | 'result'>;
 
 @Component({
     selector: 'app-processing',
@@ -32,11 +35,12 @@ import { ProcessingActions } from 'src/app/state/actions/processing.actions';
     templateUrl: './processing.component.html',
     styleUrls: ['./processing.component.scss'],
 })
-export class ProcessingComponent {
+export class ProcessingComponent implements OnInit {
     private readonly store: Store = inject(Store);
     private readonly localStore = inject(ProcessingStore);
     private readonly dialogRef: MatDialogRef<ProcessingComponent, void> =
         inject(MatDialogRef<ProcessingComponent, void>);
+    private readonly data?: Parameters = inject(MAT_DIALOG_DATA);
 
     public typeIndex: Signal<number> = this.localStore.formValue;
 
@@ -60,6 +64,34 @@ export class ProcessingComponent {
                 ) as FormControl;
         }
     });
+
+    public ngOnInit(): void {
+        if (!this.data) {
+            return;
+        }
+
+        switch (this.data.type) {
+            case ProcessingType.Simulation:
+                this.onTypeChange(0);
+
+                break;
+
+            case ProcessingType.OptimalControl:
+                this.onTypeChange(1);
+
+                break;
+
+            case ProcessingType.PI:
+                this.onTypeChange(2);
+
+                break;
+
+            default:
+                throw new Error('Unknown processing mode');
+        }
+
+        this.currentControl().patchValue(this.data.parameters);
+    }
 
     public onTypeChange(typeIndex: number): void {
         this.localStore.setValueFromForm(typeIndex);

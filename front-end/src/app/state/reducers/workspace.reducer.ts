@@ -9,6 +9,7 @@ import { Diff, getDiff } from '@core/utils';
 import { createReducer, on } from '@ngrx/store';
 import { AppActions } from 'src/app/state/actions/app.actions';
 import { EditCompartmentActions } from 'src/app/state/actions/compartment.actions';
+import { DashboardActions } from 'src/app/state/actions/dashboard.actions';
 import { DefinitionsTableActions } from 'src/app/state/actions/definitions-table.actions';
 import { FilesServiceActions } from 'src/app/state/actions/files.service.actions';
 import { EditFlowActions } from 'src/app/state/actions/flow.actions';
@@ -106,6 +107,8 @@ export const workspacesReducer = createReducer<WorkspacesState>(
     ),
     on(
         WorkspaceActions.addWorkspace,
+        AppActions.addWorkspace,
+        DashboardActions.extractModel,
         (
             state: WorkspacesState,
             { model }: AddWorkspaceProps,

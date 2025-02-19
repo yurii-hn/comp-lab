@@ -25,6 +25,7 @@ export interface SimulationRequestBody {
 export interface SimulationSuccessResponse {
     type: ProcessingType.Simulation;
     parameters: SimulationParameters;
+    model: Model;
     result: SimulationResult;
 }
 
@@ -36,6 +37,7 @@ export interface OptimalControlRequestBody {
 export interface OptimalControlSuccessResponse {
     type: ProcessingType.OptimalControl;
     parameters: OptimalControlParameters;
+    model: Model;
     result: [SimulationResult, OptimalControlResult];
 }
 
@@ -47,5 +49,6 @@ export interface PIRequestBody {
 export interface PISuccessResponse {
     type: ProcessingType.PI;
     parameters: PIParameters;
+    model: Model;
     result: PIResult;
 }

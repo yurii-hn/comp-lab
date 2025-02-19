@@ -1,5 +1,6 @@
 @let displayData = this.displayData();
 @let interventionsRowScheme = this.interventionsRowScheme();
+@let boundariesRowScheme = this.boundariesRowScheme();
 @let splitSizes = this.splitSizes();
 
 <as-split
@@ -91,25 +92,30 @@
                                 }}
                             </p>
 
-                            <p class="field">
-                                <span class="name">Lower Boundary:</span>
-                                {{
-                                    displayData.parameters.intervention
-                                        .lowerBoundary ?? "N/A"
-                                }}
-                            </p>
+                            <div class="table-group">
+                                <div class="title">
+                                    Interventions boundaries
+                                </div>
 
-                            <p class="field">
-                                <span class="name">Upper Boundary:</span>
-                                {{
-                                    displayData.parameters.intervention
-                                        .upperBoundary ?? "N/A"
-                                }}
-                            </p>
+                                <app-datatable
+                                    [enumerate]="true"
+                                    [disabled]="true"
+                                    [compact]="true"
+                                    [rowScheme]="boundariesRowScheme"
+                                    [data]="
+                                        displayData.parameters.intervention
+                                            .boundaries
+                                    "
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </as-split-area>
+
+    <as-split-area class="split-area" [size]="splitSizes.parameters">
+        <app-model-info [model]="displayData.model" />
     </as-split-area>
 </as-split>

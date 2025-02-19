@@ -1,4 +1,5 @@
 import { computed, Signal } from '@angular/core';
+import { Model } from '@core/types/model.types';
 import { IdentifiedConstant, SelectedConstant } from '@core/types/processing';
 import { PIData } from '@core/types/run.types';
 import { getSetArray, valuesToRowData } from '@core/utils';
@@ -17,19 +18,22 @@ import {
 export interface SplitAreasSizes {
     results: number;
     parameters: number;
+    model: '*';
 }
 
 export type InputData = PIData | null;
 
 export type DisplayData = {
-    parameters: {
-        nodesAmount: number | null;
-        selectedConstants: Record<string, string | number>[];
-        data: Record<string, number>[];
-    };
     result: {
         constants: Record<string, string | number>[];
     };
+    parameters: {
+        nodesAmount: number | null;
+        forecastTime: number;
+        selectedConstants: Record<string, string | number>[];
+        data: Record<string, number>[];
+    };
+    model: Model | null;
 };
 
 export interface State {
@@ -39,18 +43,21 @@ export interface State {
 
 const initialState: State = {
     splitAreasSizes: {
-        results: 50,
-        parameters: 50,
+        results: 33,
+        parameters: 33,
+        model: '*',
     },
     displayData: {
-        parameters: {
-            nodesAmount: null,
-            selectedConstants: [],
-            data: [],
-        },
         result: {
             constants: [],
         },
+        parameters: {
+            nodesAmount: null,
+            forecastTime: 0,
+            selectedConstants: [],
+            data: [],
+        },
+        model: null,
     },
 };
 
@@ -136,37 +143,37 @@ export const PIInfoPanelStore = signalStore(
                 splitAreasSizes: {
                     results: splitAreasSizes.results + 1e-10 * alternator,
                     parameters: splitAreasSizes.parameters - 1e-10 * alternator,
+                    model: '*',
                 },
             });
 
             alternator *= -1;
         };
 
-        const setData = (inputData: InputData): void =>
+        const setData = (data: InputData): void =>
             patchState(store, {
                 displayData: {
+                    result: {
+                        constants: data
+                            ? (data.result.constants as unknown as Record<
+                                  string,
+                                  string | number
+                              >[])
+                            : [],
+                    },
                     parameters: {
-                        nodesAmount:
-                            inputData && inputData.parameters.nodesAmount,
-                        selectedConstants: inputData
-                            ? (inputData.parameters
+                        nodesAmount: data && data.parameters.nodesAmount,
+                        forecastTime: data ? data.parameters.forecastTime : 0,
+                        selectedConstants: data
+                            ? (data.parameters
                                   .selectedConstants as unknown as Record<
                                   string,
                                   string | number
                               >[])
                             : [],
-                        data: inputData
-                            ? valuesToRowData(inputData.parameters.data)
-                            : [],
+                        data: data ? valuesToRowData(data.parameters.data) : [],
                     },
-                    result: {
-                        constants: inputData
-                            ? (inputData.result.constants as unknown as Record<
-                                  string,
-                                  string | number
-                              >[])
-                            : [],
-                    },
+                    model: data && data.model,
                 },
             });
 

@@ -4,9 +4,13 @@
     gap: 20px;
     padding: 20px;
 
-    .input {
-        flex-shrink: 0;
-        width: 100%;
+    .row {
+        display: flex;
+        gap: 20px;
+
+        .input {
+            flex: 1;
+        }
     }
 
     .datatable-input {

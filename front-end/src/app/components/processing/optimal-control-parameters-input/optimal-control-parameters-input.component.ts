@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
+  AbstractControl,
   ControlValueAccessor,
   FormControl,
   FormControlStatus,
@@ -18,12 +19,16 @@ import {
   ReactiveFormsModule,
   ValidationErrors,
   Validator,
+  ValidatorFn,
   Validators,
 } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { ApproximationType } from '@core/types/processing';
+import {
+  ApproximationType,
+  InterventionBoundaries,
+} from '@core/types/processing';
 import {
   OnChangeFn,
   OnTouchedFn,
@@ -32,9 +37,12 @@ import {
 import { skip } from 'rxjs';
 import {
   FormValue,
+  InterventionBoundariesDefinition,
   OptimalControlParametersInputStore,
   Value,
 } from 'src/app/components/processing/optimal-control-parameters-input/optimal-control-parameters-input.store';
+import { DatatableComponent } from 'src/app/components/shared/datatable/datatable.component';
+import { RowScheme } from 'src/app/components/shared/datatable/datatable.store';
 import { EquationInputComponent } from 'src/app/components/shared/equation-input/equation-input.component';
 
 interface ApproximationTypeOption {
@@ -50,6 +58,7 @@ interface ApproximationTypeOption {
         MatFormFieldModule,
         MatInputModule,
         EquationInputComponent,
+        DatatableComponent,
     ],
     providers: [
         OptimalControlParametersInputStore,
@@ -96,14 +105,22 @@ export class OptimalControlParametersInputComponent
             approximationType: new FormControl<ApproximationType | null>(null, [
                 Validators.required,
             ]),
-            lowerBoundary: new FormControl<number | null>(null, [
+            boundaries: new FormControl<
+                | InterventionBoundaries[]
+                | InterventionBoundariesDefinition[]
+                | null
+            >(null, [
                 Validators.required,
-            ]),
-            upperBoundary: new FormControl<number | null>(null, [
-                Validators.required,
+                interventionBoundariesValidator(
+                    this.localStore.interventionsNames,
+                ),
             ]),
         }),
     });
+
+    public readonly boundariesRowScheme: Signal<
+        RowScheme<InterventionBoundariesDefinition>
+    > = this.localStore.boundariesRowScheme;
 
     public readonly approximationTypes: ApproximationTypeOption[] = [
         {
@@ -226,4 +243,25 @@ export class OptimalControlParametersInputComponent
     ): void {
         this.onValidatorChange = onValidatorChange;
     }
+}
+
+function interventionBoundariesValidator(
+    existingInterventions: Signal<string[]>,
+): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+        const boundaries: InterventionBoundariesDefinition[] | null =
+            control.value;
+
+        return existingInterventions().find(
+            (intervention: string): boolean =>
+                !boundaries?.find(
+                    (boundary: InterventionBoundariesDefinition): boolean =>
+                        boundary.name === intervention,
+                ),
+        )
+            ? {
+                  missingBoundaries: true,
+              }
+            : null;
+    };
 }

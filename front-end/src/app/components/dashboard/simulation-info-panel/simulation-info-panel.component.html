@@ -1,17 +1,34 @@
 @let displayData = this.displayData();
+@let splitSizes = this.splitSizes();
 
-<div class="group">
-    <div class="title">Parameters</div>
+<as-split
+    direction="vertical"
+    useTransition
+    gutterSize="7"
+    gutterDblClickDuration="400"
+    (gutterDblClick)="onGutterDBClick()"
+>
+    <as-split-area class="split-area" [size]="splitSizes.parameters">
+        <div class="wrapper">
+            <div class="group">
+                <div class="title">Parameters</div>
 
-    <div class="body">
-        <p class="field">
-            <span class="name">Time:</span>
-            {{ displayData.parameters.time ?? "N/A" }}
-        </p>
+                <div class="body">
+                    <p class="field">
+                        <span class="name">Time:</span>
+                        {{ displayData.parameters.time ?? "N/A" }}
+                    </p>
 
-        <p class="field">
-            <span class="name">Nodes Amount:</span>
-            {{ displayData.parameters.nodesAmount ?? "N/A" }}
-        </p>
-    </div>
-</div>
+                    <p class="field">
+                        <span class="name">Nodes Amount:</span>
+                        {{ displayData.parameters.nodesAmount ?? "N/A" }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </as-split-area>
+
+    <as-split-area class="split-area" [size]="splitSizes.model">
+        <app-model-info [model]="displayData.model" />
+    </as-split-area>
+</as-split>

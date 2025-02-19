@@ -30,7 +30,11 @@ export class EquationDisplayComponent implements AfterViewInit {
                 const equation: string = this.equation();
                 const hostElement: HTMLElement = this.elementRef.nativeElement;
 
-                untracked((): void => this.katex.render(equation, hostElement));
+                untracked((): void =>
+                    this.katex.render(equation, hostElement, {
+                        output: 'html',
+                    }),
+                );
             },
             {
                 injector: this.injector,

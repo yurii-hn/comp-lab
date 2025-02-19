@@ -3,6 +3,7 @@
 from typing import TypedDict
 
 from core.definitions.common.processing_type import ProcessingType
+from core.definitions.model.model import ModelDefinition
 from core.definitions.optimal_control.parameters import \
     OptimalControlParametersDefinition
 from core.definitions.optimal_control.result import \
@@ -15,4 +16,5 @@ class OptimalControlSuccessResponseDefinition(TypedDict):
 
     type: ProcessingType.OPTIMAL_CONTROL
     parameters: OptimalControlParametersDefinition
+    model: ModelDefinition
     result: tuple[SimulationResultDefinition, OptimalControlResultDefinition]

@@ -16,6 +16,7 @@ export interface IdentifiedConstant {
 
 export interface PIParameters {
     nodesAmount: number;
+    forecastTime: number;
     selectedConstants: SelectedConstant[];
     data: Values[];
 }

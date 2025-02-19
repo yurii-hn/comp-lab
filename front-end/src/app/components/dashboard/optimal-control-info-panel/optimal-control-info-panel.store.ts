@@ -1,5 +1,9 @@
 import { computed, Signal } from '@angular/core';
-import { ApproximationType } from '@core/types/processing';
+import { Model } from '@core/types/model.types';
+import {
+  ApproximationType,
+  InterventionBoundaries,
+} from '@core/types/processing';
 import { OptimalControlData } from '@core/types/run.types';
 import { valuesToRowData } from '@core/utils';
 import {
@@ -17,6 +21,7 @@ import {
 export interface SplitAreasSizes {
     results: number;
     parameters: number;
+    model: '*';
 }
 
 export type InputData = OptimalControlData | null;
@@ -24,22 +29,22 @@ export type InputData = OptimalControlData | null;
 export type DisplayInterventionData = {
     nodesAmount: number | null;
     approximationType: ApproximationType | null;
-    lowerBoundary: number | null;
-    upperBoundary: number | null;
+    boundaries: Record<string, string | number>[];
 };
 
 export type DisplayData = {
+    result: {
+        noControlObjective: number | null;
+        optimalObjective: number | null;
+        interventions: Record<string, number>[];
+    };
     parameters: {
         time: number | null;
         nodesAmount: number | null;
         objectiveFunction: string | null;
         intervention: DisplayInterventionData;
     };
-    result: {
-        noControlObjective: number | null;
-        optimalObjective: number | null;
-        interventions: Record<string, number>[];
-    };
+    model: Model | null;
 };
 
 export interface State {
@@ -49,10 +54,16 @@ export interface State {
 
 const initialState: State = {
     splitAreasSizes: {
-        results: 50,
-        parameters: 50,
+        results: 33,
+        parameters: 33,
+        model: '*',
     },
     displayData: {
+        result: {
+            noControlObjective: null,
+            optimalObjective: null,
+            interventions: [],
+        },
         parameters: {
             time: null,
             nodesAmount: null,
@@ -60,15 +71,10 @@ const initialState: State = {
             intervention: {
                 nodesAmount: null,
                 approximationType: null,
-                lowerBoundary: null,
-                upperBoundary: null,
+                boundaries: [],
             },
         },
-        result: {
-            noControlObjective: null,
-            optimalObjective: null,
-            interventions: [],
-        },
+        model: null,
     },
 };
 
@@ -97,9 +103,27 @@ export const OptimalControlInfoPanelStore = signalStore(
                     : {};
             },
         );
+        const boundariesRowScheme: Signal<RowScheme<InterventionBoundaries>> =
+            computed(
+                (): RowScheme<InterventionBoundaries> => ({
+                    name: {
+                        name: 'Name',
+                        type: InputType.Text,
+                    },
+                    lowerBoundary: {
+                        name: 'Lower boundary',
+                        type: InputType.Number,
+                    },
+                    upperBoundary: {
+                        name: 'Upper boundary',
+                        type: InputType.Number,
+                    },
+                }),
+            );
 
         return {
             interventionsRowScheme,
+            boundariesRowScheme,
         };
     }),
     withMethods((store) => {
@@ -112,6 +136,7 @@ export const OptimalControlInfoPanelStore = signalStore(
                 splitAreasSizes: {
                     results: splitAreasSizes.results + 1e-10 * alternator,
                     parameters: splitAreasSizes.parameters - 1e-10 * alternator,
+                    model: '*',
                 },
             });
 
@@ -121,6 +146,15 @@ export const OptimalControlInfoPanelStore = signalStore(
         const setData = (data: InputData): void =>
             patchState(store, {
                 displayData: {
+                    result: {
+                        noControlObjective:
+                            data && data.result[1].noControlObjective,
+                        optimalObjective:
+                            data && data.result[1].optimalObjective,
+                        interventions: data
+                            ? valuesToRowData(data.result[1].interventions)
+                            : [],
+                    },
                     parameters: {
                         time: data && data.parameters.time,
                         nodesAmount: data && data.parameters.nodesAmount,
@@ -133,23 +167,16 @@ export const OptimalControlInfoPanelStore = signalStore(
                             approximationType:
                                 data &&
                                 data.parameters.intervention.approximationType,
-                            lowerBoundary:
-                                data &&
-                                data.parameters.intervention.lowerBoundary,
-                            upperBoundary:
-                                data &&
-                                data.parameters.intervention.upperBoundary,
+                            boundaries: data
+                                ? (data.parameters.intervention
+                                      .boundaries as unknown as Record<
+                                      string,
+                                      string | number
+                                  >[])
+                                : [],
                         },
                     },
-                    result: {
-                        noControlObjective:
-                            data && data.result[1].noControlObjective,
-                        optimalObjective:
-                            data && data.result[1].optimalObjective,
-                        interventions: data
-                            ? valuesToRowData(data.result[1].interventions)
-                            : [],
-                    },
+                    model: data && data.model,
                 },
             });
 

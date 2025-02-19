@@ -1,6 +1,5 @@
 """Simulation Parameters Definition"""
 
-
 from typing import TypedDict
 
 

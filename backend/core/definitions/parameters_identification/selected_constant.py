@@ -1,6 +1,5 @@
 """Selected Constant Definition"""
 
-
 from typing import TypedDict
 
 

@@ -44,6 +44,11 @@
                         {{ displayData.parameters.nodesAmount ?? "N/A" }}
                     </p>
 
+                    <p class="field">
+                        <span class="name">Forecast Time:</span>
+                        {{ displayData.parameters.forecastTime || "None" }}
+                    </p>
+
                     <div class="table-group">
                         <div class="title">Selected Parameters</div>
 
@@ -70,5 +75,9 @@
                 </div>
             </div>
         </div>
+    </as-split-area>
+
+    <as-split-area class="split-area" [size]="splitSizes.parameters">
+        <app-model-info [model]="displayData.model" />
     </as-split-area>
 </as-split>

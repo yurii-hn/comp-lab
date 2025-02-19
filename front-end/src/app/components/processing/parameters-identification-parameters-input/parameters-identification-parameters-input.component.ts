@@ -24,7 +24,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import {
+  MatSlideToggleChange,
+  MatSlideToggleModule,
+} from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { SelectedConstant } from '@core/types/processing';
 import { OnChangeFn, OnTouchedFn } from '@core/types/util.types';
 import { skip } from 'rxjs';
 import {
@@ -45,6 +50,7 @@ import { RowScheme } from 'src/app/components/shared/datatable/datatable.store';
         MatFormFieldModule,
         MatTooltipModule,
         MatInputModule,
+        MatSlideToggleModule,
         DatatableComponent,
     ],
     providers: [
@@ -77,15 +83,20 @@ export class ParametersIdentificationParametersInputComponent
             Validators.required,
             Validators.min(1),
         ]),
-        selectedConstants: new FormControl<SelectedConstantDefinition[] | null>(
-            null,
-            [Validators.required],
-        ),
+        forecastTime: new FormControl<number | null>(null, [
+            Validators.required,
+            Validators.min(0),
+        ]),
+        selectedConstants: new FormControl<
+            SelectedConstant[] | SelectedConstantDefinition[] | null
+        >(null, [Validators.required]),
         data: new FormControl<Record<string, number>[] | null>(null, [
             Validators.required,
         ]),
     });
 
+    public readonly forecastEnabled: Signal<boolean> =
+        this.localStore.forecastEnabled;
     public readonly constantsRowScheme: Signal<
         RowScheme<SelectedConstantDefinition>
     > = this.localStore.constantsRowScheme;
@@ -144,6 +155,31 @@ export class ParametersIdentificationParametersInputComponent
                 injector: this.injector,
             },
         );
+        effect(
+            (): void => {
+                const forecastEnabled: boolean =
+                    this.localStore.forecastEnabled();
+
+                untracked((): void => {
+                    const forecastControl: FormControl<number | null> =
+                        this.control.get('forecastTime') as FormControl<
+                            number | null
+                        >;
+
+                    if (forecastEnabled) {
+                        forecastControl.addValidators(Validators.required);
+
+                        return;
+                    }
+
+                    forecastControl.reset();
+                    forecastControl.removeValidators(Validators.required);
+                });
+            },
+            {
+                injector: this.injector,
+            },
+        );
     }
 
     public writeValue(value: Value | null): void {
@@ -170,6 +206,10 @@ export class ParametersIdentificationParametersInputComponent
 
     public validate(): ValidationErrors | null {
         return this.control.valid ? null : { parametersIdentification: true };
+    }
+
+    public onForecastTimeToggle(event: MatSlideToggleChange): void {
+        this.localStore.setForecastModeState(event.checked);
     }
 
     public onDataImport(): void {

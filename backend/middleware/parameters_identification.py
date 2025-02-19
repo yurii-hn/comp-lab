@@ -7,24 +7,20 @@ from core.classes.common.values import Values
 from core.classes.model.model import Model
 from core.classes.model.variables_datatable import VariablesDatatable
 from core.classes.parameters_identification.parameters import PIParameters
-from core.classes.parameters_identification.response import PIResponse
 from core.classes.parameters_identification.success_response import \
     PISuccessResponse
+from core.definitions.common.approximation_type import ApproximationType
 from core.definitions.model.continuity_type import ContinuityType
-from core.definitions.optimal_control.approximation_type import \
-    ApproximationType
 from core.definitions.parameters_identification.result import \
     PIResultDefinition
 from scipy.optimize import OptimizeResult, minimize
 from sympy import Interval, oo
 
 
-def parameters_identification(parameters: PIParameters, model: Model) -> PIResponse:
+def parameters_identification(
+    parameters: PIParameters, model: Model
+) -> PISuccessResponse | ErrorResponse:
     """Identify the parameters"""
-
-    model.symbols_table.update(
-        {constant.name: constant.symbol for constant in parameters.selected_constants}
-    )
 
     for compartment in model.compartments:
         continuity_status: dict[str, ContinuityType] = {
@@ -73,6 +69,40 @@ def parameters_identification(parameters: PIParameters, model: Model) -> PIRespo
     try:
         variables_datatable: VariablesDatatable = VariablesDatatable()
 
+        variables_datatable.update_constants(
+            {
+                constant.name: Values(
+                    {
+                        "name": constant.name,
+                        "values": [
+                            {"time": 0, "value": constant.value},
+                        ],
+                    },
+                    ApproximationType.PIECEWISE_CONSTANT,
+                )
+                for constant in model.constants
+            }
+        )
+
+        variables_datatable.update_interventions(
+            {
+                intervention.name: Values(
+                    {
+                        "name": intervention.name,
+                        "values": next(
+                            (
+                                values.values
+                                for values in parameters.data
+                                if intervention.name == values.name
+                            ),
+                            [{"time": 0, "value": 0}],
+                        ),
+                    },
+                )
+                for intervention in model.interventions
+            }
+        )
+
         minimize_result: OptimizeResult = cast(
             OptimizeResult,
             minimize(
@@ -87,6 +117,18 @@ def parameters_identification(parameters: PIParameters, model: Model) -> PIRespo
                 tol=1e-3,
             ),
         )
+
+        time: float = (
+            max(
+                [
+                    max([value.time for value in values.values])
+                    for values in parameters.data
+                ]
+            )
+            + parameters.forecast_time
+        )
+        time_step: float = time / parameters.nodes_amount
+        model.simulate(time_step, parameters.nodes_amount, variables_datatable, True)
 
         result: PIResultDefinition = {
             "approximation": variables_datatable.compartments_definition,
@@ -103,6 +145,7 @@ def parameters_identification(parameters: PIParameters, model: Model) -> PIRespo
         return PISuccessResponse(
             {
                 "parameters": parameters.definition,
+                "model": model.definition,
                 "result": result,
             }
         )
@@ -134,25 +177,6 @@ def optimization_criteria(
                 ApproximationType.PIECEWISE_CONSTANT,
             )
             for i, constant in enumerate(parameters.selected_constants)
-        }
-    )
-
-    variables_datatable.update_interventions(
-        {
-            intervention.name: Values(
-                {
-                    "name": intervention.name,
-                    "values": next(
-                        (
-                            values.values
-                            for values in parameters.data
-                            if intervention.name == values.name
-                        ),
-                        [],
-                    ),
-                },
-            )
-            for intervention in model.interventions
         }
     )
 

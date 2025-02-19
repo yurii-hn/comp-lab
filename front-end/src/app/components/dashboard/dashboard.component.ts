@@ -12,6 +12,7 @@ import {
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -44,6 +45,7 @@ PlotlyModule.plotlyjs = PlotlyJS;
         MatSelectModule,
         MatButtonModule,
         MatTooltipModule,
+        MatDividerModule,
         PlotlyModule,
         AngularSplitModule,
         SimulationInfoPanelComponent,
@@ -58,9 +60,8 @@ export class DashboardComponent implements OnInit {
     private readonly injector: Injector = inject(Injector);
     private readonly store: Store = inject(Store);
     private readonly localStore = inject(DashboardStore);
-    private readonly dialogRef: MatDialogRef<DashboardComponent, void> = inject(
-        MatDialogRef<DashboardComponent, void>,
-    );
+    private readonly dialogRef: MatDialogRef<DashboardComponent, Data | void> =
+        inject(MatDialogRef<DashboardComponent, Data | void>);
     private readonly dialogService: MatDialog = inject(MatDialog);
 
     private readonly plotsComponents: Signal<readonly PlotlyComponent[]> =
@@ -129,6 +130,45 @@ export class DashboardComponent implements OnInit {
         this.dialogRef.close();
     }
 
+    public set({ value: name }: MatSelectChange): void {
+        this.store.dispatch(DashboardActions.selectRun({ name }));
+    }
+
+    public edit(): void {
+        const dialog: MatDialogRef<EditDialogComponent, string> =
+            this.dialogService.open(EditDialogComponent, {
+                autoFocus: false,
+                disableClose: true,
+                data: {
+                    title: 'Run rename',
+                    message: 'Enter new run name',
+                    value: this.localStore.currentRunName(),
+                    validationFns: [uniqueName(this.localStore.runsNames)],
+                },
+            });
+
+        dialog
+            .afterClosed()
+            .pipe(
+                filter(
+                    (newName?: string): newName is string =>
+                        newName !== undefined,
+                ),
+                tap((newName: string): void => {
+                    this.store.dispatch(
+                        DashboardActions.renameRun({
+                            name: newName,
+                        }),
+                    );
+                }),
+            )
+            .subscribe();
+    }
+
+    public remove(): void {
+        this.store.dispatch(DashboardActions.removeRun());
+    }
+
     public add(): void {
         this.store.dispatch(DashboardActions.addRun());
     }
@@ -164,42 +204,17 @@ export class DashboardComponent implements OnInit {
             .subscribe();
     }
 
-    public edit(): void {
-        const dialog: MatDialogRef<EditDialogComponent, string> =
-            this.dialogService.open(EditDialogComponent, {
-                autoFocus: false,
-                disableClose: true,
-                data: {
-                    title: 'Run rename',
-                    message: 'Enter new run name',
-                    value: this.localStore.currentRunName(),
-                    validationFns: [uniqueName(this.localStore.runsNames)],
-                },
-            });
-
-        dialog
-            .afterClosed()
-            .pipe(
-                filter(
-                    (newName?: string): newName is string =>
-                        newName !== undefined,
-                ),
-                tap((newName: string): void => {
-                    this.store.dispatch(
-                        DashboardActions.renameRun({
-                            name: newName,
-                        }),
-                    );
-                }),
-            )
-            .subscribe();
+    public rerun(): void {
+        this.dialogRef.close(this.localStore.currentRunData()!);
     }
 
-    public set({ value: name }: MatSelectChange): void {
-        this.store.dispatch(DashboardActions.selectRun({ name }));
-    }
+    public extract(): void {
+        this.store.dispatch(
+            DashboardActions.extractModel({
+                model: this.localStore.currentRunData()!.model,
+            }),
+        );
 
-    public remove(): void {
-        this.store.dispatch(DashboardActions.removeRun());
+        this.dialogRef.close();
     }
 }

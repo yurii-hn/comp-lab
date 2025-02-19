@@ -1,8 +1,14 @@
-"""Parameter Identification Request Body Definition"""
+"""PI Request Body Definition"""
+
+from typing import TypedDict
+
+from core.definitions.model.model import ModelDefinition
+from core.definitions.parameters_identification.parameters import \
+    PIParametersDefinition
 
 
-from core.definitions.common.request_body import RequestBodyDefinition
-from core.definitions.parameters_identification.parameters import PIParametersDefinition
+class PIRequestBodyDefinition(TypedDict):
+    """PI Request Body"""
 
-
-PIRequestBodyDefinition = RequestBodyDefinition[PIParametersDefinition]
+    parameters: PIParametersDefinition
+    model: ModelDefinition

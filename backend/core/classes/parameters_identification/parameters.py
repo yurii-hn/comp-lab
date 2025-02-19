@@ -11,6 +11,7 @@ class PIParameters:
     """PI Parameters"""
 
     nodes_amount: int
+    forecast_time: float
     selected_constants: list[SelectedConstant]
     data: list[Values]
 
@@ -20,6 +21,7 @@ class PIParameters:
 
         return {
             "nodesAmount": self.nodes_amount,
+            "forecastTime": self.forecast_time,
             "selectedConstants": [
                 selected_constant.definition
                 for selected_constant in self.selected_constants
@@ -29,6 +31,7 @@ class PIParameters:
 
     def __init__(self, definition: PIParametersDefinition) -> None:
         self.nodes_amount = definition["nodesAmount"]
+        self.forecast_time = definition["forecastTime"]
         self.selected_constants = [
             SelectedConstant(selected_constant)
             for selected_constant in definition["selectedConstants"]

@@ -26,6 +26,11 @@
             display: flex;
             align-items: center;
             gap: 15px;
+            height: 100%;
+
+            .divider {
+                height: 75%;
+            }
         }
     }
 

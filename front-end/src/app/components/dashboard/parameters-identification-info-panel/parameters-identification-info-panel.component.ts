@@ -19,10 +19,11 @@ import {
 } from 'src/app/components/dashboard/parameters-identification-info-panel/parameters-identification-info-panel.store';
 import { DatatableComponent } from 'src/app/components/shared/datatable/datatable.component';
 import { RowScheme } from 'src/app/components/shared/datatable/datatable.store';
+import { ModelInfoComponent } from 'src/app/components/shared/model-info/model-info.component';
 
 @Component({
     selector: 'app-parameters-identification-info-panel',
-    imports: [AngularSplitModule, DatatableComponent],
+    imports: [AngularSplitModule, DatatableComponent, ModelInfoComponent],
     providers: [PIInfoPanelStore],
     templateUrl: './parameters-identification-info-panel.component.html',
     styleUrls: ['./parameters-identification-info-panel.component.scss'],

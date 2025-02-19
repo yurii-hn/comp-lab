@@ -27,6 +27,29 @@
 
         <button
             mat-mini-fab
+            color="primary"
+            matTooltip="Rename current run"
+            [disabled]="noRuns"
+            (click)="edit()"
+        >
+            <mat-icon>edit</mat-icon>
+        </button>
+
+        <button
+            mat-mini-fab
+            class="button"
+            color="primary"
+            matTooltip="Remove current run"
+            [disabled]="noRuns"
+            (click)="remove()"
+        >
+            <mat-icon>delete</mat-icon>
+        </button>
+
+        <mat-divider class="divider" vertical />
+
+        <button
+            mat-mini-fab
             class="button"
             color="primary"
             matTooltip="Import run"
@@ -46,25 +69,31 @@
             <mat-icon>download</mat-icon>
         </button>
 
+        <mat-divider class="divider" vertical />
+
         <button
             mat-mini-fab
+            class="button"
             color="primary"
-            matTooltip="Rename current run"
-            (click)="edit()"
+            matTooltip="Run again"
+            [disabled]="noRuns"
+            (click)="rerun()"
         >
-            <mat-icon>edit</mat-icon>
+            <mat-icon>replay</mat-icon>
         </button>
 
         <button
             mat-mini-fab
             class="button"
             color="primary"
-            matTooltip="Remove current run"
+            matTooltip="Create a new workspace with model from current run"
             [disabled]="noRuns"
-            (click)="remove()"
+            (click)="extract()"
         >
-            <mat-icon>delete</mat-icon>
+            <mat-icon>note_add</mat-icon>
         </button>
+
+        <mat-divider class="divider" vertical />
 
         <button mat-mini-fab color="primary" (click)="onClose()">
             <mat-icon>close</mat-icon>

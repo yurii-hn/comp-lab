@@ -1,9 +1,9 @@
 """Optimal Control Parameters Definition"""
 
-
 from typing import TypedDict
 
-from core.definitions.optimal_control.intervention_parameters import InterventionParametersDefinition
+from core.definitions.optimal_control.intervention_parameters import \
+    InterventionParametersDefinition
 
 
 class OptimalControlParametersDefinition(TypedDict):

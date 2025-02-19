@@ -1,8 +1,10 @@
 """Intervention Parameters Class"""
 
-
-from core.definitions.optimal_control.approximation_type import ApproximationType
-from core.definitions.optimal_control.intervention_parameters import InterventionParametersDefinition
+from core.classes.optimal_control.intervention_boundaries import \
+    InterventionBoundaries
+from core.definitions.common.approximation_type import ApproximationType
+from core.definitions.optimal_control.intervention_parameters import \
+    InterventionParametersDefinition
 
 
 class InterventionParameters:
@@ -10,24 +12,21 @@ class InterventionParameters:
 
     nodes_amount: int
     approximation_type: ApproximationType
-    lower_boundary: float
-    upper_boundary: float
+    boundaries: list[InterventionBoundaries]
 
     @property
     def definition(self) -> InterventionParametersDefinition:
         """Definition"""
 
         return {
-            'nodesAmount': self.nodes_amount,
-            'approximationType': self.approximation_type,
-            'lowerBoundary': self.lower_boundary,
-            'upperBoundary': self.upper_boundary,
+            "nodesAmount": self.nodes_amount,
+            "approximationType": self.approximation_type,
+            "boundaries": [boundary.definition for boundary in self.boundaries],
         }
 
     def __init__(self, definition: InterventionParametersDefinition) -> None:
-        self.nodes_amount = definition['nodesAmount']
-        self.approximation_type = ApproximationType(
-            definition['approximationType']
-        )
-        self.lower_boundary = definition['lowerBoundary']
-        self.upper_boundary = definition['upperBoundary']
+        self.nodes_amount = definition["nodesAmount"]
+        self.approximation_type = ApproximationType(definition["approximationType"])
+        self.boundaries = [
+            InterventionBoundaries(boundary) for boundary in definition["boundaries"]
+        ]

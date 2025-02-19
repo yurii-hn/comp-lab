@@ -1,10 +1,16 @@
 import { Values } from './common.types';
 
+export interface InterventionBoundaries {
+    id: string;
+    name: string;
+    upperBoundary: number;
+    lowerBoundary: number;
+}
+
 export interface InterventionParameters {
     nodesAmount: number;
     approximationType: ApproximationType;
-    lowerBoundary: number;
-    upperBoundary: number;
+    boundaries: InterventionBoundaries[];
 }
 
 export interface OptimalControlParameters {

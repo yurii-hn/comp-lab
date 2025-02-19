@@ -1,10 +1,14 @@
 :host {
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-    gap: 10px;
     min-width: min-content;
     overflow: auto;
+
+    .split-area {
+        overflow: auto;
+
+        .wrapper {
+            padding: 20px;
+        }
+    }
 
     .field {
         white-space: nowrap;

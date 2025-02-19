@@ -1,12 +1,20 @@
 :host {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     overflow: auto;
     padding: 20px;
+
+    .title {
+        font: var(--mat-sys-title-large);
+        margin: 0;
+    }
 
     .section {
         display: flex;
         flex-direction: column;
         gap: 10px;
+        padding: 10px;
 
         .title {
             font: var(--mat-sys-title-large);
@@ -16,8 +24,8 @@
         .body {
             display: flex;
             flex-direction: column;
-            padding: 10px;
             gap: 10px;
+            padding: 10px;
 
             .group {
                 display: flex;
@@ -32,11 +40,11 @@
                 .body {
                     display: flex;
                     flex-direction: column;
-                    padding: 10px;
                     gap: 10px;
+                    padding: 10px;
 
                     .equation {
-                        font: var(--mat-sys-headline-medium);
+                        font: var(--mat-sys-title-large);
                     }
                 }
             }

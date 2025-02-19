@@ -1,3 +1,5 @@
+@let boundariesRowScheme = this.boundariesRowScheme();
+
 <ng-container [formGroup]="control">
     <div class="row">
         <mat-form-field class="input" subscriptSizing="dynamic">
@@ -59,36 +61,16 @@
         </mat-form-field>
     </div>
 
-    <div class="row" formGroupName="intervention">
-        <mat-form-field
-            class="input"
-            floatLabel="always"
-            subscriptSizing="dynamic"
-        >
-            <mat-label>Intervention Lower Boundary</mat-label>
+    <div class="datatable-input" formGroupName="intervention">
+        <div class="header">
+            <div class="title">Interventions boundaries</div>
+        </div>
 
-            <input
-                matInput
-                placeholder="Enter value"
-                type="number"
-                formControlName="lowerBoundary"
-            />
-        </mat-form-field>
-
-        <mat-form-field
-            class="input"
-            floatLabel="always"
-            subscriptSizing="dynamic"
-        >
-            <mat-label>Intervention Upper Boundary</mat-label>
-
-            <input
-                matInput
-                placeholder="Enter value"
-                type="number"
-                formControlName="upperBoundary"
-            />
-        </mat-form-field>
+        <app-datatable
+            formControlName="boundaries"
+            [rowScheme]="boundariesRowScheme"
+            [showEmptyColumns]="true"
+        />
     </div>
 
     <app-equation-input

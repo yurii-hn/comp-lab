@@ -68,7 +68,7 @@ import {
     templateUrl: './datatable.component.html',
     styleUrls: ['./datatable.component.scss'],
     host: {
-        'class.compact': 'localStore.compact()',
+        '[class.compact]': 'localStore.compact()',
     },
 })
 export class DatatableComponent

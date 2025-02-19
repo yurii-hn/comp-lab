@@ -1,9 +1,8 @@
 """Values Class"""
 
 from core.classes.common.point import Point
+from core.definitions.common.approximation_type import ApproximationType
 from core.definitions.common.values import ValuesDefinition
-from core.definitions.optimal_control.approximation_type import \
-    ApproximationType
 
 
 class Values:

@@ -33,7 +33,7 @@ import { selectDashboardSettings } from 'src/app/state/selectors/settings.select
 
 export interface SplitAreasSizes {
     plots: number;
-    info: number;
+    info: '*';
 }
 
 export interface Plot {
@@ -50,7 +50,7 @@ export interface State {
 const initialState: State = {
     splitAreasSizes: {
         plots: 70,
-        info: 30,
+        info: '*',
     },
     plotsConfig: {},
     plotStyle: {
@@ -129,7 +129,7 @@ export const DashboardStore = signalStore(
             patchState(store, {
                 splitAreasSizes: {
                     plots: splitAreasSizes.plots + 1e-10 * alternator,
-                    info: splitAreasSizes.info - 1e-10 * alternator,
+                    info: '*',
                 },
             });
 

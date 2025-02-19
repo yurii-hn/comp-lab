@@ -16,7 +16,8 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Compartment, Flow } from '@core/types/model.types';
+import { Compartment, Flow, Model } from '@core/types/model.types';
+import { Data } from '@core/types/run.types';
 import { Store } from '@ngrx/store';
 import { AngularSplitModule } from 'angular-split';
 import { EdgeSingular, NodeSingular } from 'cytoscape';
@@ -25,12 +26,15 @@ import { AppStore, SplitAreasSizes } from 'src/app/app.store';
 import { CompartmentComponent } from 'src/app/components/graph/compartment/compartment.component';
 import { EmptyFlow } from 'src/app/components/graph/edit-flow/edit-flow.store';
 import { FlowComponent } from 'src/app/components/graph/flow/flow.component';
-import { InfoComponent } from 'src/app/components/info/info.component';
 import { SettingsComponent } from 'src/app/components/settings/settings.component';
+import { ModelInfoComponent } from 'src/app/components/shared/model-info/model-info.component';
 import { WorkspacesPanelComponent } from 'src/app/components/workspaces-panel/workspaces-panel.component';
 import { GraphService } from 'src/app/services/graph.service';
 import { AppActions } from 'src/app/state/actions/app.actions';
-import { selectHasCompartments } from 'src/app/state/selectors/workspace.selectors';
+import {
+  selectCurrentModel,
+  selectHasCompartments,
+} from 'src/app/state/selectors/workspace.selectors';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { DefinitionsTableComponent } from './components/definitions-table/definitions-table.component';
 import { EditCompartmentComponent } from './components/graph/edit-compartment/edit-compartment.component';
@@ -45,7 +49,7 @@ import { ConfirmationDialogComponent } from './components/shared/confirmation-di
         MatButtonModule,
         MatTooltipModule,
         AngularSplitModule,
-        InfoComponent,
+        ModelInfoComponent,
         WorkspacesPanelComponent,
     ],
     providers: [GraphService, AppStore],
@@ -61,6 +65,8 @@ export class AppComponent implements OnInit, AfterViewInit {
     private readonly canvas: Signal<ElementRef<HTMLDivElement>> =
         viewChild.required<ElementRef<HTMLDivElement>>('canvas');
 
+    public readonly model: Signal<Model> =
+        this.store.selectSignal(selectCurrentModel);
     public readonly isElementSelected: Signal<boolean> =
         this.localStore.isElementSelected;
     public readonly hasCompartments: Signal<boolean> = this.store.selectSignal(
@@ -186,10 +192,34 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
 
     public onDashboard(): void {
-        this.dialogService.open(DashboardComponent, {
-            autoFocus: false,
-            disableClose: true,
-        });
+        const dialog: MatDialogRef<DashboardComponent> =
+            this.dialogService.open(DashboardComponent, {
+                autoFocus: false,
+                disableClose: true,
+            });
+
+        dialog
+            .afterClosed()
+            .pipe(
+                filter((data?: Data): data is Data => data !== undefined),
+                tap((data: Data): void => {
+                    this.store.dispatch(
+                        AppActions.addWorkspace({
+                            model: data.model,
+                        }),
+                    );
+
+                    this.dialogService.open(ProcessingComponent, {
+                        autoFocus: false,
+                        disableClose: true,
+                        data: {
+                            type: data.type,
+                            parameters: data.parameters,
+                        },
+                    });
+                }),
+            )
+            .subscribe();
     }
 
     public onProcess(): void {

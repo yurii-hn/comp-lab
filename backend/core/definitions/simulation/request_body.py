@@ -1,8 +1,14 @@
-"""Simulation Request Body Definition"""
+"""Simulation Request Body"""
+
+from typing import TypedDict
+
+from core.definitions.model.model import ModelDefinition
+from core.definitions.simulation.parameters import \
+    SimulationParametersDefinition
 
 
-from core.definitions.common.request_body import RequestBodyDefinition
-from core.definitions.simulation.parameters import SimulationParametersDefinition
+class SimulationRequestBodyDefinition(TypedDict):
+    """Simulation Request Body"""
 
-
-SimulationRequestBodyDefinition = RequestBodyDefinition[SimulationParametersDefinition]
+    parameters: SimulationParametersDefinition
+    model: ModelDefinition

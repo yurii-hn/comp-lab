@@ -1,9 +1,15 @@
 import { computed, inject, Signal } from '@angular/core';
-import { ValidatorFn, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormControl,
+  FormGroup,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { Compartment, Constant, Intervention } from '@core/types/model.types';
 import { SelectedConstant, Values } from '@core/types/processing';
 import { areEqual, rowDataToValues, valuesToRowData } from '@core/utils';
-import { dataRow } from '@core/validators';
 import {
   patchState,
   signalStore,
@@ -32,20 +38,31 @@ export type SelectedConstantDefinition = Omit<SelectedConstant, 'id'>;
 
 export interface Value {
     nodesAmount: number | null;
+    forecastTime: number;
     selectedConstants: SelectedConstant[] | null;
     data: Values[] | null;
 }
 
 export interface FormValue {
     nodesAmount: number | null;
+    forecastTime: number | null;
     selectedConstants: SelectedConstantDefinition[] | null;
     data: Record<string, number>[] | null;
 }
 
-const initialState: FormValue = {
-    nodesAmount: null,
-    selectedConstants: null,
-    data: null,
+export interface State {
+    forecastEnabled: boolean;
+    _value: FormValue;
+}
+
+const initialState: State = {
+    forecastEnabled: false,
+    _value: {
+        nodesAmount: null,
+        forecastTime: 0,
+        selectedConstants: null,
+        data: null,
+    },
 };
 
 export const PIParametersInputStore = signalStore(
@@ -77,11 +94,14 @@ export const PIParametersInputStore = signalStore(
                 const parameters: FormValue = formValue();
 
                 const nodesAmount: number | null = parameters.nodesAmount;
+                const forecastTime: number = parameters.forecastTime ?? 0;
                 const selectedConstants: SelectedConstant[] | null =
                     parameters.selectedConstants &&
                     parameters.selectedConstants.map(
                         (
-                            selectedConstant: SelectedConstantDefinition,
+                            selectedConstant:
+                                | SelectedConstant
+                                | SelectedConstantDefinition,
                         ): SelectedConstant => ({
                             ...selectedConstant,
                             id: store
@@ -97,6 +117,7 @@ export const PIParametersInputStore = signalStore(
 
                 return {
                     nodesAmount,
+                    forecastTime,
                     selectedConstants,
                     data,
                 };
@@ -106,11 +127,7 @@ export const PIParametersInputStore = signalStore(
             },
         );
         const formValue: Signal<FormValue> = computed(
-            (): FormValue => ({
-                nodesAmount: store.nodesAmount(),
-                selectedConstants: store.selectedConstants(),
-                data: store.data(),
-            }),
+            (): FormValue => store._value(),
             {
                 equal: areEqual,
             },
@@ -210,14 +227,24 @@ export const PIParametersInputStore = signalStore(
         };
     }),
     withMethods((store) => {
+        const setForecastModeState = (enabled: boolean): void =>
+            patchState(store, {
+                forecastEnabled: enabled,
+            });
         const setValueFromParent = (value: Value | null): void =>
             patchState(store, {
-                nodesAmount: value && value.nodesAmount,
-                selectedConstants: value && value.selectedConstants,
-                data: value && value.data && valuesToRowData(value.data),
+                _value: {
+                    nodesAmount: value && value.nodesAmount,
+                    forecastTime: value ? value.forecastTime : 0,
+                    selectedConstants: value && value.selectedConstants,
+                    data: value && value.data && valuesToRowData(value.data),
+                },
+                forecastEnabled:
+                    value?.forecastTime !== null &&
+                    value?.forecastTime !== undefined,
             });
         const setValueFromForm = (value: FormValue): void =>
-            patchState(store, value);
+            patchState(store, { _value: value });
         const importData = rxMethod<void>(
             pipe(
                 switchMap(
@@ -226,7 +253,10 @@ export const PIParametersInputStore = signalStore(
                 ),
                 tap((data: Values[]): void =>
                     patchState(store, {
-                        data: valuesToRowData(data),
+                        _value: {
+                            ...store.value(),
+                            data: valuesToRowData(data),
+                        },
                     }),
                 ),
                 tap((): void =>
@@ -245,9 +275,34 @@ export const PIParametersInputStore = signalStore(
         );
 
         return {
+            setForecastModeState,
             setValueFromParent,
             setValueFromForm,
             importData,
         };
     }),
 );
+
+function dataRow(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+        const timeControl: FormControl<number> = (control as FormGroup)
+            .controls['t'] as FormControl<number>;
+        const value: Record<string, number> = structuredClone(control.value);
+
+        if (timeControl.enabled && !value['t']) {
+            return { missingTime: true };
+        }
+
+        delete value['t'];
+
+        return Object.values(value).some((value: number): boolean => {
+            if (!value) {
+                return false;
+            }
+
+            return true;
+        })
+            ? null
+            : { missingValues: true };
+    };
+}

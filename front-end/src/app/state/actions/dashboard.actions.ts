@@ -1,3 +1,4 @@
+import { Model } from '@core/types/model.types';
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
 
 interface RenameRunProps {
@@ -6,6 +7,10 @@ interface RenameRunProps {
 
 interface SelectRunProps {
     name: string;
+}
+
+interface ExtractModelProps {
+    model: Model;
 }
 
 export const DashboardActions = createActionGroup({
@@ -17,5 +22,6 @@ export const DashboardActions = createActionGroup({
         'Remove Run': emptyProps(),
         'Export Run Data': emptyProps(),
         'Export Run Values': emptyProps(),
+        'Extract Model': props<ExtractModelProps>(),
     },
 });

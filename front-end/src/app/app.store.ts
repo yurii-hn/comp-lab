@@ -58,7 +58,7 @@ const cytoscapeOptions: cytoscape.CytoscapeOptions = {
     styleEnabled: true,
     style: [
         {
-            selector: 'node.compartment',
+            selector: 'node',
             style: {
                 shape: 'rectangle',
                 'background-opacity': 0,
@@ -66,7 +66,7 @@ const cytoscapeOptions: cytoscape.CytoscapeOptions = {
             },
         },
         {
-            selector: 'edge.flow',
+            selector: 'edge',
             style: {
                 width: 3,
                 'curve-style': 'bezier',
@@ -214,8 +214,28 @@ export const AppStore = signalStore(
             )
                 .pipe(
                     tap({
-                        next: (params: CytoscapeEventHandlerFnParams) =>
-                            _setOpenedElement(params[3]),
+                        next: (params: CytoscapeEventHandlerFnParams) => {
+                            const newEdge: EdgeSingular = params[3];
+
+                            const sourceId: string = newEdge.source().id();
+                            const targetId: string = newEdge.target().id();
+
+                            const existingEdge: EdgeSingular = cytoscapeObj
+                                .edges(
+                                    `.flow[source="${sourceId}"][target="${targetId}"], .flow[source="${targetId}"][target="${sourceId}"]`,
+                                )
+                                .first();
+
+                            if (existingEdge.id()) {
+                                newEdge.remove();
+
+                                _setOpenedElement(existingEdge);
+
+                                return;
+                            }
+
+                            _setOpenedElement(newEdge);
+                        },
                         unsubscribe: (): void => _setOpenedElement(null),
                     }),
                 )

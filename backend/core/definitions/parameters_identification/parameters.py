@@ -1,5 +1,4 @@
-"""Parameters Identification Parameters Definition"""
-
+"""PI Parameters Definition"""
 
 from typing import TypedDict
 
@@ -12,5 +11,6 @@ class PIParametersDefinition(TypedDict):
     """PI Parameters Definition"""
 
     nodesAmount: int
+    forecastTime: float
     selectedConstants: list[SelectedConstantDefinition]
     data: list[ValuesDefinition]

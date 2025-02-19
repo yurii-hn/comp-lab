@@ -3,6 +3,7 @@
 from typing import TypedDict
 
 from core.definitions.common.processing_type import ProcessingType
+from core.definitions.model.model import ModelDefinition
 from core.definitions.parameters_identification.parameters import \
     PIParametersDefinition
 from core.definitions.parameters_identification.result import \
@@ -12,6 +13,7 @@ from core.definitions.parameters_identification.result import \
 class PISuccessResponseDefinition(TypedDict):
     """PI Success Response Definition"""
 
-    type: ProcessingType.PI
+    type: ProcessingType.OPTIMAL_CONTROL
     parameters: PIParametersDefinition
+    model: ModelDefinition
     result: PIResultDefinition

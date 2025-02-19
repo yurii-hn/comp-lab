@@ -1,3 +1,4 @@
+import { Model } from '@core/types/model.types';
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
 
 interface ClearModelProps {
@@ -7,6 +8,10 @@ interface ClearModelProps {
 interface ImportSampleModelProps {
     path: string;
     select: boolean;
+}
+
+interface AddWorkspaceProps {
+    model: Model;
 }
 
 interface RemoveModelCompartmentProps {
@@ -24,6 +29,7 @@ export const AppActions = createActionGroup({
         'Import Model': emptyProps(),
         'Import Sample Model': props<ImportSampleModelProps>(),
         'Export Model': emptyProps(),
+        'Add Workspace': props<AddWorkspaceProps>(),
         'Remove Compartment': props<RemoveModelCompartmentProps>(),
         'Remove Flow': props<RemoveModelFlowProps>(),
         'Sync Init': emptyProps(),

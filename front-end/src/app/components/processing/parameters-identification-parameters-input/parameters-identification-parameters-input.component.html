@@ -1,18 +1,42 @@
+@let forecastEnabled = this.forecastEnabled();
 @let constantsRowScheme = this.constantsRowScheme();
 @let dataRowScheme = this.dataRowScheme();
 @let dataRowValidators = this.dataRowValidators();
 
 <ng-container [formGroup]="control">
-    <mat-form-field class="input" subscriptSizing="dynamic">
-        <mat-label>Simulation Nodes Amount</mat-label>
+    <div class="row">
+        <mat-form-field class="input" subscriptSizing="dynamic">
+            <mat-label>Simulation Nodes Amount</mat-label>
 
-        <input
-            matInput
-            placeholder="Enter value"
-            type="number"
-            formControlName="nodesAmount"
-        />
-    </mat-form-field>
+            <input
+                matInput
+                placeholder="Enter value"
+                type="number"
+                formControlName="nodesAmount"
+            />
+        </mat-form-field>
+
+        @if (forecastEnabled) {
+            <mat-form-field class="input" subscriptSizing="dynamic">
+                <mat-label>Forecast Time</mat-label>
+
+                <input
+                    matInput
+                    placeholder="Enter value"
+                    type="number"
+                    formControlName="forecastTime"
+                />
+            </mat-form-field>
+        }
+    </div>
+
+    <mat-slide-toggle
+        labelPosition="before"
+        [checked]="forecastEnabled"
+        (change)="onForecastTimeToggle($event)"
+    >
+        Forecast
+    </mat-slide-toggle>
 
     <div class="datatable-input">
         <div class="header">

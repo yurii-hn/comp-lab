@@ -1,3 +1,4 @@
+@let model = this.model();
 @let isElementSelected = this.isElementSelected();
 @let hasCompartments = this.hasCompartments();
 @let splitSizes = this.splitSizes();
@@ -9,7 +10,7 @@
     (gutterDblClick)="onGutterDBClick()"
 >
     <as-split-area class="split-area" [size]="splitSizes.side">
-        <app-info />
+        <app-model-info [model]="model" />
     </as-split-area>
 
     <as-split-area class="split-area" [size]="splitSizes.main">

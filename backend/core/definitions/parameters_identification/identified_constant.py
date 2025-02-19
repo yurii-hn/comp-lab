@@ -1,6 +1,5 @@
 """Identified Constant Definition"""
 
-
 from typing import TypedDict
 
 

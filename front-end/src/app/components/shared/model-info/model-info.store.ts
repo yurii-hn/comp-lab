@@ -7,27 +7,40 @@ import {
   Intervention,
   Model,
 } from '@core/types/model.types';
-import { signalStore, withComputed, withProps } from '@ngrx/signals';
-import { Store } from '@ngrx/store';
-import { selectCurrentModel } from 'src/app/state/selectors/workspace.selectors';
+import {
+  patchState,
+  signalStore,
+  withComputed,
+  withMethods,
+  withProps,
+  withState,
+} from '@ngrx/signals';
+
+export interface State {
+    _model: Model | null;
+}
+
+const initialState: State = {
+    _model: null,
+};
 
 export const InfoStore = signalStore(
+    withState(initialState),
     withProps(() => {
-        const globalStore: Store = inject(Store);
         const mathJs = inject(MATH_JS);
-
-        const model: Signal<Model> =
-            globalStore.selectSignal(selectCurrentModel);
 
         return {
             _mathJs: mathJs,
-            _model: model,
         };
     }),
     withComputed((store) => {
         const compartmentsExpressions: Signal<string[]> = computed(
             (): string[] => {
-                const model: Model = store._model();
+                const model: Model | null = store._model();
+
+                if (!model) {
+                    return [];
+                }
 
                 return model.compartments.map(
                     (compartment: Compartment): string => {
@@ -77,29 +90,50 @@ export const InfoStore = signalStore(
             },
         );
 
-        const constantsExpressions: Signal<string[]> = computed((): string[] =>
-            store
-                ._model()
-                .constants.map(
+        const constantsExpressions: Signal<string[]> = computed(
+            (): string[] => {
+                const model: Model | null = store._model();
+
+                if (!model) {
+                    return [];
+                }
+
+                return model.constants.map(
                     (constant: Constant): string =>
                         `${constant.name} = ${constant.value}`,
-                ),
+                );
+            },
         );
 
         const interventionsExpressions: Signal<string[]> = computed(
-            (): string[] =>
-                store
-                    ._model()
-                    .interventions.map(
-                        (intervention: Intervention): string =>
-                            `${intervention.name} = ${intervention.name}(t)`,
-                    ),
+            (): string[] => {
+                const model: Model | null = store._model();
+
+                if (!model) {
+                    return [];
+                }
+
+                return model.interventions.map(
+                    (intervention: Intervention): string =>
+                        `${intervention.name} = ${intervention.name}(t)`,
+                );
+            },
         );
 
         return {
             compartmentsExpressions,
             constantsExpressions,
             interventionsExpressions,
+        };
+    }),
+    withMethods((store) => {
+        const setModel = (model: Model | null) =>
+            patchState(store, {
+                _model: model,
+            });
+
+        return {
+            setModel,
         };
     }),
 );

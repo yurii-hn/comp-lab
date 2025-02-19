@@ -114,11 +114,6 @@ class Model:
             source.add_outflow(flow["equation"], self.symbols_table)
             target.add_inflow(flow["equation"], self.symbols_table)
 
-        for compartment in self.compartments:
-            compartment.equation.substitute(
-                [(constant.symbol, constant.value) for constant in self.constants]
-            )
-
     def simulate(
         self,
         step_size: float,

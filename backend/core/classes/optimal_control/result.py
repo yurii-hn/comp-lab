@@ -1,8 +1,7 @@
 """Optimal Control Result Class"""
 
 from core.classes.common.values import Values
-from core.definitions.optimal_control.approximation_type import \
-    ApproximationType
+from core.definitions.common.approximation_type import ApproximationType
 from core.definitions.optimal_control.result import \
     OptimalControlResultDefinition
 

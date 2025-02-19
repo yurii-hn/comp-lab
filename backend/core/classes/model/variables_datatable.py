@@ -123,11 +123,3 @@ class VariablesDatatable:
         """Update lambdas"""
 
         self.lambdas.update(lambdas)
-
-    def clear(self) -> None:
-        """Clear datatable"""
-
-        self.compartments.clear()
-        self.constants.clear()
-        self.interventions.clear()
-        self.lambdas.clear()

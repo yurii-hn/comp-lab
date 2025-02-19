@@ -2,13 +2,15 @@
 @let constantsExpressions = this.constantsExpressions();
 @let interventionsExpressions = this.interventionsExpressions();
 
+<p class="title">Model info</p>
+
 <div class="section">
     @if (
         compartmentsExpressions.length ||
         constantsExpressions.length ||
         interventionsExpressions.length
     ) {
-        <p class="title">Model equations</p>
+        <p class="title">Equations</p>
 
         <div class="body">
             @if (compartmentsExpressions.length) {

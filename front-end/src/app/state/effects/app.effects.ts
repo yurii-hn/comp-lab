@@ -1,11 +1,10 @@
 import { inject, Injectable } from '@angular/core';
-import { Constant, Intervention, Model } from '@core/types/model.types';
+import { Model } from '@core/types/model.types';
 import {
   OptimalControlSuccessResponse,
   PISuccessResponse,
   ProcessingType,
-  SelectedConstant,
-  SimulationSuccessResponse,
+  SimulationSuccessResponse
 } from '@core/types/processing';
 import { ErrorResponse } from '@core/types/processing/api.types';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
@@ -127,22 +126,7 @@ export class AppEffects {
                         case ProcessingType.Simulation:
                             return this.processingService.simulateModel({
                                 parameters,
-                                model: {
-                                    ...model,
-                                    constants: [
-                                        ...model.constants,
-                                        ...model.interventions.map(
-                                            (
-                                                intervention: Intervention,
-                                            ): Constant => ({
-                                                id: intervention.id,
-                                                name: intervention.name,
-                                                value: 0,
-                                            }),
-                                        ),
-                                    ],
-                                    interventions: [],
-                                },
+                                model,
                             });
 
                         case ProcessingType.OptimalControl:
@@ -154,30 +138,7 @@ export class AppEffects {
                         case ProcessingType.PI:
                             return this.processingService.identifyParameters({
                                 parameters,
-                                model: {
-                                    ...model,
-                                    constants: model.constants.filter(
-                                        (constant: Constant): boolean =>
-                                            !parameters.selectedConstants.find(
-                                                (
-                                                    selectedConstant: SelectedConstant,
-                                                ): boolean =>
-                                                    selectedConstant.id ===
-                                                    constant.id,
-                                            ),
-                                    ),
-                                    interventions: [
-                                        ...model.interventions,
-                                        ...parameters.selectedConstants.map(
-                                            (
-                                                selectedConstant: SelectedConstant,
-                                            ): Intervention => ({
-                                                id: selectedConstant.id,
-                                                name: selectedConstant.name,
-                                            }),
-                                        ),
-                                    ],
-                                },
+                                model,
                             });
 
                         default: {

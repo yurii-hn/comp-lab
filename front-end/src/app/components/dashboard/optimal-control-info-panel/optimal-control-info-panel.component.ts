@@ -19,10 +19,16 @@ import {
 } from 'src/app/components/dashboard/optimal-control-info-panel/optimal-control-info-panel.store';
 import { DatatableComponent } from 'src/app/components/shared/datatable/datatable.component';
 import { RowScheme } from 'src/app/components/shared/datatable/datatable.store';
+import { ModelInfoComponent } from 'src/app/components/shared/model-info/model-info.component';
 
 @Component({
     selector: 'app-optimal-control-info-panel',
-    imports: [AngularSplitModule, DatatableComponent, DecimalPipe],
+    imports: [
+        AngularSplitModule,
+        DatatableComponent,
+        ModelInfoComponent,
+        DecimalPipe,
+    ],
     providers: [OptimalControlInfoPanelStore],
     templateUrl: './optimal-control-info-panel.component.html',
     styleUrls: ['./optimal-control-info-panel.component.scss'],
@@ -41,6 +47,8 @@ export class OptimalControlInfoPanelComponent implements OnInit {
 
     public interventionsRowScheme: Signal<RowScheme> =
         this.localStore.interventionsRowScheme;
+    public boundariesRowScheme: Signal<RowScheme> =
+        this.localStore.boundariesRowScheme;
     public readonly splitSizes: Signal<SplitAreasSizes> =
         this.localStore.splitAreasSizes;
 

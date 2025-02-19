@@ -1,6 +1,5 @@
 """Optimal Control Result Definition"""
 
-
 from typing import TypedDict
 
 from core.definitions.common.values import ValuesDefinition
