@@ -114,7 +114,7 @@ def parameters_identification(
                     for constant in parameters.selected_constants
                 ],
                 method="L-BFGS-B",
-                tol=1e-3,
+                tol=1e-6,
             ),
         )
 

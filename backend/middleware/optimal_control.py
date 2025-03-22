@@ -208,17 +208,18 @@ def optimal_control(
             variables_datatable,
         )
 
-        if (
-            parameters.intervention.approximation_type
-            == ApproximationType.PIECEWISE_LINEAR
-        ):
-            parameters.intervention.nodes_amount += 1
-
         optimal_result: OptimizeResult = cast(
             OptimizeResult,
             minimize(
                 optimization_criteria,
-                [0] * parameters.intervention.nodes_amount * len(model.interventions),
+                [0]
+                * (
+                    parameters.intervention.nodes_amount + 1
+                    if parameters.intervention.approximation_type
+                    == ApproximationType.PIECEWISE_LINEAR
+                    else parameters.intervention.nodes_amount
+                )
+                * len(model.interventions),
                 args=(
                     parameters,
                     hamiltonian,
@@ -239,13 +240,18 @@ def optimal_control(
                                 if boundary.name == intervention.name
                             )
                         ]
-                        * parameters.intervention.nodes_amount
+                        * (
+                            parameters.intervention.nodes_amount + 1
+                            if parameters.intervention.approximation_type
+                            == ApproximationType.PIECEWISE_LINEAR
+                            else parameters.intervention.nodes_amount
+                        )
                         for intervention in model.interventions
                     ]
                     for boundary in boundaries
                 ],
                 method="L-BFGS-B",
-                tol=1e-3,
+                tol=1e-6,
             ),
         )
 
@@ -254,12 +260,6 @@ def optimal_control(
             parameters.nodes_amount,
             variables_datatable,
         )
-
-        if (
-            parameters.intervention.approximation_type
-            == ApproximationType.PIECEWISE_LINEAR
-        ):
-            parameters.intervention.nodes_amount -= 1
 
         result: OptimalControlResultDefinition = {
             "compartments": variables_datatable.compartments_definition,
@@ -276,8 +276,18 @@ def optimal_control(
                         for j, value in enumerate(
                             optimal_result.x[
                                 i
-                                * parameters.intervention.nodes_amount : (i + 1)
-                                * parameters.intervention.nodes_amount
+                                * (
+                                    parameters.intervention.nodes_amount + 1
+                                    if parameters.intervention.approximation_type
+                                    == ApproximationType.PIECEWISE_LINEAR
+                                    else parameters.intervention.nodes_amount
+                                ) : (i + 1)
+                                * (
+                                    parameters.intervention.nodes_amount + 1
+                                    if parameters.intervention.approximation_type
+                                    == ApproximationType.PIECEWISE_LINEAR
+                                    else parameters.intervention.nodes_amount
+                                )
                             ]
                         )
                     ],
@@ -329,8 +339,18 @@ def optimization_criteria(
                         for j, value in enumerate(
                             interventions_vector[
                                 i
-                                * parameters.intervention.nodes_amount : (i + 1)
-                                * parameters.intervention.nodes_amount
+                                * (
+                                    parameters.intervention.nodes_amount + 1
+                                    if parameters.intervention.approximation_type
+                                    == ApproximationType.PIECEWISE_LINEAR
+                                    else parameters.intervention.nodes_amount
+                                ) : (i + 1)
+                                * (
+                                    parameters.intervention.nodes_amount + 1
+                                    if parameters.intervention.approximation_type
+                                    == ApproximationType.PIECEWISE_LINEAR
+                                    else parameters.intervention.nodes_amount
+                                )
                             ]
                         )
                     ],

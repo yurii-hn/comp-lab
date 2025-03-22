@@ -40,15 +40,15 @@ class Equation:
 
         value: float = 0
 
-        for i in range(nodes_amount + 1):
+        for i in range(nodes_amount):
             values: list[float] = [
                 variables_datatable[str(variable)](i * step_size)
                 for variable in self.variables
             ]
 
-            value += self.calculate(values) * step_size
+            value += self.calculate(values)
 
-        return value
+        return value * step_size
 
     def check_continuity(
         self, symbol: Symbol, interval: Interval | FiniteSet, derivative: bool = False

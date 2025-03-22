@@ -136,7 +136,7 @@ class Model:
                 symbol_to_index_map,
                 variables_datatable,
             ),
-            method="RK45",
+            method="LSODA",
             dense_output=True,
             t_eval=t,
         )
