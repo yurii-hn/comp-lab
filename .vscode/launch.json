@@ -31,10 +31,7 @@
             "request": "launch",
             "preLaunchTask": "npm: start",
             "url": "http://localhost:4200/",
-            "webRoot": "${workspaceFolder}/front-end",
-            "runtimeExecutable": "/usr/bin/vivaldi",
-            "runtimeArgs": ["--force-dark-mode", "--disable-web-security"],
-            "userDataDir": "${workspaceFolder}/front-end/.browser-data"
+            "webRoot": "${workspaceFolder}/front-end"
         }
     ],
     "compounds": [
