@@ -1,7 +1,5 @@
 # CompLab: Compartmental Model Constructor & Analyzer
 
----
-
 ![software-preview](./.resources/preview.png)
 
 CompLab is an interactive, visual and intuitive constructor of compartmental mathematical models with set of auxiliary tools.
@@ -10,11 +8,7 @@ CompLab is an interactive, visual and intuitive constructor of compartmental mat
 
 **TBD**
 
----
-
 # Documentation
-
----
 
 For detailed user guide and software description, please refer to [Wiki](https://github.com/why-not-dev/comp-lab/wiki).
 
@@ -22,11 +16,7 @@ For detailed user guide and software description, please refer to [Wiki](https:/
 
 **TBD**
 
----
-
 # Debugging in VS Code
-
----
 
 ## Prerequisites
 
@@ -76,7 +66,5 @@ You can now set breakpoints, inspect variables, and step through the code in bot
 **P.S.** Those instructions are for Windows. If you are using Linux - you probably know how to do it anyway
 
 # License
-
----
 
 All commits in this project, regardless of their creation date, are published under the terms of the GNU Affero General Public License Version 3.
