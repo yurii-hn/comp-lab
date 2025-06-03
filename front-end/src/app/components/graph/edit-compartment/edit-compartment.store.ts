@@ -2,12 +2,12 @@ import { computed, inject, Signal } from '@angular/core';
 import { Compartment } from '@core/types/model.types';
 import { areEqual } from '@core/utils';
 import {
-  patchState,
-  signalStore,
-  withComputed,
-  withMethods,
-  withProps,
-  withState,
+ patchState,
+ signalStore,
+ withComputed,
+ withMethods,
+ withProps,
+ withState,
 } from '@ngrx/signals';
 import { Store } from '@ngrx/store';
 import { selectSymbols } from 'src/app/state/selectors/workspace.selectors';
@@ -53,17 +53,17 @@ export const EditCompartmentStore = signalStore(
             }),
             {
                 equal: areEqual,
-            },
+            }
         );
         const formValue: Signal<FormValue> = computed(
             (): FormValue => store._value(),
             {
                 equal: areEqual,
-            },
+            }
         );
 
         const editMode: Signal<boolean> = computed(
-            (): boolean => !!store._initialData,
+            (): boolean => !!store._initialData()
         );
 
         return {
@@ -89,5 +89,5 @@ export const EditCompartmentStore = signalStore(
             setInitialData,
             setValueFromForm,
         };
-    }),
+    })
 );

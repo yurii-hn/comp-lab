@@ -9,12 +9,10 @@ from core.classes.model.model import Model
 from core.classes.model.variables_datatable import VariablesDatatable
 from core.classes.optimal_control.adjoint_model import AdjointModel
 from core.classes.optimal_control.parameters import OptimalControlParameters
-from core.classes.optimal_control.success_response import \
-    OptimalControlSuccessResponse
+from core.classes.optimal_control.success_response import OptimalControlSuccessResponse
 from core.definitions.common.approximation_type import ApproximationType
 from core.definitions.model.continuity_type import ContinuityType
-from core.definitions.optimal_control.result import \
-    OptimalControlResultDefinition
+from core.definitions.optimal_control.result import OptimalControlResultDefinition
 from core.definitions.simulation.result import SimulationResultDefinition
 from scipy.optimize import OptimizeResult, minimize
 from sympy import Interval, Symbol, oo
@@ -208,18 +206,35 @@ def optimal_control(
             variables_datatable,
         )
 
-        optimal_result: OptimizeResult = cast(
-            OptimizeResult,
-            minimize(
-                optimization_criteria,
-                [0]
+        bounds: list[tuple[float, float]] = [
+            boundary
+            for boundaries in [
+                [
+                    next(
+                        (
+                            boundary.lower_boundary,
+                            boundary.upper_boundary,
+                        )
+                        for boundary in parameters.intervention.boundaries
+                        if boundary.name == intervention.name
+                    )
+                ]
                 * (
                     parameters.intervention.nodes_amount + 1
                     if parameters.intervention.approximation_type
                     == ApproximationType.PIECEWISE_LINEAR
                     else parameters.intervention.nodes_amount
                 )
-                * len(model.interventions),
+                for intervention in model.interventions
+            ]
+            for boundary in boundaries
+        ]
+
+        optimal_result: OptimizeResult = cast(
+            OptimizeResult,
+            minimize(
+                optimization_criteria,
+                [current_pair[0] for current_pair in bounds],
                 args=(
                     parameters,
                     hamiltonian,
@@ -227,29 +242,7 @@ def optimal_control(
                     adjoint_model,
                     variables_datatable,
                 ),
-                bounds=[
-                    boundary
-                    for boundaries in [
-                        [
-                            next(
-                                (
-                                    boundary.lower_boundary,
-                                    boundary.upper_boundary,
-                                )
-                                for boundary in parameters.intervention.boundaries
-                                if boundary.name == intervention.name
-                            )
-                        ]
-                        * (
-                            parameters.intervention.nodes_amount + 1
-                            if parameters.intervention.approximation_type
-                            == ApproximationType.PIECEWISE_LINEAR
-                            else parameters.intervention.nodes_amount
-                        )
-                        for intervention in model.interventions
-                    ]
-                    for boundary in boundaries
-                ],
+                bounds=bounds,
                 method="L-BFGS-B",
                 tol=1e-6,
             ),

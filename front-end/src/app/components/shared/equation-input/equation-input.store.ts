@@ -1,29 +1,29 @@
 import { computed, inject, Signal } from '@angular/core';
 import { ValidationErrors } from '@angular/forms';
 import {
-  patchState,
-  signalStore,
-  withComputed,
-  withMethods,
-  withProps,
-  withState,
+ patchState,
+ signalStore,
+ withComputed,
+ withMethods,
+ withProps,
+ withState,
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { Store } from '@ngrx/store';
 import {
-  combineLatestWith,
-  debounceTime,
-  distinctUntilChanged,
-  filter,
-  Observable,
-  pipe,
-  Subject,
-  switchMap,
-  tap,
+ combineLatestWith,
+ debounceTime,
+ distinctUntilChanged,
+ filter,
+ Observable,
+ pipe,
+ Subject,
+ switchMap,
+ tap,
 } from 'rxjs';
 import {
-  ValidationResponse,
-  ValidationService,
+ ValidationResponse,
+ ValidationService,
 } from 'src/app/services/validation.service';
 import { selectSymbols } from 'src/app/state/selectors/workspace.selectors';
 
@@ -61,7 +61,7 @@ export const EquationInputStore = signalStore(
     withComputed((store) => {
         const value: Signal<Value> = computed((): Value => formValue());
         const formValue: Signal<FormValue> = computed(
-            (): FormValue => store.equation(),
+            (): FormValue => store.equation()
         );
 
         return {
@@ -90,7 +90,7 @@ export const EquationInputStore = signalStore(
         const insertAt = (value: string, position: number): number => {
             const equation: string | null = store.equation();
 
-            if (!equation) {
+            if (equation === null) {
                 return Infinity;
             }
 
@@ -113,14 +113,14 @@ export const EquationInputStore = signalStore(
         const validate = rxMethod<Value | null>(
             pipe(
                 filter(
-                    (equation: Value | null): equation is Value => !!equation,
+                    (equation: Value | null): equation is Value => !!equation
                 ),
                 debounceTime(500),
                 distinctUntilChanged(),
                 combineLatestWith(store._globalStore.select(selectSymbols)),
                 switchMap(
                     ([equation, symbols]): Observable<ValidationResponse> =>
-                        store._validationService.expression(equation, symbols),
+                        store._validationService.expression(equation, symbols)
                 ),
                 tap((response: ValidationResponse): void => {
                     if (!response.valid) {
@@ -134,8 +134,8 @@ export const EquationInputStore = signalStore(
                     }
 
                     store.validationResult.next(null);
-                }),
-            ),
+                })
+            )
         );
 
         return {
@@ -147,5 +147,5 @@ export const EquationInputStore = signalStore(
             insertAt,
             validate,
         };
-    }),
+    })
 );
