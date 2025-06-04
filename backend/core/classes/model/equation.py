@@ -14,16 +14,12 @@ class Equation:
 
     expression: Expr
     function: Callable[..., float]
-
-    @property
-    def variables(self) -> list[Symbol]:
-        """Variables"""
-
-        return cast(list[Symbol], list(self.expression.free_symbols))
+    variables: list[Symbol]
 
     def __init__(self) -> None:
         self.expression = cast(Expr, 0)
         self.function = lambda *args: 0
+        self.variables = []
 
     def calculate(self, values: list[float]) -> float:
         """Calculate"""
@@ -42,7 +38,7 @@ class Equation:
 
         for i in range(nodes_amount):
             values: list[float] = [
-                variables_datatable[str(variable)](i * step_size)
+                variables_datatable[variable.name](i * step_size)
                 for variable in self.variables
             ]
 
@@ -109,4 +105,7 @@ class Equation:
     def __update_function(self) -> None:
         """Update Function"""
 
-        self.function = lambdify(self.variables, self.expression)
+        variables: list[Symbol] = cast(list[Symbol], list(self.expression.free_symbols))
+
+        self.function = lambdify(variables, self.expression)
+        self.variables = variables

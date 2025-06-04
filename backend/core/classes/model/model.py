@@ -187,7 +187,7 @@ class Model:
                     (
                         y[symbol_to_index_map[symbol]]
                         if symbol in symbol_to_index_map
-                        else variables_datatable[str(symbol)](t)
+                        else variables_datatable[symbol.name](t)
                     )
                     for symbol in compartment.equation.variables
                 ]

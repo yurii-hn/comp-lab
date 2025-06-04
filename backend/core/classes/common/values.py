@@ -1,15 +1,20 @@
 """Values Class"""
 
+from bisect import bisect_right
 from core.classes.common.point import Point
 from core.definitions.common.approximation_type import ApproximationType
+from core.definitions.common.point import PointDefinition
 from core.definitions.common.values import ValuesDefinition
+import numpy as np
+import numpy.typing as npt
 
 
 class Values:
     """Values"""
 
     name: str
-    values: list[Point]
+    times: npt.NDArray[np.float64]
+    values: npt.NDArray[np.float64]
     approximation_type: ApproximationType
 
     @property
@@ -18,7 +23,9 @@ class Values:
 
         return {
             "name": self.name,
-            "values": [value.definition for value in self.values],
+            "values": [
+                {"time": t, "value": v} for t, v in zip(self.times, self.values)
+            ],
         }
 
     def __init__(
@@ -26,62 +33,43 @@ class Values:
         definition: ValuesDefinition,
         approximation_type: ApproximationType = ApproximationType.PIECEWISE_LINEAR,
     ) -> None:
-        self.name = definition["name"]
-        self.values = [Point(value) for value in definition["values"]]
-        self.approximation_type = approximation_type
+        points: list[PointDefinition] = definition["values"]
+        points.sort(key=lambda point: point["time"])
 
-        self.values.sort(key=lambda value: value.time)
+        self.name = definition["name"]
+        self.times = np.asarray([point["time"] for point in points], dtype=np.float64)
+        self.values = np.asarray([point["value"] for point in points], dtype=np.float64)
+        self.approximation_type = approximation_type
 
     def __call__(self, time: float) -> float:
         """Get value at time"""
 
+        times = self.times
+        values = self.values
+
+        if values.size == 0:
+            return 0
+
+        index: int = bisect_right(times, time)
+
+        if index == 0:
+            return values[0]
+
+        if index == times.size:
+            return values[-1]
+
         if self.approximation_type == ApproximationType.PIECEWISE_CONSTANT:
-            return self.piecewise_constant_approximation(time)
+            return values[index - 1]
+
         elif self.approximation_type == ApproximationType.PIECEWISE_LINEAR:
-            return self.piecewise_linear_approximation(time)
+            time_left: float = times[index - 1]
+            time_right: float = times[index]
+            value_left: float = values[index - 1]
+            value_right: float = values[index]
+
+            return (time_right - time) / (time_right - time_left) * value_left + (
+                time - time_left
+            ) / (time_right - time_left) * value_right
+
         else:
             raise ValueError("Approximation type not supported")
-
-    def piecewise_constant_approximation(self, time: float) -> float:
-        """Piecewise constant approximation"""
-
-        if len(self.values) == 0:
-            return 0
-
-        if time <= self.values[0].time:
-            return self.values[0].value
-
-        if time >= self.values[-1].time:
-            return self.values[-1].value
-
-        for i in range(len(self.values) - 1):
-            if self.values[i].time <= time < self.values[i + 1].time:
-                return self.values[i].value
-
-        raise ValueError("How did you get here?")
-
-    def piecewise_linear_approximation(self, time: float) -> float:
-        """Piecewise linear approximation"""
-
-        if len(self.values) == 0:
-            return 0
-
-        if time <= self.values[0].time:
-            return self.values[0].value
-
-        if time >= self.values[-1].time:
-            return self.values[-1].value
-
-        for i in range(len(self.values) - 1):
-            time_left: float = self.values[i].time
-            time_right: float = self.values[i + 1].time
-
-            if time_left <= time < time_right:
-                value_left: float = self.values[i].value
-                value_right: float = self.values[i + 1].value
-
-                return (time_right - time) / (time_right - time_left) * value_left + (
-                    time - time_left
-                ) / (time_right - time_left) * value_right
-
-        raise ValueError("How did you get here?")
