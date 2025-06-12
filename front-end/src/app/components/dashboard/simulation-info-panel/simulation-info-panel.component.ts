@@ -9,7 +9,7 @@ import {
   Signal,
   untracked,
 } from '@angular/core';
-import { SimulationData } from '@core/types/run.types';
+import { SimulationResult } from '@core/types/run.types';
 import { AngularSplitModule } from 'angular-split';
 import {
   DisplayData,
@@ -29,7 +29,7 @@ export class SimulationInfoPanelComponent implements OnInit {
     private readonly injector: Injector = inject(Injector);
     private readonly localStore = inject(SimulationInfoPanelStore);
 
-    public readonly inputData: InputSignal<SimulationData | null> =
+    public readonly inputData: InputSignal<SimulationResult | null> =
         input.required({
             alias: 'data',
         });
@@ -42,7 +42,7 @@ export class SimulationInfoPanelComponent implements OnInit {
     public ngOnInit(): void {
         effect(
             (): void => {
-                const data: SimulationData | null = this.inputData();
+                const data: SimulationResult | null = this.inputData();
 
                 untracked((): void => this.localStore.setData(data));
             },

@@ -1,4 +1,4 @@
-import { Values } from './common.types';
+import { Data } from '@core/types/processing/common.types';
 
 export interface SimulationParameters {
     time: number;
@@ -6,5 +6,5 @@ export interface SimulationParameters {
 }
 
 export interface SimulationResult {
-    compartments: Values[];
+    compartments: Record<string, Data>;
 }

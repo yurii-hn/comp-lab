@@ -1,8 +1,8 @@
 import { computed, Signal } from '@angular/core';
 import { Model } from '@core/types/model.types';
-import { IdentifiedConstant, SelectedConstant } from '@core/types/processing';
-import { PIData } from '@core/types/run.types';
-import { getSetArray, valuesToRowData } from '@core/utils';
+import { SelectedConstant } from '@core/types/processing';
+import { PIResult } from '@core/types/run.types';
+import { datasetToRowData, getSetArray } from '@core/utils';
 import {
   patchState,
   signalStore,
@@ -21,7 +21,16 @@ export interface SplitAreasSizes {
     model: '*';
 }
 
-export type InputData = PIData | null;
+export type InputData = PIResult | null;
+
+export type SelectedConstantDefinition = SelectedConstant & {
+    name: string;
+};
+
+export type IdentifiedConstantDefinition = {
+    name: string;
+    value: string;
+};
 
 export type DisplayData = {
     result: {
@@ -66,7 +75,7 @@ export const PIInfoPanelStore = signalStore(
     withComputed((store) => {
         const selectedConstantsRowScheme: Signal<RowScheme<SelectedConstant>> =
             computed(
-                (): RowScheme<SelectedConstant> => ({
+                (): RowScheme<SelectedConstantDefinition> => ({
                     name: {
                         name: 'Name',
                         type: InputType.Text,
@@ -83,7 +92,7 @@ export const PIInfoPanelStore = signalStore(
                         name: 'Upper boundary',
                         type: InputType.Number,
                     },
-                }),
+                })
             );
         const dataRowScheme: Signal<RowScheme> = computed((): RowScheme => {
             const data: Record<string, number>[] =
@@ -96,9 +105,9 @@ export const PIInfoPanelStore = signalStore(
             const columns: string[] = getSetArray(
                 data
                     .map((row: Record<string, number>): string[] =>
-                        Object.keys(row),
+                        Object.keys(row)
                     )
-                    .flat(),
+                    .flat()
             );
 
             return columns.reduce(
@@ -109,13 +118,13 @@ export const PIInfoPanelStore = signalStore(
                         type: InputType.Number,
                     },
                 }),
-                {},
+                {}
             );
         });
         const identifiedConstantsRowScheme: Signal<
-            RowScheme<IdentifiedConstant>
+            RowScheme<IdentifiedConstantDefinition>
         > = computed(
-            (): RowScheme<IdentifiedConstant> => ({
+            (): RowScheme<IdentifiedConstantDefinition> => ({
                 name: {
                     name: 'Name',
                     type: InputType.Text,
@@ -124,7 +133,7 @@ export const PIInfoPanelStore = signalStore(
                     name: 'Value',
                     type: InputType.Number,
                 },
-            }),
+            })
         );
 
         return {
@@ -155,23 +164,36 @@ export const PIInfoPanelStore = signalStore(
                 displayData: {
                     result: {
                         constants: data
-                            ? (data.result.constants as unknown as Record<
-                                  string,
-                                  string | number
-                              >[])
+                            ? Object.entries(data.result.constants).map(
+                                  ([name, value]: [string, number]): Record<
+                                      string,
+                                      string | number
+                                  > => ({
+                                      name,
+                                      value,
+                                  })
+                              )
                             : [],
                     },
                     parameters: {
                         nodesAmount: data && data.parameters.nodesAmount,
                         forecastTime: data ? data.parameters.forecastTime : 0,
                         selectedConstants: data
-                            ? (data.parameters
-                                  .selectedConstants as unknown as Record<
-                                  string,
-                                  string | number
-                              >[])
+                            ? Object.entries(
+                                  data.parameters.selectedConstants
+                              ).map(
+                                  ([name, constant]: [
+                                      string,
+                                      SelectedConstant
+                                  ]): Record<string, string | number> => ({
+                                      name,
+                                      ...constant,
+                                  })
+                              )
                             : [],
-                        data: data ? valuesToRowData(data.parameters.data) : [],
+                        data: data
+                            ? datasetToRowData(data.parameters.data)
+                            : [],
                     },
                     model: data && data.model,
                 },
@@ -181,5 +203,5 @@ export const PIInfoPanelStore = signalStore(
             alternateSplitAreasSizes,
             setData,
         };
-    }),
+    })
 );

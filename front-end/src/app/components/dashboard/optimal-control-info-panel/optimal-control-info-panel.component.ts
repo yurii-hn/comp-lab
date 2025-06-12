@@ -10,7 +10,7 @@ import {
   Signal,
   untracked,
 } from '@angular/core';
-import { OptimalControlData } from '@core/types/run.types';
+import { OptimalControlResult } from '@core/types/run.types';
 import { AngularSplitModule } from 'angular-split';
 import {
   DisplayData,
@@ -37,8 +37,8 @@ export class OptimalControlInfoPanelComponent implements OnInit {
     private readonly injector: Injector = inject(Injector);
     private readonly localStore = inject(OptimalControlInfoPanelStore);
 
-    public readonly inputData: InputSignal<OptimalControlData | null> =
-        input.required<OptimalControlData | null>({
+    public readonly inputData: InputSignal<OptimalControlResult | null> =
+        input.required<OptimalControlResult | null>({
             alias: 'data',
         });
 
@@ -55,7 +55,7 @@ export class OptimalControlInfoPanelComponent implements OnInit {
     public ngOnInit(): void {
         effect(
             (): void => {
-                const data: OptimalControlData | null = this.inputData();
+                const data: OptimalControlResult | null = this.inputData();
 
                 untracked((): void => this.localStore.setData(data));
             },

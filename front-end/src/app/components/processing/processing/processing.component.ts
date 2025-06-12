@@ -10,7 +10,7 @@ import {
   ProcessingType,
   SimulationParameters,
 } from '@core/types/processing';
-import { Data } from '@core/types/run.types';
+import { Result } from '@core/types/run.types';
 import { Store } from '@ngrx/store';
 import { OptimalControlParametersInputComponent } from 'src/app/components/processing/optimal-control-parameters-input/optimal-control-parameters-input.component';
 import { ParametersIdentificationParametersInputComponent } from 'src/app/components/processing/parameters-identification-parameters-input/parameters-identification-parameters-input.component';
@@ -18,7 +18,7 @@ import { ProcessingStore } from 'src/app/components/processing/processing/proces
 import { SimulationParametersInputComponent } from 'src/app/components/processing/simulation-parameters-input/simulation-parameters-input.component';
 import { ProcessingActions } from 'src/app/state/actions/processing.actions';
 
-export type Parameters = Omit<Data, 'model' | 'result'>;
+export type Parameters = Omit<Result, 'model' | 'result'>;
 
 @Component({
     selector: 'app-processing',

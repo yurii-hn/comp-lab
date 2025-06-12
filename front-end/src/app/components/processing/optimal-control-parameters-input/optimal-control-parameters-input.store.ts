@@ -22,10 +22,9 @@ import {
 } from 'src/app/components/shared/datatable/datatable.store';
 import { selectInterventions } from 'src/app/state/selectors/workspace.selectors';
 
-export type InterventionBoundariesDefinition = Omit<
-    InterventionBoundaries,
-    'id'
->;
+export type InterventionBoundariesDefinition = InterventionBoundaries & {
+    name: string;
+};
 
 export interface Value {
     time: number | null;
@@ -34,7 +33,7 @@ export interface Value {
     intervention: {
         nodesAmount: number | null;
         approximationType: ApproximationType | null;
-        boundaries: InterventionBoundaries[] | null;
+        boundaries: Record<string, InterventionBoundaries> | null;
     } | null;
 }
 
@@ -86,23 +85,21 @@ export const OptimalControlParametersInputStore = signalStore(
                         ...parameters.intervention,
                         boundaries:
                             parameters.intervention.boundaries &&
-                            parameters.intervention.boundaries.map(
+                            parameters.intervention.boundaries.reduce(
                                 (
-                                    boundary:
-                                        | InterventionBoundaries
-                                        | InterventionBoundariesDefinition,
-                                ): InterventionBoundaries => ({
-                                    ...boundary,
-                                    id: store
-                                        ._interventions()
-                                        .find(
-                                            (
-                                                intervention: Intervention,
-                                            ): boolean =>
-                                                intervention.name ===
-                                                boundary.name,
-                                        )!.id,
+                                    boundaries: Record<
+                                        string,
+                                        InterventionBoundaries
+                                    >,
+                                    boundary: InterventionBoundariesDefinition
+                                ): Record<string, InterventionBoundaries> => ({
+                                    ...boundaries,
+                                    [boundary.name]: {
+                                        lowerBoundary: boundary.lowerBoundary,
+                                        upperBoundary: boundary.upperBoundary,
+                                    },
                                 }),
+                                {}
                             ),
                     };
 
@@ -115,7 +112,7 @@ export const OptimalControlParametersInputStore = signalStore(
             },
             {
                 equal: areEqual,
-            },
+            }
         );
         const formValue: Signal<FormValue> = computed(
             (): FormValue => ({
@@ -126,7 +123,7 @@ export const OptimalControlParametersInputStore = signalStore(
             }),
             {
                 equal: areEqual,
-            },
+            }
         );
 
         const boundariesRowScheme: Signal<
@@ -141,7 +138,7 @@ export const OptimalControlParametersInputStore = signalStore(
                         (constant: Intervention): Option => ({
                             value: constant.name,
                             label: constant.name,
-                        }),
+                        })
                     ),
                     validationFns: [Validators.required],
                 },
@@ -157,13 +154,13 @@ export const OptimalControlParametersInputStore = signalStore(
                     validationFns: [Validators.required],
                     editable: true,
                 },
-            }),
+            })
         );
 
         const interventionsNames: Signal<string[]> = computed((): string[] =>
             store
                 ._interventions()
-                .map((intervention: Intervention): string => intervention.name),
+                .map((intervention: Intervention): string => intervention.name)
         );
 
         return {
@@ -180,10 +177,19 @@ export const OptimalControlParametersInputStore = signalStore(
                 time: value && value.time,
                 nodesAmount: value && value.nodesAmount,
                 objectiveFunction: value && value.objectiveFunction,
-                intervention: value?.intervention ?? {
-                    nodesAmount: null,
-                    approximationType: null,
-                    boundaries: null,
+                intervention: value?.intervention && {
+                    ...value.intervention,
+                    boundaries:
+                        value.intervention.boundaries &&
+                        Object.entries(value.intervention.boundaries).map(
+                            ([name, boundaries]: [
+                                string,
+                                InterventionBoundaries
+                            ]): InterventionBoundariesDefinition => ({
+                                name,
+                                ...boundaries,
+                            })
+                        ),
                 },
             });
         const setValueFromForm = (value: FormValue): void =>
@@ -193,5 +199,5 @@ export const OptimalControlParametersInputStore = signalStore(
             setValueFromParent,
             setValueFromForm,
         };
-    }),
+    })
 );

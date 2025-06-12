@@ -1,4 +1,4 @@
-import { Data, Run } from '@core/types/run.types';
+import { Result, Run } from '@core/types/run.types';
 import { createReducer, on } from '@ngrx/store';
 import { DashboardActions } from 'src/app/state/actions/dashboard.actions';
 import { FilesServiceActions } from 'src/app/state/actions/files.service.actions';
@@ -10,7 +10,7 @@ interface LoadRunsProps {
 }
 
 interface AddRunProps {
-    data: Data;
+    data: Result;
     set: boolean;
 }
 

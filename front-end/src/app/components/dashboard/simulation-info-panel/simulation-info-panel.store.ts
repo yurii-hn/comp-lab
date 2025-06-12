@@ -1,5 +1,5 @@
 import { Model } from '@core/types/model.types';
-import { SimulationData } from '@core/types/run.types';
+import { SimulationResult } from '@core/types/run.types';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 
 export interface SplitAreasSizes {
@@ -7,7 +7,7 @@ export interface SplitAreasSizes {
     model: '*';
 }
 
-export type InputData = SimulationData | null;
+export type InputData = SimulationResult | null;
 
 export type DisplayData = {
     parameters: {

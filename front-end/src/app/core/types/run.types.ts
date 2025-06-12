@@ -9,12 +9,12 @@ export interface BaseRun<DataType = any> {
     data: DataType;
 }
 
-export type SimulationData = SimulationSuccessResponse;
-export type OptimalControlData = OptimalControlSuccessResponse;
-export type PIData = PISuccessResponse;
-export type Data = SimulationData | OptimalControlData | PIData;
+export type SimulationResult = SimulationSuccessResponse;
+export type OptimalControlResult = OptimalControlSuccessResponse;
+export type PIResult = PISuccessResponse;
+export type Result = SimulationResult | OptimalControlResult | PIResult;
 
-export type SimulationRun = BaseRun<SimulationData>;
-export type OptimalControlRun = BaseRun<OptimalControlData>;
-export type PIRun = BaseRun<PIData>;
+export type SimulationRun = BaseRun<SimulationResult>;
+export type OptimalControlRun = BaseRun<OptimalControlResult>;
+export type PIRun = BaseRun<PIResult>;
 export type Run = SimulationRun | OptimalControlRun | PIRun;

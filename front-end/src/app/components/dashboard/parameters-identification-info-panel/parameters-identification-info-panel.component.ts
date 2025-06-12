@@ -9,11 +9,11 @@ import {
   Signal,
   untracked,
 } from '@angular/core';
-import { IdentifiedConstant } from '@core/types/processing';
-import { PIData } from '@core/types/run.types';
+import { PIResult } from '@core/types/run.types';
 import { AngularSplitModule } from 'angular-split';
 import {
   DisplayData,
+  IdentifiedConstantDefinition,
   PIInfoPanelStore,
   SplitAreasSizes,
 } from 'src/app/components/dashboard/parameters-identification-info-panel/parameters-identification-info-panel.store';
@@ -32,8 +32,8 @@ export class ParametersIdentificationInfoPanelComponent implements OnInit {
     private readonly injector: Injector = inject(Injector);
     private readonly localStore = inject(PIInfoPanelStore);
 
-    public readonly inputData: InputSignal<PIData | null> =
-        input.required<PIData | null>({
+    public readonly inputData: InputSignal<PIResult | null> =
+        input.required<PIResult | null>({
             alias: 'data',
         });
 
@@ -41,10 +41,10 @@ export class ParametersIdentificationInfoPanelComponent implements OnInit {
         this.localStore.displayData;
 
     public readonly identifiedConstantsRowScheme: Signal<
-        RowScheme<IdentifiedConstant>
+        RowScheme<IdentifiedConstantDefinition>
     > = this.localStore.identifiedConstantsRowScheme;
     public readonly selectedConstantsRowScheme: Signal<
-        RowScheme<IdentifiedConstant>
+        RowScheme<IdentifiedConstantDefinition>
     > = this.localStore.selectedConstantsRowScheme;
     public readonly dataRowScheme: Signal<RowScheme> =
         this.localStore.dataRowScheme;
@@ -54,13 +54,13 @@ export class ParametersIdentificationInfoPanelComponent implements OnInit {
     public ngOnInit(): void {
         effect(
             (): void => {
-                const data: PIData | null = this.inputData();
+                const data: PIResult | null = this.inputData();
 
                 untracked((): void => this.localStore.setData(data));
             },
             {
                 injector: this.injector,
-            },
+            }
         );
     }
 

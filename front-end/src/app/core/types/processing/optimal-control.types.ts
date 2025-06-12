@@ -1,8 +1,6 @@
-import { Values } from './common.types';
+import { Data } from '@core/types/processing/common.types';
 
 export interface InterventionBoundaries {
-    id: string;
-    name: string;
     upperBoundary: number;
     lowerBoundary: number;
 }
@@ -10,7 +8,7 @@ export interface InterventionBoundaries {
 export interface InterventionParameters {
     nodesAmount: number;
     approximationType: ApproximationType;
-    boundaries: InterventionBoundaries[];
+    boundaries: Record<string, InterventionBoundaries>;
 }
 
 export interface OptimalControlParameters {
@@ -21,9 +19,8 @@ export interface OptimalControlParameters {
 }
 
 export interface OptimalControlResult {
-    compartments: Values[];
-    interventions: Values[];
-    approximatedInterventions: Values[];
+    compartments: Record<string, Data>;
+    interventions: Record<string, Data>;
     noControlObjective: number;
     optimalObjective: number;
 }

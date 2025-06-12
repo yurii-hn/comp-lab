@@ -1,8 +1,8 @@
+import { Data } from '@core/types/processing';
 import { Observable, Observer, Subscriber } from 'rxjs';
-import { Point, Values } from './types/processing';
 
 export function observeResizes(
-    target: Element,
+    target: Element
 ): Observable<ResizeObserverEntry> {
     return new Observable(
         (subscriber: Subscriber<ResizeObserverEntry>): (() => void) => {
@@ -11,7 +11,7 @@ export function observeResizes(
                     entries.forEach((entry: ResizeObserverEntry): void => {
                         subscriber.next(entry);
                     });
-                },
+                }
             );
 
             resizeObserver.observe(target);
@@ -20,19 +20,19 @@ export function observeResizes(
                 resizeObserver.unobserve(target);
                 resizeObserver.disconnect();
             };
-        },
+        }
     );
 }
 
 export type CytoscapeEventHandlerFnParams = [
     event: cytoscape.EventObject,
-    ...extraParams: any,
+    ...extraParams: any
 ];
 
 export function fromCytoscapeObjEvent(
     cytoscapeObj: cytoscape.Core,
     event: string,
-    selector?: cytoscape.Selector,
+    selector?: cytoscape.Selector
 ): Observable<CytoscapeEventHandlerFnParams> {
     return new Observable(
         (observer: Observer<CytoscapeEventHandlerFnParams>): void => {
@@ -42,7 +42,7 @@ export function fromCytoscapeObjEvent(
                     selector,
                     (...args: CytoscapeEventHandlerFnParams): void => {
                         observer.next(args);
-                    },
+                    }
                 );
 
                 return;
@@ -51,9 +51,9 @@ export function fromCytoscapeObjEvent(
                 event,
                 (...args: CytoscapeEventHandlerFnParams): void => {
                     observer.next(args);
-                },
+                }
             );
-        },
+        }
     );
 }
 
@@ -61,17 +61,18 @@ export function areEqual<Value>(valueA: Value, valueB: Value): boolean {
     return JSON.stringify(valueA) === JSON.stringify(valueB);
 }
 
-export function valuesToRowData(values: Values[]): Record<string, number>[] {
-    if (!values.length) {
+export function datasetToRowData(
+    dataset: Record<string, Data>
+): Record<string, number>[] {
+    if (!Object.keys(dataset).length) {
         return [];
     }
 
     const times: number[] = getSetArray(
-        values.reduce(
-            (times: number[], value: Values): number[] =>
-                times.concat(value.values.map((point): number => point.time)),
-            [],
-        ),
+        Object.values(dataset).reduce(
+            (times: number[], data: Data): number[] => times.concat(data.times),
+            []
+        )
     );
 
     times.sort((timeA: number, timeB: number): number => timeA - timeB);
@@ -79,36 +80,36 @@ export function valuesToRowData(values: Values[]): Record<string, number>[] {
     return times.reduce(
         (
             rowsData: Record<string, number>[],
-            time: number,
+            time: number
         ): Record<string, number>[] =>
             rowsData.concat(
-                values.reduce(
+                Object.entries(dataset).reduce(
                     (
                         row: Record<string, number>,
-                        value: Values,
+                        [name, data]: [string, Data]
                     ): Record<string, number> => {
-                        const point: Point | undefined = value.values.find(
-                            (point: Point): boolean => point.time === time,
-                        );
+                        const index: number = data.times.indexOf(time);
 
-                        if (point) {
-                            row[value.name] = point.value;
+                        if (index !== -1) {
+                            row[name] = data.values[index];
                         }
 
                         return row;
                     },
                     {
                         t: time,
-                    },
-                ),
+                    }
+                )
             ),
-        [],
+        []
     );
 }
 
-export function rowDataToValues(rowData: Record<string, number>[]): Values[] {
+export function rowDataToDataset(
+    rowData: Record<string, number>[]
+): Record<string, Data> {
     if (!rowData.length) {
-        return [];
+        return {};
     }
 
     const columns: string[] = getSetArray(
@@ -116,42 +117,53 @@ export function rowDataToValues(rowData: Record<string, number>[]): Values[] {
             (columns: string[], row: Record<string, number>): string[] =>
                 columns.concat(
                     Object.keys(row).filter(
-                        (name: string): boolean => name !== 't',
-                    ),
+                        (name: string): boolean => name !== 't'
+                    )
                 ),
-            [],
-        ),
+            []
+        )
     );
 
-    return columns.reduce((values: Values[], name: string): Values[] => {
-        const currentValues: Point[] = rowData.reduce(
-            (currentValues: Point[], row: Record<string, number>): Point[] => {
-                if (!row.hasOwnProperty(name)) {
-                    return currentValues;
-                }
+    return columns.reduce(
+        (dataset: Record<string, Data>, name: string): Record<string, Data> => {
+            const rawData: [number, number][] = rowData.reduce(
+                (
+                    data: [number, number][],
+                    row: Record<string, number>
+                ): [number, number][] => {
+                    if (!row.hasOwnProperty(name)) {
+                        return data;
+                    }
 
-                return currentValues.concat({
-                    time: row['t'],
-                    value: row[name],
-                });
-            },
-            [],
-        );
+                    data.push([row['t'], row[name]]);
 
-        if (currentValues.length) {
-            currentValues.sort(
-                (pointA: Point, pointB: Point): number =>
-                    pointA.time - pointB.time,
+                    return data;
+                },
+                []
             );
 
-            values.push({
-                name,
-                values: currentValues,
-            });
-        }
+            if (rawData.length) {
+                rawData.sort(
+                    (
+                        pairA: [number, number],
+                        pairB: [number, number]
+                    ): number => pairA[0] - pairB[0]
+                );
 
-        return values;
-    }, []);
+                dataset[name] = {
+                    times: rawData.map(
+                        (pair: [number, number]): number => pair[0]
+                    ),
+                    values: rawData.map(
+                        (pair: [number, number]): number => pair[1]
+                    ),
+                };
+            }
+
+            return dataset;
+        },
+        {}
+    );
 }
 
 export function getSetArray<Type>(array: Type[]): Type[] {
@@ -166,7 +178,7 @@ export interface Diff<Type extends { id: string }> {
 
 export function getDiff<Type extends { id: string }>(
     oldArray: Type[],
-    newArray: Type[],
+    newArray: Type[]
 ): Diff<Type> {
     const diff: Diff<Type> = {
         added: [],
@@ -190,9 +202,9 @@ export function getDiff<Type extends { id: string }>(
         ...oldArray.filter(
             (oldItem: Type): boolean =>
                 !newArray.find(
-                    (newItem: Type): boolean => newItem.id === oldItem.id,
-                ),
-        ),
+                    (newItem: Type): boolean => newItem.id === oldItem.id
+                )
+        )
     );
 
     return diff;

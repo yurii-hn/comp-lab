@@ -1,27 +1,19 @@
-import { Values } from './common.types';
+import { Data } from '@core/types/processing/common.types';
 
 export interface SelectedConstant {
-    id: string;
-    name: string;
     upperBoundary: number;
     value: number;
     lowerBoundary: number;
 }
 
-export interface IdentifiedConstant {
-    id: string;
-    name: string;
-    value: number;
-}
-
 export interface PIParameters {
     nodesAmount: number;
     forecastTime: number;
-    selectedConstants: SelectedConstant[];
-    data: Values[];
+    selectedConstants: Record<string, SelectedConstant>;
+    data: Record<string, Data>;
 }
 
 export interface PIResult {
-    constants: IdentifiedConstant[];
-    approximation: Values[];
+    constants: Record<string, number>;
+    approximation: Record<string, Data>;
 }

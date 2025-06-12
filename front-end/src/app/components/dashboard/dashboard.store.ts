@@ -1,16 +1,15 @@
 import { computed, inject, Signal } from '@angular/core';
 import {
   ApproximationType,
+  Data,
   OptimalControlParameters,
-  Point,
   ProcessingType,
-  Values,
 } from '@core/types/processing';
 import {
-  Data,
-  OptimalControlData,
-  PIData,
-  SimulationData,
+  OptimalControlResult,
+  PIResult,
+  Result,
+  SimulationResult,
 } from '@core/types/run.types';
 import {
   patchState,
@@ -66,7 +65,7 @@ export const DashboardStore = signalStore(
         const globalStore: Store = inject(Store);
 
         const settings: Signal<DashboardSettings> = globalStore.selectSignal(
-            selectDashboardSettings,
+            selectDashboardSettings
         );
 
         const noRuns: Signal<boolean> =
@@ -78,7 +77,7 @@ export const DashboardStore = signalStore(
         const currentRunName: Signal<string | null> =
             globalStore.selectSignal(selectCurrentRunName);
 
-        const currentRunData: Signal<Data | null> =
+        const currentRunData: Signal<Result | null> =
             globalStore.selectSignal(selectCurrentRunData);
 
         return {
@@ -92,7 +91,7 @@ export const DashboardStore = signalStore(
     withComputed((store) => {
         const currentRunPlotsData: Signal<Plot[]> = computed((): Plot[] => {
             const dashboardSettings: DashboardSettings = store.settings();
-            const data: Data | null = store.currentRunData();
+            const data: Result | null = store.currentRunData();
 
             if (!data) {
                 return [];
@@ -105,7 +104,7 @@ export const DashboardStore = signalStore(
                 case ProcessingType.OptimalControl:
                     return getOptimalControlRunPlotData(
                         data,
-                        dashboardSettings,
+                        dashboardSettings
                     );
 
                 case ProcessingType.PI:
@@ -139,43 +138,35 @@ export const DashboardStore = signalStore(
         return {
             alternateSplitAreasSizes,
         };
-    }),
+    })
 );
 
 function getSimulationRunPlotData(
-    data: SimulationData,
-    settings: DashboardSettings,
+    result: SimulationResult,
+    settings: DashboardSettings
 ): Plot[] {
-    return data.result.compartments.reduce(
-        (plotsData: Plot[], compartment: Values): Plot[] => {
-            const x: number[] = [];
-            const y: number[] = [];
-
-            compartment.values.forEach((point: Point): void => {
-                x.push(point.time);
-                y.push(point.value);
-            });
-
-            const data: PlotData[] = [
+    return Object.entries(result.result.compartments).reduce(
+        (plotsData: Plot[], [name, data]: [string, Data]): Plot[] => {
+            const plotData: PlotData[] = [
                 {
-                    x,
-                    y,
+                    x: data.times,
+                    y: data.values,
                     type: 'scatter',
-                    name: compartment.name,
+                    name,
                     line: {
                         shape: 'linear',
                     },
                 },
             ];
 
-            plotsData[0].data.push(...data);
+            plotsData[0].data.push(...plotData);
 
             plotsData.push({
-                data,
+                data: plotData,
                 layout: {
                     autosize: true,
                     title: {
-                        text: compartment.name,
+                        text: name,
                     },
                     xaxis: {
                         title: {
@@ -185,7 +176,7 @@ function getSimulationRunPlotData(
                     yaxis: {
                         rangemode: settings.yAxisRangeMode,
                         title: {
-                            text: compartment.name,
+                            text: name,
                         },
                     },
                 },
@@ -213,17 +204,17 @@ function getSimulationRunPlotData(
                     },
                 },
             },
-        ],
+        ]
     );
 }
 
 function getOptimalControlRunPlotData(
-    data: OptimalControlData,
-    settings: DashboardSettings,
+    result: OptimalControlResult,
+    settings: DashboardSettings
 ): Plot[] {
     const plots: Plot[] = [];
 
-    const parameters: OptimalControlParameters = data.parameters;
+    const parameters: OptimalControlParameters = result.parameters;
 
     const piecewiseConstantApproximation: boolean =
         parameters.intervention.approximationType ===
@@ -233,89 +224,62 @@ function getOptimalControlRunPlotData(
         : 'linear';
 
     plots.push(
-        ...data.result[0].compartments.map((compartment: Values): Plot => {
-            const x: number[] = [];
-            const yNonOptimal: number[] = [];
-            const yOptimal: number[] = [];
+        ...Object.entries(result.result[0].compartments).map(
+            ([name, data]: [string, Data]): Plot => {
+                const optimalData: Data = result.result[1].compartments[name];
 
-            compartment.values.forEach((point: Point): void => {
-                x.push(point.time);
-                yNonOptimal.push(point.value);
-            });
-
-            data.result[1].compartments
-                .find(
-                    (optimalCompartment: Values): boolean =>
-                        optimalCompartment.name === compartment.name,
-                )!
-                .values.forEach((point: Point): void => {
-                    yOptimal.push(point.value);
-                });
-
-            return {
-                data: [
-                    {
-                        x,
-                        y: yNonOptimal,
-                        type: 'scatter',
-                        name: 'Initial',
-                        line: {
-                            shape: 'linear',
+                return {
+                    data: [
+                        {
+                            x: data.times,
+                            y: data.values,
+                            type: 'scatter',
+                            name: 'Initial',
+                            line: {
+                                shape: 'linear',
+                            },
                         },
-                    },
-                    {
-                        x,
-                        y: yOptimal,
-                        type: 'scatter',
-                        name: 'Optimal',
-                        line: {
-                            shape: 'linear',
+                        {
+                            x: optimalData.times,
+                            y: optimalData.values,
+                            type: 'scatter',
+                            name: 'Optimal',
+                            line: {
+                                shape: 'linear',
+                            },
                         },
-                    },
-                ],
-                layout: {
-                    autosize: true,
-                    title: {
-                        text: compartment.name,
-                    },
-                    xaxis: {
+                    ],
+                    layout: {
+                        autosize: true,
                         title: {
-                            text: 'Time',
+                            text: name,
+                        },
+                        xaxis: {
+                            title: {
+                                text: 'Time',
+                            },
+                        },
+                        yaxis: {
+                            rangemode: settings.yAxisRangeMode,
+                            title: {
+                                text: name,
+                            },
                         },
                     },
-                    yaxis: {
-                        rangemode: settings.yAxisRangeMode,
-                        title: {
-                            text: compartment.name,
-                        },
-                    },
-                },
-            };
-        }),
+                };
+            }
+        )
     );
 
     plots.push(
-        ...data.result[1].interventions.map((intervention: Values): Plot => {
-            const x: number[] = [];
-            const y: number[] = [];
-
-            intervention.values.forEach((point: Point): void => {
-                x.push(point.time);
-                y.push(point.value);
-            });
-
-            if (piecewiseConstantApproximation) {
-                x.push(parameters.time);
-                y.push(intervention.values.at(-1)!.value);
-            }
-
-            return {
+        ...Object.entries(result.result[1].interventions).map(
+            ([name, data]: [string, Data]): Plot => ({
                 data: [
                     {
-                        x,
-                        y,
+                        x: data.times,
+                        y: data.values,
                         type: 'scatter',
-                        name: intervention.name,
+                        name,
                         line: {
                             shape: lineShape,
                         },
@@ -324,7 +288,7 @@ function getOptimalControlRunPlotData(
                 layout: {
                     autosize: true,
                     title: {
-                        text: intervention.name,
+                        text: name,
                     },
                     xaxis: {
                         title: {
@@ -334,155 +298,66 @@ function getOptimalControlRunPlotData(
                     yaxis: {
                         rangemode: settings.yAxisRangeMode,
                         title: {
-                            text: intervention.name,
+                            text: name,
                         },
                     },
                 },
-            };
-        }),
+            })
+        )
     );
 
     return plots;
 }
 
-function getPIRunPlotData(data: PIData, settings: DashboardSettings): Plot[] {
-    interface ProvidedValues {
-        compartments: Values[];
-        interventions: Values[];
-    }
-
-    const plots: Plot[] = [];
-
-    const providedValues: ProvidedValues = data.parameters.data.reduce(
-        (providedValues: ProvidedValues, values: Values): ProvidedValues => {
-            if (
-                data.result.approximation.find(
-                    (approximation: Values): boolean =>
-                        approximation.name === values.name,
-                )
-            ) {
-                providedValues.compartments.push(values);
-
-                return providedValues;
+function getPIRunPlotData(
+    result: PIResult,
+    settings: DashboardSettings
+): Plot[] {
+    return [
+        ...Object.entries(result.result.approximation).map(
+            ([name, data]: [string, Data]): Plot => {
+                return {
+                    data: [
+                        {
+                            x: data.times,
+                            y: data.values,
+                            type: 'scatter',
+                            name: 'Approximated',
+                            line: {
+                                shape: 'linear',
+                            },
+                        },
+                        ...(name in result.parameters.data
+                            ? [
+                                  {
+                                      x: result.parameters.data[name].times,
+                                      y: result.parameters.data[name].values,
+                                      type: 'scatter' as const,
+                                      name: 'Provided',
+                                      mode: 'markers' as const,
+                                  },
+                              ]
+                            : []),
+                    ],
+                    layout: {
+                        autosize: true,
+                        title: {
+                            text: name,
+                        },
+                        xaxis: {
+                            title: {
+                                text: 'Time',
+                            },
+                        },
+                        yaxis: {
+                            rangemode: settings.yAxisRangeMode,
+                            title: {
+                                text: name,
+                            },
+                        },
+                    },
+                };
             }
-
-            providedValues.interventions.push(values);
-
-            return providedValues;
-        },
-        { compartments: [], interventions: [] },
-    );
-
-    plots.push(
-        ...data.result.approximation.map((compartment: Values): Plot => {
-            const xApproximated: number[] = [];
-            const yApproximated: number[] = [];
-
-            const xData: number[] = [];
-            const yData: number[] = [];
-
-            compartment.values.forEach((point: Point): void => {
-                xApproximated.push(point.time);
-                yApproximated.push(point.value);
-            });
-
-            providedValues.compartments
-                .find(
-                    (providedValues: Values): boolean =>
-                        providedValues.name === compartment.name,
-                )
-                ?.values?.forEach((point: Point): void => {
-                    xData.push(point.time);
-                    yData.push(point.value);
-                });
-
-            const data: PlotData[] = [
-                {
-                    x: xApproximated,
-                    y: yApproximated,
-                    type: 'scatter',
-                    name: 'Approximated',
-                    line: {
-                        shape: 'linear',
-                    },
-                },
-            ];
-
-            if (yData.length) {
-                data.push({
-                    x: xData,
-                    y: yData,
-                    type: 'scatter',
-                    name: 'Provided',
-                    mode: 'markers',
-                });
-            }
-
-            return {
-                data,
-                layout: {
-                    autosize: true,
-                    title: {
-                        text: compartment.name,
-                    },
-                    xaxis: {
-                        title: {
-                            text: 'Time',
-                        },
-                    },
-                    yaxis: {
-                        rangemode: settings.yAxisRangeMode,
-                        title: {
-                            text: compartment.name,
-                        },
-                    },
-                },
-            };
-        }),
-    );
-
-    plots.push(
-        ...providedValues.interventions.map((intervention: Values): Plot => {
-            const x: number[] = [];
-            const y: number[] = [];
-
-            intervention.values.forEach((point: Point): void => {
-                x.push(point.time);
-                y.push(point.value);
-            });
-
-            return {
-                data: [
-                    {
-                        x,
-                        y,
-                        type: 'scatter',
-                        name: intervention.name,
-                        line: {
-                            shape: 'linear',
-                        },
-                    },
-                ],
-                layout: {
-                    autosize: true,
-                    title: {
-                        text: intervention.name,
-                    },
-                    xaxis: {
-                        title: {
-                            text: 'Time',
-                        },
-                    },
-                    yaxis: {
-                        rangemode: settings.yAxisRangeMode,
-                        title: {
-                            text: intervention.name,
-                        },
-                    },
-                },
-            };
-        }),
-    );
-
-    return plots;
+        ),
+    ];
 }

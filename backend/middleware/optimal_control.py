@@ -1,363 +1,434 @@
-"""Optimal Control Middleware"""
+import numpy as np
+import numpy.typing as npt
+import sympy as sp
 
-from typing import cast
-
-from core.classes.common.error_response import ErrorResponse
-from core.classes.common.values import Values
-from core.classes.model.equation import Equation
-from core.classes.model.model import Model
-from core.classes.model.variables_datatable import VariablesDatatable
-from core.classes.optimal_control.adjoint_model import AdjointModel
-from core.classes.optimal_control.parameters import OptimalControlParameters
-from core.classes.optimal_control.success_response import OptimalControlSuccessResponse
-from core.definitions.common.approximation_type import ApproximationType
-from core.definitions.model.continuity_type import ContinuityType
-from core.definitions.optimal_control.result import OptimalControlResultDefinition
-from core.definitions.simulation.result import SimulationResultDefinition
-from scipy.optimize import OptimizeResult, minimize
-from sympy import Interval, Symbol, oo
+from classes.common.error_response import ErrorResponse
+from classes.common.values import Values
+from classes.model.continuity_type import ContinuityType
+from classes.model.equation import Equation
+from classes.model.runtime_compartment import RuntimeCompartment
+from classes.model.runtime_model import RuntimeModel
+from classes.model.datatable import Datatable
+from classes.model.model import Model
+from classes.common.approximation_type import ApproximationType
+from classes.optimal_control.intervention_boundaries import InterventionBoundaries
+from classes.optimal_control.intervention_parameters import InterventionParameters
+from classes.optimal_control.parameters import OptimalControlParameters
+from classes.optimal_control.result import OptimalControlResult
+from classes.optimal_control.success_response import OptimalControlSuccessResponse
+from classes.simulation.result import SimulationResult
+from classes.optimal_control.adjoint_model import AdjointModel
+from functions.is_population_preserved import is_population_preserved
+from functions.model_to_runtime_model import model_to_runtime_model
+from functions.simulate import simulate
+from functions.simulate_adjoint import simulate_adjoint
 
 
 def optimal_control(
     parameters: OptimalControlParameters, model: Model
 ) -> OptimalControlSuccessResponse | ErrorResponse:
-    """Optimal Control"""
+    try:
+        runtime_model: RuntimeModel = model_to_runtime_model(model)
+        cost_function: Equation = get_cost_function(
+            parameters["objectiveFunction"],
+            [
+                *[compartment for compartment in runtime_model["compartments"]],
+                *[constant["name"] for constant in runtime_model["constants"]],
+                *[
+                    intervention["name"]
+                    for intervention in runtime_model["interventions"]
+                ],
+            ],
+        )
 
-    for compartment in model.compartments:
+        validate_model(runtime_model, parameters["intervention"]["boundaries"])
+        validate_cost_function(
+            cost_function, runtime_model, parameters["intervention"]["boundaries"]
+        )
+
+        hamiltonian: Equation = get_hamiltonian(
+            cost_function, runtime_model["compartments"]
+        )
+        adjoint_model: AdjointModel = hamiltonian_to_adjoint_model(
+            hamiltonian, list(runtime_model["compartments"].keys())
+        )
+        hamiltonian_intervention_partials: dict[str, Equation] = (
+            get_hamiltonian_intervention_partials(
+                hamiltonian,
+                [
+                    intervention["name"]
+                    for intervention in runtime_model["interventions"]
+                ],
+            )
+        )
+
+        times: npt.NDArray[np.float64] = np.linspace(
+            0,
+            parameters["time"],
+            parameters["nodesAmount"] + 1,
+            dtype=np.float64,
+        )
+        intervention_times: npt.NDArray[np.float64] = np.linspace(
+            0,
+            parameters["time"],
+            parameters["intervention"]["nodesAmount"] + 1,
+            dtype=np.float64,
+        )
+        variables_datatable: Datatable = Datatable()
+
+        variables_datatable.set_constants(
+            {
+                constant["name"]: Values(
+                    times,
+                    np.repeat(constant["value"], times.size),
+                    ApproximationType.PIECEWISE_CONSTANT,
+                )
+                for constant in runtime_model["constants"]
+            }
+        )
+        variables_datatable.set_interventions(
+            {
+                intervention["name"]: Values(
+                    intervention_times,
+                    np.zeros(intervention_times.size),
+                    ApproximationType.PIECEWISE_CONSTANT,
+                )
+                for intervention in runtime_model["interventions"]
+            }
+        )
+
+        simulate(runtime_model, times, variables_datatable)
+
+        no_control_cost: np.float64 = cost_function.calculate_interval(
+            times, variables_datatable
+        )
+        no_control_result: SimulationResult = {
+            "compartments": variables_datatable.compartments_data,
+        }
+
+        previous_cost: np.float64 = np.float64(np.inf)
+        current_cost: np.float64 = no_control_cost
+
+        while abs(current_cost - previous_cost) > 1e-4:
+            simulate_adjoint(adjoint_model, intervention_times, variables_datatable)
+
+            update_interventions(
+                hamiltonian_intervention_partials,
+                intervention_times,
+                parameters["intervention"],
+                variables_datatable,
+            )
+
+            simulate(runtime_model, times, variables_datatable)
+
+            previous_cost = current_cost
+            current_cost = cost_function.calculate_interval(times, variables_datatable)
+
+        optimal_cost: np.float64 = current_cost
+        optimal_result: OptimalControlResult = {
+            "compartments": variables_datatable.compartments_data,
+            "interventions": variables_datatable.interventions_data,
+            "noControlObjective": no_control_cost,
+            "optimalObjective": optimal_cost,
+        }
+
+        return {
+            "type": "OptimalControl",
+            "parameters": parameters,
+            "model": model,
+            "result": (no_control_result, optimal_result),
+        }
+
+    except RuntimeError as error:
+        return ErrorResponse(
+            {
+                "error": str(error),
+            }
+        )
+
+    except Exception as error:
+        print(error)
+
+        return ErrorResponse(
+            {
+                "error": "There is an error in the back end",
+            }
+        )
+
+
+def update_interventions(
+    hamiltonian_intervention_partials: dict[str, Equation],
+    times: npt.NDArray[np.float64],
+    intervention_parameters: InterventionParameters,
+    variables_datatable: Datatable,
+) -> None:
+    THETA = 0.5
+
+    new_values: dict[str, Values] = {}
+
+    for intervention_name, equation in hamiltonian_intervention_partials.items():
+        boundaries: InterventionBoundaries = intervention_parameters["boundaries"][
+            intervention_name
+        ]
+
+        update_solution: list[sp.Expr] = sp.solve(
+            equation.expression, intervention_name
+        )
+
+        if len(update_solution):
+            update_equation: Equation = Equation()
+
+            update_equation.add(update_solution[0])
+
+            updated_values: npt.NDArray[np.float64] = np.clip(
+                update_equation.calculate(
+                    [
+                        variables_datatable[variable.name](times)
+                        for variable in update_equation.variables
+                    ]
+                ),
+                boundaries["lowerBoundary"],
+                boundaries["upperBoundary"],
+            )
+
+            new_values[intervention_name] = Values(
+                times,
+                THETA * updated_values
+                + (1 - THETA) * variables_datatable[intervention_name](times),
+                intervention_parameters["approximationType"],
+            )
+        else:
+            derivative_values = equation.calculate(
+                [
+                    variables_datatable[variable.name](times)
+                    for variable in equation.variables
+                ]
+            )
+
+            new_values[intervention_name] = Values(
+                times,
+                np.where(
+                    derivative_values > 0,
+                    boundaries["lowerBoundary"],
+                    boundaries["upperBoundary"],
+                ),
+                intervention_parameters["approximationType"],
+            )
+
+    variables_datatable.set_interventions(new_values)
+
+
+def validate_model(
+    runtime_model: RuntimeModel,
+    intervention_boundaries: dict[str, InterventionBoundaries],
+) -> None:
+    constant_names: list[str] = [
+        constant["name"] for constant in runtime_model["constants"]
+    ]
+
+    for compartment in runtime_model["compartments"].values():
         continuity_status: dict[str, ContinuityType] = {
             **{
-                str(symbol): compartment.equation.check_continuity(
-                    symbol, Interval(0, oo), True
+                name: compartment["equation"].check_continuity(
+                    name, sp.Interval(0, sp.oo), True
                 )
-                for symbol in model.compartments_symbols
+                for name in runtime_model["compartments"]
             },
             **{
-                str(symbol): compartment.equation.check_continuity(
-                    symbol,
-                    Interval(
-                        *next(
-                            [
-                                boundary.lower_boundary,
-                                boundary.upper_boundary,
-                            ]
-                            for boundary in parameters.intervention.boundaries
-                            if boundary.name == str(symbol)
-                        )
+                intervention["name"]: compartment["equation"].check_continuity(
+                    intervention["name"],
+                    sp.Interval(
+                        intervention_boundaries[intervention["name"]]["lowerBoundary"],
+                        intervention_boundaries[intervention["name"]]["upperBoundary"],
                     ),
                     True,
                 )
-                for symbol in model.interventions_symbols
+                for intervention in runtime_model["interventions"]
+            },
+            **{
+                constant["name"]: compartment["equation"].check_continuity(
+                    constant["name"],
+                    sp.Interval(constant["value"], constant["value"]),
+                )
+                for constant in runtime_model["constants"]
             },
         }
 
         if not all(
             [
-                continuity_type == ContinuityType.CONTINUOUSLY_DIFFERENTIABLE
-                for continuity_type in continuity_status.values()
+                (
+                    continuity_type == ContinuityType.CONTINUOUS
+                    if variable in constant_names
+                    else continuity_type == ContinuityType.CONTINUOUSLY_DIFFERENTIABLE
+                )
+                for variable, continuity_type in continuity_status.items()
             ]
         ):
-            discontinuous_symbols: list[str] = [
-                symbol
-                for symbol, continuity_type in continuity_status.items()
+            discontinuous_variables: list[str] = [
+                variable
+                for variable, continuity_type in continuity_status.items()
                 if continuity_type == ContinuityType.DISCONTINUOUS
             ]
-            continuous_symbols: list[str] = [
-                symbol
-                for symbol, continuity_type in continuity_status.items()
+            continuous_variables: list[str] = [
+                variable
+                for variable, continuity_type in continuity_status.items()
                 if continuity_type == ContinuityType.CONTINUOUS
             ]
 
-            return ErrorResponse(
-                {
-                    "error": f"Equation of {compartment.name} is discontinuous by:\n"
-                    + ", ".join(discontinuous_symbols)
-                    + "\nand only continuous by:\n"
-                    + ", ".join(continuous_symbols)
-                }
+            raise RuntimeError(
+                f"Equation of {compartment["name"]} is"
+                + (
+                    f"\nDiscontinuous by: {", ".join(discontinuous_variables)}"
+                    if len(discontinuous_variables)
+                    else ""
+                )
+                + (
+                    f"\nOnly continuous by: {", ".join(continuous_variables)}"
+                    if len(continuous_variables)
+                    else ""
+                )
             )
 
-    if not model.population_preserved:
-        return ErrorResponse(
-            {
-                "error": "Model equations do not preserve population\n\n"
-                + "Apparently that is result of a program bug. Please reload the page and try again",
-            }
+    if not is_population_preserved(runtime_model):
+        raise RuntimeError(
+            "Model equations do not preserve population\n\n"
+            + "Apparently that is result of a program bug. Please reload the page and try again",
         )
 
+
+def get_cost_function(
+    objective_function: str,
+    variables: list[str],
+) -> Equation:
     cost_function: Equation = Equation()
 
-    cost_function.add_str(parameters.objective_function, model.symbols_table)
-
-    cost_function.substitute(
-        [(constant.symbol, constant.value) for constant in model.constants]
+    cost_function.add_str(
+        objective_function,
+        variables,
     )
+
+    return cost_function
+
+
+def validate_cost_function(
+    cost_function: Equation,
+    runtime_model: RuntimeModel,
+    intervention_boundaries: dict[str, InterventionBoundaries],
+) -> None:
+    constant_names: list[str] = [
+        constant["name"] for constant in runtime_model["constants"]
+    ]
 
     continuity_status: dict[str, ContinuityType] = {
         **{
-            str(symbol): cost_function.check_continuity(symbol, Interval(0, oo), True)
-            for symbol in model.compartments_symbols
+            name: cost_function.check_continuity(
+                name,
+                sp.Interval(0, sp.oo),
+                True,
+            )
+            for name in runtime_model["compartments"]
         },
         **{
-            str(symbol): cost_function.check_continuity(
-                symbol,
-                Interval(
-                    *next(
-                        [
-                            boundary.lower_boundary,
-                            boundary.upper_boundary,
-                        ]
-                        for boundary in parameters.intervention.boundaries
-                        if boundary.name == str(symbol)
-                    )
+            intervention["name"]: cost_function.check_continuity(
+                intervention["name"],
+                sp.Interval(
+                    intervention_boundaries[intervention["name"]]["lowerBoundary"],
+                    intervention_boundaries[intervention["name"]]["upperBoundary"],
                 ),
                 True,
             )
-            for symbol in model.interventions_symbols
+            for intervention in runtime_model["interventions"]
+        },
+        **{
+            constant["name"]: cost_function.check_continuity(
+                constant["name"],
+                sp.Interval(constant["value"], constant["value"]),
+            )
+            for constant in runtime_model["constants"]
         },
     }
 
     if not all(
         [
-            continuity_type == ContinuityType.CONTINUOUSLY_DIFFERENTIABLE
-            for continuity_type in continuity_status.values()
+            (
+                continuity_type == ContinuityType.CONTINUOUS
+                if variable in constant_names
+                else continuity_type == ContinuityType.CONTINUOUSLY_DIFFERENTIABLE
+            )
+            for variable, continuity_type in continuity_status.items()
         ]
     ):
-        discontinuous_symbols: list[str] = [
-            symbol
-            for symbol, continuity_type in continuity_status.items()
+        discontinuous_variables: list[str] = [
+            variable
+            for variable, continuity_type in continuity_status.items()
             if continuity_type == ContinuityType.DISCONTINUOUS
         ]
-        continuous_symbols: list[str] = [
-            symbol
-            for symbol, continuity_type in continuity_status.items()
+        continuous_variables: list[str] = [
+            variable
+            for variable, continuity_type in continuity_status.items()
             if continuity_type == ContinuityType.CONTINUOUS
         ]
 
-        return ErrorResponse(
-            {
-                "error": "Equation of cost function is discontinuous by:\n"
-                + ", ".join(discontinuous_symbols)
-                + "\nand only continuous by:\n"
-                + ", ".join(continuous_symbols)
-            }
+        raise RuntimeError(
+            "Equation of cost function is"
+            + (
+                f"\nDiscontinuous by: {", ".join(discontinuous_variables)}"
+                if len(discontinuous_variables)
+                else ""
+            )
+            + (
+                f"\nOnly continuous by: {", ".join(continuous_variables)}"
+                if len(continuous_variables)
+                else ""
+            )
         )
 
+
+def get_hamiltonian(
+    cost_function: Equation,
+    compartments: dict[str, RuntimeCompartment],
+) -> Equation:
     hamiltonian: Equation = Equation()
 
     hamiltonian.add(cost_function.expression)
 
-    for compartment in model.compartments:
+    for name, compartment in compartments.items():
         hamiltonian.add(
-            Symbol(f"lambda_{compartment.name}")
-            * compartment.equation.expression  # type: ignore
+            sp.Symbol(f"lambda_{name}")
+            * compartment["equation"].expression  # type: ignore
         )
 
-    adjoint_model: AdjointModel = AdjointModel(
-        model.compartments_symbols,
-        hamiltonian,
-    )
-
-    try:
-        variables_datatable: VariablesDatatable = VariablesDatatable()
-
-        variables_datatable.update_constants(
-            {
-                constant.name: Values(
-                    {
-                        "name": constant.name,
-                        "values": [
-                            {"time": 0, "value": constant.value},
-                        ],
-                    },
-                    ApproximationType.PIECEWISE_CONSTANT,
-                )
-                for constant in model.constants
-            }
-        )
-
-        variables_datatable.update_interventions(
-            {
-                intervention.name: Values(
-                    {
-                        "name": intervention.name,
-                        "values": [
-                            {"time": 0, "value": 0},
-                        ],
-                    },
-                    ApproximationType.PIECEWISE_CONSTANT,
-                )
-                for intervention in model.interventions
-            }
-        )
-
-        model.simulate(
-            parameters.time / parameters.nodes_amount,
-            parameters.nodes_amount,
-            variables_datatable,
-        )
-
-        no_control_result: SimulationResultDefinition = {
-            "compartments": variables_datatable.compartments_definition
-        }
-
-        no_control_cost: float = cost_function.calculate_interval(
-            parameters.time / parameters.nodes_amount,
-            parameters.nodes_amount,
-            variables_datatable,
-        )
-
-        bounds: list[tuple[float, float]] = [
-            boundary
-            for boundaries in [
-                [
-                    next(
-                        (
-                            boundary.lower_boundary,
-                            boundary.upper_boundary,
-                        )
-                        for boundary in parameters.intervention.boundaries
-                        if boundary.name == intervention.name
-                    )
-                ]
-                * (
-                    parameters.intervention.nodes_amount + 1
-                    if parameters.intervention.approximation_type
-                    == ApproximationType.PIECEWISE_LINEAR
-                    else parameters.intervention.nodes_amount
-                )
-                for intervention in model.interventions
-            ]
-            for boundary in boundaries
-        ]
-
-        optimal_result: OptimizeResult = cast(
-            OptimizeResult,
-            minimize(
-                optimization_criteria,
-                [current_pair[0] for current_pair in bounds],
-                args=(
-                    parameters,
-                    hamiltonian,
-                    model,
-                    adjoint_model,
-                    variables_datatable,
-                ),
-                bounds=bounds,
-                method="L-BFGS-B",
-                tol=1e-6,
-            ),
-        )
-
-        optimal_cost: float = cost_function.calculate_interval(
-            parameters.time / parameters.nodes_amount,
-            parameters.nodes_amount,
-            variables_datatable,
-        )
-
-        result: OptimalControlResultDefinition = {
-            "compartments": variables_datatable.compartments_definition,
-            "interventions": [
-                {
-                    "name": intervention.name,
-                    "values": [
-                        {
-                            "time": j
-                            * parameters.time
-                            / parameters.intervention.nodes_amount,
-                            "value": value,
-                        }
-                        for j, value in enumerate(
-                            optimal_result.x[
-                                i
-                                * (
-                                    parameters.intervention.nodes_amount + 1
-                                    if parameters.intervention.approximation_type
-                                    == ApproximationType.PIECEWISE_LINEAR
-                                    else parameters.intervention.nodes_amount
-                                ) : (i + 1)
-                                * (
-                                    parameters.intervention.nodes_amount + 1
-                                    if parameters.intervention.approximation_type
-                                    == ApproximationType.PIECEWISE_LINEAR
-                                    else parameters.intervention.nodes_amount
-                                )
-                            ]
-                        )
-                    ],
-                }
-                for i, intervention in enumerate(model.interventions)
-            ],
-            "approximatedInterventions": variables_datatable.interventions_definition,
-            "noControlObjective": no_control_cost,
-            "optimalObjective": optimal_cost,
-        }
-
-        return OptimalControlSuccessResponse(
-            {
-                "parameters": parameters.definition,
-                "model": model.definition,
-                "result": (no_control_result, result),
-            },
-            parameters.intervention.approximation_type,
-        )
-
-    except ValueError as error:
-        return ErrorResponse({"error": str(error)})
+    return hamiltonian
 
 
-def optimization_criteria(
-    interventions_vector: list[float],
-    parameters: OptimalControlParameters,
+def hamiltonian_to_adjoint_model(
     hamiltonian: Equation,
-    model: Model,
-    adjoint_model: AdjointModel,
-    variables_datatable: VariablesDatatable,
-) -> float:
-    """Optimization criteria"""
+    compartments: list[str],
+) -> AdjointModel:
+    lambdas: dict[str, Equation] = {}
 
-    step_size: float = parameters.time / parameters.nodes_amount
+    for compartment in compartments:
+        symbol: sp.Symbol = sp.Symbol(f"lambda_{compartment}")
+        equation: Equation = Equation()
 
-    variables_datatable.update_interventions(
-        {
-            intervention.name: Values(
-                {
-                    "name": intervention.name,
-                    "values": [
-                        {
-                            "time": j
-                            * parameters.time
-                            / parameters.intervention.nodes_amount,
-                            "value": value,
-                        }
-                        for j, value in enumerate(
-                            interventions_vector[
-                                i
-                                * (
-                                    parameters.intervention.nodes_amount + 1
-                                    if parameters.intervention.approximation_type
-                                    == ApproximationType.PIECEWISE_LINEAR
-                                    else parameters.intervention.nodes_amount
-                                ) : (i + 1)
-                                * (
-                                    parameters.intervention.nodes_amount + 1
-                                    if parameters.intervention.approximation_type
-                                    == ApproximationType.PIECEWISE_LINEAR
-                                    else parameters.intervention.nodes_amount
-                                )
-                            ]
-                        )
-                    ],
-                },
-                parameters.intervention.approximation_type,
-            )
-            for i, intervention in enumerate(model.interventions)
-        }
-    )
+        equation.add(-hamiltonian.expression.diff(sp.Symbol(compartment)))
 
-    model.simulate(step_size, parameters.nodes_amount, variables_datatable, True)
+        lambdas[symbol.name] = equation
 
-    adjoint_model.simulate(step_size, parameters.nodes_amount, variables_datatable)
+    return {"lambdas": lambdas}
 
-    return hamiltonian.calculate_interval(
-        step_size, parameters.nodes_amount, variables_datatable
-    )
+
+def get_hamiltonian_intervention_partials(
+    hamiltonian: Equation, interventions: list[str]
+) -> dict[str, Equation]:
+    partials: dict[str, Equation] = {}
+
+    for intervention in interventions:
+        symbol: sp.Symbol = sp.Symbol(intervention)
+        equation: Equation = Equation()
+
+        equation.add(hamiltonian.expression.diff(symbol))
+
+        partials[symbol.name] = equation
+
+    return partials

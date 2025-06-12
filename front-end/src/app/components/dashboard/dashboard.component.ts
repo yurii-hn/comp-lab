@@ -16,7 +16,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Data } from '@core/types/run.types';
+import { Result } from '@core/types/run.types';
 import { uniqueName } from '@core/validators';
 import { Store } from '@ngrx/store';
 import { PlotlyComponent, PlotlyModule } from 'angular-plotly.js';
@@ -60,8 +60,8 @@ export class DashboardComponent implements OnInit {
     private readonly injector: Injector = inject(Injector);
     private readonly store: Store = inject(Store);
     private readonly localStore = inject(DashboardStore);
-    private readonly dialogRef: MatDialogRef<DashboardComponent, Data | void> =
-        inject(MatDialogRef<DashboardComponent, Data | void>);
+    private readonly dialogRef: MatDialogRef<DashboardComponent, Result | void> =
+        inject(MatDialogRef<DashboardComponent, Result | void>);
     private readonly dialogService: MatDialog = inject(MatDialog);
 
     private readonly plotsComponents: Signal<readonly PlotlyComponent[]> =
@@ -73,7 +73,7 @@ export class DashboardComponent implements OnInit {
     public readonly names: Signal<string[]> = this.localStore.runsNames;
     public readonly name: Signal<string | null> =
         this.localStore.currentRunName;
-    public readonly data: Signal<Data | null> = this.localStore.currentRunData;
+    public readonly data: Signal<Result | null> = this.localStore.currentRunData;
     public readonly plots: Signal<Plot[]> = this.localStore.currentRunPlotsData;
     public readonly plotsConfig: Signal<Partial<Config>> =
         this.localStore.plotsConfig;

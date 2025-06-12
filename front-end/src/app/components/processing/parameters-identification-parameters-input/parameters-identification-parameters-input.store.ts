@@ -7,9 +7,9 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { Compartment, Constant, Intervention } from '@core/types/model.types';
-import { SelectedConstant, Values } from '@core/types/processing';
-import { areEqual, rowDataToValues, valuesToRowData } from '@core/utils';
+import { Compartment, Constant } from '@core/types/model.types';
+import { Data, SelectedConstant } from '@core/types/processing';
+import { areEqual, datasetToRowData, rowDataToDataset } from '@core/utils';
 import {
   patchState,
   signalStore,
@@ -31,16 +31,17 @@ import { SnackBarService } from 'src/app/services/snack-bar.service';
 import {
   selectCompartments,
   selectConstants,
-  selectInterventions,
 } from 'src/app/state/selectors/workspace.selectors';
 
-export type SelectedConstantDefinition = Omit<SelectedConstant, 'id'>;
+export type SelectedConstantDefinition = SelectedConstant & {
+    name: string;
+};
 
 export interface Value {
     nodesAmount: number | null;
     forecastTime: number;
-    selectedConstants: SelectedConstant[] | null;
-    data: Values[] | null;
+    selectedConstants: Record<string, SelectedConstant> | null;
+    data: Record<string, Data> | null;
 }
 
 export interface FormValue {
@@ -77,15 +78,12 @@ export const PIParametersInputStore = signalStore(
             globalStore.selectSignal(selectCompartments);
         const constants: Signal<Constant[]> =
             globalStore.selectSignal(selectConstants);
-        const interventions: Signal<Intervention[]> =
-            globalStore.selectSignal(selectInterventions);
 
         return {
             _filesService: filesService,
             _snackBarService: snackBarService,
             _compartments: compartments,
             _constants: constants,
-            _interventions: interventions,
         };
     }),
     withComputed((store) => {
@@ -95,25 +93,24 @@ export const PIParametersInputStore = signalStore(
 
                 const nodesAmount: number | null = parameters.nodesAmount;
                 const forecastTime: number = parameters.forecastTime ?? 0;
-                const selectedConstants: SelectedConstant[] | null =
+                const selectedConstants: Value['selectedConstants'] | null =
                     parameters.selectedConstants &&
-                    parameters.selectedConstants.map(
+                    parameters.selectedConstants.reduce(
                         (
-                            selectedConstant:
-                                | SelectedConstant
-                                | SelectedConstantDefinition,
-                        ): SelectedConstant => ({
-                            ...selectedConstant,
-                            id: store
-                                ._constants()
-                                .find(
-                                    (constant: Constant): boolean =>
-                                        constant.name === selectedConstant.name,
-                                )!.id,
+                            constants: Record<string, SelectedConstant>,
+                            constant: SelectedConstantDefinition
+                        ): Record<string, SelectedConstant> => ({
+                            ...constants,
+                            [constant.name]: {
+                                lowerBoundary: constant.lowerBoundary,
+                                value: constant.value,
+                                upperBoundary: constant.upperBoundary,
+                            },
                         }),
+                        {}
                     );
-                const data: Values[] | null =
-                    parameters.data && rowDataToValues(parameters.data);
+                const data: Value['data'] | null =
+                    parameters.data && rowDataToDataset(parameters.data);
 
                 return {
                     nodesAmount,
@@ -124,13 +121,13 @@ export const PIParametersInputStore = signalStore(
             },
             {
                 equal: areEqual,
-            },
+            }
         );
         const formValue: Signal<FormValue> = computed(
             (): FormValue => store._value(),
             {
                 equal: areEqual,
-            },
+            }
         );
 
         const constantsRowScheme: Signal<
@@ -145,7 +142,7 @@ export const PIParametersInputStore = signalStore(
                         (constant: Constant): Option => ({
                             value: constant.name,
                             label: constant.name,
-                        }),
+                        })
                     ),
                     validationFns: [Validators.required],
                 },
@@ -167,7 +164,7 @@ export const PIParametersInputStore = signalStore(
                     validationFns: [Validators.required],
                     editable: true,
                 },
-            }),
+            })
         );
 
         const dataRowScheme: Signal<RowScheme> = computed(
@@ -181,22 +178,12 @@ export const PIParametersInputStore = signalStore(
                                 type: InputType.Number,
                                 validationFns: [Validators.min(0)],
                             },
-                        }),
-                    ),
-                    ...store._interventions().map(
-                        (intervention: Intervention): RowScheme => ({
-                            [intervention.name]: {
-                                name: intervention.name,
-                                editable: true,
-                                type: InputType.Number,
-                                validationFns: [Validators.required],
-                            },
-                        }),
+                        })
                     ),
                 ].reduce(
                     (
                         rowScheme: RowScheme,
-                        columnScheme: RowScheme,
+                        columnScheme: RowScheme
                     ): RowScheme => ({
                         ...rowScheme,
                         ...columnScheme,
@@ -210,11 +197,11 @@ export const PIParametersInputStore = signalStore(
                                 Validators.min(0),
                             ],
                         },
-                    },
-                ),
+                    }
+                )
         );
         const dataRowValidators: Signal<ValidatorFn[]> = computed(
-            (): ValidatorFn[] => [dataRow()],
+            (): ValidatorFn[] => [dataRow()]
         );
 
         return {
@@ -236,8 +223,19 @@ export const PIParametersInputStore = signalStore(
                 _value: {
                     nodesAmount: value && value.nodesAmount,
                     forecastTime: value ? value.forecastTime : 0,
-                    selectedConstants: value && value.selectedConstants,
-                    data: value && value.data && valuesToRowData(value.data),
+                    selectedConstants:
+                        value &&
+                        value?.selectedConstants &&
+                        Object.entries(value.selectedConstants).map(
+                            ([name, constant]: [
+                                string,
+                                SelectedConstant
+                            ]): SelectedConstantDefinition => ({
+                                name,
+                                ...constant,
+                            })
+                        ),
+                    data: value && value?.data && datasetToRowData(value.data),
                 },
                 forecastEnabled:
                     value?.forecastTime !== null &&
@@ -248,16 +246,18 @@ export const PIParametersInputStore = signalStore(
         const importData = rxMethod<void>(
             pipe(
                 switchMap(
-                    (): Observable<Values[]> =>
-                        store._filesService.readDataFromFile<Values[]>('.scs'),
+                    (): Observable<Record<string, Data>> =>
+                        store._filesService.readDataFromFile<
+                            Record<string, Data>
+                        >('.scs')
                 ),
-                tap((data: Values[]): void =>
+                tap((data: Record<string, Data>): void =>
                     patchState(store, {
                         _value: {
-                            ...store.value(),
-                            data: valuesToRowData(data),
+                            ...store._value(),
+                            data: datasetToRowData(data),
                         },
-                    }),
+                    })
                 ),
                 tap((): void =>
                     store._snackBarService.open(
@@ -268,10 +268,10 @@ export const PIParametersInputStore = signalStore(
                             horizontalPosition: 'right',
                             verticalPosition: 'bottom',
                             duration: 5000,
-                        },
-                    ),
-                ),
-            ),
+                        }
+                    )
+                )
+            )
         );
 
         return {
@@ -280,7 +280,7 @@ export const PIParametersInputStore = signalStore(
             setValueFromForm,
             importData,
         };
-    }),
+    })
 );
 
 function dataRow(): ValidatorFn {

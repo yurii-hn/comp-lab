@@ -4,12 +4,7 @@ export enum ProcessingType {
     PI = 'PI',
 }
 
-export interface Point {
-    time: number;
-    value: number;
-}
-
-export interface Values {
-    name: string;
-    values: Point[];
+export interface Data {
+    times: number[];
+    values: number[];
 }

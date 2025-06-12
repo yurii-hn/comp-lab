@@ -17,7 +17,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Compartment, Flow, Model } from '@core/types/model.types';
-import { Data } from '@core/types/run.types';
+import { Result } from '@core/types/run.types';
 import { Store } from '@ngrx/store';
 import { AngularSplitModule } from 'angular-split';
 import { EdgeSingular, NodeSingular } from 'cytoscape';
@@ -201,8 +201,8 @@ export class AppComponent implements OnInit, AfterViewInit {
         dialog
             .afterClosed()
             .pipe(
-                filter((data?: Data): data is Data => data !== undefined),
-                tap((data: Data): void => {
+                filter((data?: Result): data is Result => data !== undefined),
+                tap((data: Result): void => {
                     this.store.dispatch(
                         AppActions.addWorkspace({
                             model: data.model,

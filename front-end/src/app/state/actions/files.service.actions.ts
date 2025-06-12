@@ -1,9 +1,9 @@
 import { Model } from '@core/types/model.types';
-import { Data } from '@core/types/run.types';
+import { Result } from '@core/types/run.types';
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
 
 interface AddRunProps {
-    data: Data;
+    data: Result;
     set: boolean;
 }
 

@@ -4,8 +4,8 @@ import {
   ApproximationType,
   InterventionBoundaries,
 } from '@core/types/processing';
-import { OptimalControlData } from '@core/types/run.types';
-import { valuesToRowData } from '@core/utils';
+import { OptimalControlResult } from '@core/types/run.types';
+import { datasetToRowData } from '@core/utils';
 import {
   patchState,
   signalStore,
@@ -24,7 +24,11 @@ export interface SplitAreasSizes {
     model: '*';
 }
 
-export type InputData = OptimalControlData | null;
+export type InputData = OptimalControlResult | null;
+
+export type InterventionBoundariesDefinition = InterventionBoundaries & {
+    name: string;
+};
 
 export type DisplayInterventionData = {
     nodesAmount: number | null;
@@ -90,7 +94,7 @@ export const OptimalControlInfoPanelStore = signalStore(
                     ? Object.keys(interventions[0]).reduce(
                           (
                               rowScheme: RowScheme,
-                              intervention: string,
+                              intervention: string
                           ): RowScheme => ({
                               ...rowScheme,
                               [intervention]: {
@@ -98,28 +102,29 @@ export const OptimalControlInfoPanelStore = signalStore(
                                   type: InputType.Number,
                               },
                           }),
-                          {},
+                          {}
                       )
                     : {};
-            },
+            }
         );
-        const boundariesRowScheme: Signal<RowScheme<InterventionBoundaries>> =
-            computed(
-                (): RowScheme<InterventionBoundaries> => ({
-                    name: {
-                        name: 'Name',
-                        type: InputType.Text,
-                    },
-                    lowerBoundary: {
-                        name: 'Lower boundary',
-                        type: InputType.Number,
-                    },
-                    upperBoundary: {
-                        name: 'Upper boundary',
-                        type: InputType.Number,
-                    },
-                }),
-            );
+        const boundariesRowScheme: Signal<
+            RowScheme<InterventionBoundariesDefinition>
+        > = computed(
+            (): RowScheme<InterventionBoundariesDefinition> => ({
+                name: {
+                    name: 'Name',
+                    type: InputType.Text,
+                },
+                lowerBoundary: {
+                    name: 'Lower boundary',
+                    type: InputType.Number,
+                },
+                upperBoundary: {
+                    name: 'Upper boundary',
+                    type: InputType.Number,
+                },
+            })
+        );
 
         return {
             interventionsRowScheme,
@@ -152,7 +157,7 @@ export const OptimalControlInfoPanelStore = signalStore(
                         optimalObjective:
                             data && data.result[1].optimalObjective,
                         interventions: data
-                            ? valuesToRowData(data.result[1].interventions)
+                            ? datasetToRowData(data.result[1].interventions)
                             : [],
                     },
                     parameters: {
@@ -168,11 +173,17 @@ export const OptimalControlInfoPanelStore = signalStore(
                                 data &&
                                 data.parameters.intervention.approximationType,
                             boundaries: data
-                                ? (data.parameters.intervention
-                                      .boundaries as unknown as Record<
-                                      string,
-                                      string | number
-                                  >[])
+                                ? Object.entries(
+                                      data.parameters.intervention.boundaries
+                                  ).map(
+                                      ([name, boundaries]: [
+                                          string,
+                                          InterventionBoundaries
+                                      ]): Record<string, string | number> => ({
+                                          name,
+                                          ...boundaries,
+                                      })
+                                  )
                                 : [],
                         },
                     },
@@ -184,5 +195,5 @@ export const OptimalControlInfoPanelStore = signalStore(
             alternateSplitAreasSizes,
             setData,
         };
-    }),
+    })
 );
