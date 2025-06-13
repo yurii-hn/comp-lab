@@ -134,7 +134,7 @@ def optimization_criteria(
 
     return calculate_objective(
         parameters["data"],
-        variables_datatable._compartments,
+        variables_datatable.compartments,
     )
 
 

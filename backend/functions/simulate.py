@@ -22,8 +22,10 @@ def simulate(
         t_eval=times,
     )
 
-    if not all([y.min() >= 0 for y in result.y]):
-        compartment_index: int = next(i for i, y in enumerate(result.y) if y.min() < 0)
+    if not all([y.min() >= -1e-6 for y in result.y]):
+        compartment_index: int = next(
+            i for i, y in enumerate(result.y) if y.min() < -1e-6
+        )
         time_index: int = np.argmin(result.y[compartment_index]).item()
 
         time: np.float64 = result.t[time_index]
@@ -31,7 +33,7 @@ def simulate(
             compartment_index
         ]
 
-        raise ValueError(f"Negative value for {compartment["name"]} at time {time}")
+        raise RuntimeError(f"Negative value for {compartment["name"]} at time {time}")
 
     variables_datatable.set_compartments(
         {

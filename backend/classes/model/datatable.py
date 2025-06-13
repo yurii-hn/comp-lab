@@ -3,10 +3,10 @@ from classes.common.values import Values
 
 
 class Datatable:
-    _compartments: dict[str, Values]
-    _constants: dict[str, Values]
-    _interventions: dict[str, Values]
-    _lambdas: dict[str, Values]
+    compartments: dict[str, Values]
+    constants: dict[str, Values]
+    interventions: dict[str, Values]
+    lambdas: dict[str, Values]
 
     @property
     def compartments_data(self) -> dict[str, Data]:
@@ -15,7 +15,7 @@ class Datatable:
                 "times": data.times.tolist(),
                 "values": data.values.tolist(),
             }
-            for name, data in self._compartments.items()
+            for name, data in self.compartments.items()
         }
 
     @property
@@ -25,7 +25,7 @@ class Datatable:
                 "times": data.times.tolist(),
                 "values": data.values.tolist(),
             }
-            for name, data in self._constants.items()
+            for name, data in self.constants.items()
         }
 
     @property
@@ -35,7 +35,7 @@ class Datatable:
                 "times": data.times.tolist(),
                 "values": data.values.tolist(),
             }
-            for name, data in self._interventions.items()
+            for name, data in self.interventions.items()
         }
 
     @property
@@ -45,50 +45,50 @@ class Datatable:
                 "times": data.times.tolist(),
                 "values": data.values.tolist(),
             }
-            for name, data in self._lambdas.items()
+            for name, data in self.lambdas.items()
         }
 
     def __init__(self) -> None:
-        self._compartments = {}
-        self._constants = {}
-        self._interventions = {}
-        self._lambdas = {}
+        self.compartments = {}
+        self.constants = {}
+        self.interventions = {}
+        self.lambdas = {}
 
     def __getitem__(self, key: str) -> Values:
-        if key in self._compartments:
-            return self._compartments[key]
+        if key in self.compartments:
+            return self.compartments[key]
 
-        if key in self._constants:
-            return self._constants[key]
+        if key in self.constants:
+            return self.constants[key]
 
-        if key in self._interventions:
-            return self._interventions[key]
+        if key in self.interventions:
+            return self.interventions[key]
 
-        if key in self._lambdas:
-            return self._lambdas[key]
+        if key in self.lambdas:
+            return self.lambdas[key]
 
         raise KeyError(f'Key "{key}" not found in Datatable')
 
     def set_compartments(self, compartments: dict[str, Values]) -> None:
-        self._compartments = compartments
+        self.compartments = compartments
 
     def update_compartments(self, compartments: dict[str, Values]) -> None:
-        self._compartments.update(compartments)
+        self.compartments.update(compartments)
 
     def set_constants(self, constants: dict[str, Values]) -> None:
-        self._constants = constants
+        self.constants = constants
 
     def update_constants(self, constants: dict[str, Values]) -> None:
-        self._constants.update(constants)
+        self.constants.update(constants)
 
     def set_interventions(self, interventions: dict[str, Values]) -> None:
-        self._interventions = interventions
+        self.interventions = interventions
 
     def update_interventions(self, interventions: dict[str, Values]) -> None:
-        self._interventions.update(interventions)
+        self.interventions.update(interventions)
 
     def set_lambdas(self, lambdas: dict[str, Values]) -> None:
-        self._lambdas = lambdas
+        self.lambdas = lambdas
 
     def update_lambdas(self, lambdas: dict[str, Values]) -> None:
-        self._lambdas.update(lambdas)
+        self.lambdas.update(lambdas)

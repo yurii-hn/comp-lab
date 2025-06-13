@@ -104,7 +104,7 @@ export class EquationInputComponent
         new FormControl<string>(
             '',
             [Validators.required],
-            [this.controlValidator.bind(this)],
+            [this.controlValidator.bind(this)]
         );
 
     public readonly compartments: Signal<Compartment[]> =
@@ -152,7 +152,7 @@ export class EquationInputComponent
     }
 
     public registerOnValidatorChange(
-        onValidatorChange: OnValidatorChangeFn,
+        onValidatorChange: OnValidatorChangeFn
     ): void {
         this.onValidatorChange = onValidatorChange;
     }
@@ -160,10 +160,10 @@ export class EquationInputComponent
     public onChipInput(name: string): void {
         const newCursorPosition: number = this.localStore.insertAt(
             name,
-            this.getCursorPosition(),
+            this.getCursorPosition()
         );
 
-        this.setCursorPosition(newCursorPosition);
+        setTimeout((): void => this.setCursorPosition(newCursorPosition));
     }
 
     private initInputsSync(): void {
@@ -175,19 +175,19 @@ export class EquationInputComponent
             },
             {
                 injector: this.injector,
-            },
+            }
         );
         effect(
             (): void => {
                 const placeholder: string = this.placeholderInput();
 
                 untracked((): void =>
-                    this.localStore.setPlaceholder(placeholder),
+                    this.localStore.setPlaceholder(placeholder)
                 );
             },
             {
                 injector: this.injector,
-            },
+            }
         );
     }
 
@@ -196,13 +196,13 @@ export class EquationInputComponent
             this.control.valueChanges.pipe(skip(1)),
             {
                 injector: this.injector,
-            },
+            }
         );
         const statusChanges: Signal<FormControlStatus | undefined> = toSignal(
             this.control.statusChanges,
             {
                 injector: this.injector,
-            },
+            }
         );
         const validationResult: Signal<ValidationErrors | null | undefined> =
             toSignal(this.localStore.validationResult, {
@@ -217,7 +217,7 @@ export class EquationInputComponent
             },
             {
                 injector: this.injector,
-            },
+            }
         );
         effect(
             (): void => {
@@ -231,7 +231,7 @@ export class EquationInputComponent
             },
             {
                 injector: this.injector,
-            },
+            }
         );
         effect(
             () => {
@@ -249,7 +249,7 @@ export class EquationInputComponent
             },
             {
                 injector: this.injector,
-            },
+            }
         );
 
         effect(
@@ -265,7 +265,7 @@ export class EquationInputComponent
             },
             {
                 injector: this.injector,
-            },
+            }
         );
         effect(
             (): void => {
@@ -285,7 +285,7 @@ export class EquationInputComponent
             },
             {
                 injector: this.injector,
-            },
+            }
         );
     }
 
@@ -303,7 +303,7 @@ export class EquationInputComponent
     }
 
     private controlValidator(
-        control: AbstractControl,
+        control: AbstractControl
     ): Observable<ValidationErrors | null> {
         this.localStore.validate(control.value);
 

@@ -609,7 +609,7 @@ export const workspacesReducer = createReducer<WorkspacesState>(
     ),
 );
 
-const removedDefinitionPlaceholder: string = '<REMOVED_DEFINITION>';
+const removedDefinitionPlaceholder: string = '_REMOVED_DEFINITION_';
 
 function applyDefinitionsDiffToFlows<
     DefinitionType extends {

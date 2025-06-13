@@ -27,7 +27,7 @@ export const settingsFeatureKey = 'settings';
 
 const initialState: SettingsState = {
     dashboard: {
-        yAxisRangeMode: PlotYAxisRangeMode.ToZero,
+        yAxisRangeMode: PlotYAxisRangeMode.Normal,
     },
 };
 
@@ -37,13 +37,13 @@ export const settingsReducer = createReducer<SettingsState>(
         LocalStorageActions.loadSettings,
         (_: SettingsState, { state }: LoadSettingsProps): SettingsState => ({
             ...state,
-        }),
+        })
     ),
     on(
         SettingsActions.setSettings,
         (
             _: SettingsState,
-            { settings }: UpdateSettingsProps,
-        ): SettingsState => ({ ...settings }),
-    ),
+            { settings }: UpdateSettingsProps
+        ): SettingsState => ({ ...settings })
+    )
 );

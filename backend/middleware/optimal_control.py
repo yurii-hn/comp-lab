@@ -106,10 +106,11 @@ def optimal_control(
             "compartments": variables_datatable.compartments_data,
         }
 
-        previous_cost: np.float64 = np.float64(np.inf)
-        current_cost: np.float64 = no_control_cost
+        optimal_cost: np.float64 = no_control_cost
+        previous_interventions: dict[str, Values] = {}
+        current_interventions: dict[str, Values] = variables_datatable.interventions
 
-        while abs(current_cost - previous_cost) > 1e-4:
+        for _ in range(int(1e2)):
             simulate_adjoint(adjoint_model, intervention_times, variables_datatable)
 
             update_interventions(
@@ -121,10 +122,25 @@ def optimal_control(
 
             simulate(runtime_model, times, variables_datatable)
 
-            previous_cost = current_cost
-            current_cost = cost_function.calculate_interval(times, variables_datatable)
+            optimal_cost = cost_function.calculate_interval(times, variables_datatable)
+            previous_interventions = current_interventions
+            current_interventions = variables_datatable.interventions
 
-        optimal_cost: np.float64 = current_cost
+            if (
+                np.max(
+                    [
+                        np.linalg.norm(
+                            current_interventions[intervention].values
+                            - previous_interventions[intervention].values,
+                            ord=2,
+                        )
+                        for intervention in current_interventions
+                    ]
+                )
+                < 1e-4
+            ):
+                break
+
         optimal_result: OptimalControlResult = {
             "compartments": variables_datatable.compartments_data,
             "interventions": variables_datatable.interventions_data,
