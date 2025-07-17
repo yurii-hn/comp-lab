@@ -47,9 +47,9 @@ export const InfoStore = signalStore(
                         const connectedFlows: Flow[] = model.flows.filter(
                             (flow: Flow): boolean =>
                                 flow.source === compartment.id ||
-                                flow.target === compartment.id,
+                                flow.target === compartment.id
                         );
-                        const initialExpressionString: string =
+                        const leftSideTex: string =
                             store._mathJs
                                 .parse(`d${compartment.name}(t)/dt`)
                                 .toTex() + ' = ';
@@ -57,16 +57,13 @@ export const InfoStore = signalStore(
 
                         return connectedFlows.length
                             ? connectedFlows.reduce(
-                                  (expression: string, flow: Flow): string => {
-                                      const texExpression: string =
-                                          store._mathJs
-                                              .parse(flow.equation)
-                                              .toTex();
-
-                                      let newExpression: string = expression;
+                                  (tex: string, flow: Flow): string => {
+                                      const flowTex: string = store._mathJs
+                                          .parse(flow.equation)
+                                          .toTex();
 
                                       if (flow.source === compartment.id) {
-                                          newExpression += `- (${texExpression})`;
+                                          tex += `- (${flowTex})`;
 
                                           isExpressionEmpty = false;
                                       }
@@ -75,19 +72,19 @@ export const InfoStore = signalStore(
                                           const signString: string =
                                               isExpressionEmpty ? '' : '+';
 
-                                          newExpression += `${signString} (${texExpression})`;
+                                          tex += `${signString} (${flowTex})`;
 
                                           isExpressionEmpty = false;
                                       }
 
-                                      return newExpression;
+                                      return tex;
                                   },
-                                  initialExpressionString,
+                                  leftSideTex
                               )
-                            : `${initialExpressionString} 0`;
-                    },
+                            : leftSideTex + '0';
+                    }
                 );
-            },
+            }
         );
 
         const constantsExpressions: Signal<string[]> = computed(
@@ -98,11 +95,12 @@ export const InfoStore = signalStore(
                     return [];
                 }
 
-                return model.constants.map(
-                    (constant: Constant): string =>
-                        `${constant.name} = ${constant.value}`,
+                return model.constants.map((constant: Constant): string =>
+                    store._mathJs
+                        .parse(`${constant.name} = ${constant.value}`)
+                        .toTex()
                 );
-            },
+            }
         );
 
         const interventionsExpressions: Signal<string[]> = computed(
@@ -114,10 +112,15 @@ export const InfoStore = signalStore(
                 }
 
                 return model.interventions.map(
-                    (intervention: Intervention): string =>
-                        `${intervention.name} = ${intervention.name}(t)`,
+                    (intervention: Intervention): string => {
+                        const interventionTex: string = store._mathJs
+                            .parse(intervention.name)
+                            .toTex();
+
+                        return `${interventionTex} = ${interventionTex}(t)`;
+                    }
                 );
-            },
+            }
         );
 
         return {
@@ -135,5 +138,5 @@ export const InfoStore = signalStore(
         return {
             setModel,
         };
-    }),
+    })
 );

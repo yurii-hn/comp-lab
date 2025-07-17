@@ -1,4 +1,4 @@
-import { computed, inject, Signal } from '@angular/core';
+import { computed, effect, inject, Signal } from '@angular/core';
 import { Compartment, Flow } from '@core/types/model.types';
 import {
   areEqual,
@@ -28,7 +28,13 @@ import {
   tap,
 } from 'rxjs';
 import { GraphModel, GraphService } from 'src/app/services/graph.service';
+import {
+  AppSettings,
+  Palette,
+  Theme,
+} from 'src/app/state/reducers/settings.reducer';
 import { Workspace } from 'src/app/state/reducers/workspace.reducer';
+import { selectAppSettings } from 'src/app/state/selectors/settings.selectors';
 import { selectCurrentWorkspace } from 'src/app/state/selectors/workspace.selectors';
 import dom from './core/cytoscape-dom';
 
@@ -94,16 +100,19 @@ export const AppStore = signalStore(
         const globalStore: Store = inject(Store);
         const graphService: GraphService = inject(GraphService);
         const subscription: Subscription = new Subscription();
+        const settings: Signal<AppSettings> =
+            globalStore.selectSignal(selectAppSettings);
 
         return {
             _globalStore: globalStore,
             _graphService: graphService,
             _subscription: subscription,
+            _settings: settings,
         };
     }),
     withComputed((store) => {
         const isElementSelected: Signal<boolean> = computed(
-            (): boolean => !!store.selectedElement(),
+            (): boolean => !!store.selectedElement()
         );
 
         return {
@@ -112,14 +121,14 @@ export const AppStore = signalStore(
     }),
     withMethods((store) => {
         const _setSelectedElement = (
-            element: NodeSingular | EdgeSingular | null,
+            element: NodeSingular | EdgeSingular | null
         ): void =>
             patchState(store, {
                 selectedElement: element,
             });
 
         const _setOpenedElement = (
-            element: NodeSingular | EdgeSingular | null,
+            element: NodeSingular | EdgeSingular | null
         ): void =>
             patchState(store, {
                 openedElement: element,
@@ -137,18 +146,18 @@ export const AppStore = signalStore(
             cytoscapeObj!.dom();
 
             const canvasResizeSub: Subscription = observeResizes(
-                cytoscapeObj.container() as HTMLElement,
+                cytoscapeObj.container() as HTMLElement
             )
                 .pipe(
                     debounceTime(500),
-                    tap((): void => store._graphService.layout(cytoscapeObj)),
+                    tap((): void => store._graphService.layout(cytoscapeObj))
                 )
                 .subscribe();
 
             const selectElementSub: Subscription = fromCytoscapeObjEvent(
                 cytoscapeObj,
                 'select',
-                'node.compartment[componentRef], edge.flow[componentRef]',
+                'node.compartment[componentRef], edge.flow[componentRef]'
             )
                 .pipe(
                     tap({
@@ -164,53 +173,53 @@ export const AppStore = signalStore(
                             _setSelectedElement(element);
                         },
                         unsubscribe: (): void => _setSelectedElement(null),
-                    }),
+                    })
                 )
                 .subscribe();
 
             const unselectElementSub: Subscription = fromCytoscapeObjEvent(
                 cytoscapeObj,
                 'unselect',
-                'node.compartment[componentRef], edge.flow[componentRef]',
+                'node.compartment[componentRef], edge.flow[componentRef]'
             )
                 .pipe(
                     tap({
                         next: () => _setSelectedElement(null),
-                    }),
+                    })
                 )
                 .subscribe();
 
             const openElementSub: Subscription = fromCytoscapeObjEvent(
                 cytoscapeObj,
                 'dblclick',
-                'node.compartment[componentRef], edge.flow[componentRef]',
+                'node.compartment[componentRef], edge.flow[componentRef]'
             )
                 .pipe(
                     tap({
                         next: (params: CytoscapeEventHandlerFnParams) =>
                             _setOpenedElement(params[0].target),
                         unsubscribe: (): void => _setOpenedElement(null),
-                    }),
+                    })
                 )
                 .subscribe();
 
             const startFlowCreationSub: Subscription = fromCytoscapeObjEvent(
                 cytoscapeObj,
                 'cxttap',
-                'node.compartment[componentRef]',
+                'node.compartment[componentRef]'
             )
                 .pipe(
                     tap((params: CytoscapeEventHandlerFnParams): void => {
                         const node: NodeSingular = params[0].target;
 
                         edgehandles.start(node);
-                    }),
+                    })
                 )
                 .subscribe();
 
             const createFlowSub: Subscription = fromCytoscapeObjEvent(
                 cytoscapeObj,
-                'ehcomplete',
+                'ehcomplete'
             )
                 .pipe(
                     tap({
@@ -222,7 +231,7 @@ export const AppStore = signalStore(
 
                             const existingEdge: EdgeSingular = cytoscapeObj
                                 .edges(
-                                    `.flow[source="${sourceId}"][target="${targetId}"], .flow[source="${targetId}"][target="${sourceId}"]`,
+                                    `.flow[source="${sourceId}"][target="${targetId}"], .flow[source="${targetId}"][target="${sourceId}"]`
                                 )
                                 .first();
 
@@ -237,7 +246,7 @@ export const AppStore = signalStore(
                             _setOpenedElement(newEdge);
                         },
                         unsubscribe: (): void => _setOpenedElement(null),
-                    }),
+                    })
                 )
                 .subscribe();
 
@@ -248,7 +257,7 @@ export const AppStore = signalStore(
                         (workspace: Workspace): GraphModel => ({
                             compartments: workspace.model.compartments,
                             flows: workspace.model.flows,
-                        }),
+                        })
                     ),
                     distinctUntilChanged(areModelsEqual),
                     bufferCount(2, 1),
@@ -256,9 +265,9 @@ export const AppStore = signalStore(
                         store._graphService.updateGraph(
                             previousModel,
                             currentModel,
-                            cytoscapeObj,
-                        ),
-                    ),
+                            cytoscapeObj
+                        )
+                    )
                 )
                 .subscribe();
 
@@ -327,14 +336,35 @@ export const AppStore = signalStore(
         };
     }),
     withHooks((store) => {
+        const onInit = (): void => {
+            effect((): void => {
+                const settings: AppSettings = store._settings();
+
+                document.body.classList.remove(
+                    ...Object.values(Theme).map(
+                        (theme: Theme): string => `theme-${theme.toLowerCase()}`
+                    )
+                );
+                document.body.classList.add(`theme-${settings.theme}`);
+
+                document.body.classList.remove(
+                    ...Object.values(Palette).map(
+                        (palette: Palette): string =>
+                            `palette-${palette.toLowerCase()}`
+                    )
+                );
+                document.body.classList.add(`palette-${settings.palette}`);
+            });
+        };
         const onDestroy = (): void => {
             store._subscription.unsubscribe();
         };
 
         return {
+            onInit,
             onDestroy,
         };
-    }),
+    })
 );
 
 function areModelsEqual(modelA: GraphModel, modelB: GraphModel): boolean {
@@ -352,7 +382,7 @@ function areModelsEqual(modelA: GraphModel, modelB: GraphModel): boolean {
 
 function compartmentsSortComparator(
     compartmentA: Compartment,
-    compartmentB: Compartment,
+    compartmentB: Compartment
 ): number {
     return compartmentA.id.localeCompare(compartmentB.id);
 }

@@ -1,4 +1,5 @@
 sympy
+numpy
 scipy
 flask
 flask_cors

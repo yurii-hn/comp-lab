@@ -37,7 +37,7 @@ class CytoscapeDom {
         }
 
         const canvas: HTMLCanvasElement = cytoscapeContainer.querySelector(
-            'canvas',
+            'canvas'
         ) as HTMLCanvasElement;
         const domContainer: HTMLDivElement = document.createElement('div');
 
@@ -53,7 +53,7 @@ class CytoscapeDom {
                     const container: CytoscapeHTMLElement =
                         entry.target as CytoscapeHTMLElement;
                     const node: NodeSingular = this.cytoscapeObj.getElementById(
-                        container.__cy_id,
+                        container.__cy_id
                     );
 
                     node.style({
@@ -61,7 +61,7 @@ class CytoscapeDom {
                         height: container.offsetHeight,
                     });
                 });
-            },
+            }
         );
 
         this.cytoscapeObj
@@ -75,21 +75,21 @@ class CytoscapeDom {
         const nodeAddSub: Subscription = fromCytoscapeObjEvent(
             this.cytoscapeObj,
             'add',
-            'node.compartment[componentRef], edge.flow[componentRef]',
+            'node.compartment[componentRef], edge.flow[componentRef]'
         )
             .pipe(
                 map(
                     (
-                        params: CytoscapeEventHandlerFnParams,
-                    ): NodeSingular | EdgeSingular => params[0].target,
+                        params: CytoscapeEventHandlerFnParams
+                    ): NodeSingular | EdgeSingular => params[0].target
                 ),
-                tap(this.onElementAdd.bind(this)),
+                tap(this.onElementAdd.bind(this))
             )
             .subscribe();
 
         const panZoomSub: Subscription = fromCytoscapeObjEvent(
             this.cytoscapeObj,
-            'pan zoom',
+            'pan zoom'
         )
             .pipe(tap(this.onPanZoom.bind(this)))
             .subscribe();
@@ -97,49 +97,49 @@ class CytoscapeDom {
         const positionSub: Subscription = fromCytoscapeObjEvent(
             this.cytoscapeObj,
             'position bounds',
-            'node.compartment[componentRef]',
+            'node.compartment[componentRef]'
         )
             .pipe(
                 map(
                     (params: CytoscapeEventHandlerFnParams): NodeSingular =>
-                        params[0].target,
+                        params[0].target
                 ),
-                tap(this.onPosition.bind(this)),
+                tap(this.onPosition.bind(this))
             )
             .subscribe();
 
         const selectionSub: Subscription = fromCytoscapeObjEvent(
             this.cytoscapeObj,
             'select unselect',
-            'node.compartment[componentRef]',
+            'node.compartment[componentRef]'
         )
             .pipe(
                 map(
                     (params: CytoscapeEventHandlerFnParams): NodeSingular =>
-                        params[0].target,
+                        params[0].target
                 ),
-                tap(this.onNodeSelectionChange.bind(this)),
+                tap(this.onNodeSelectionChange.bind(this))
             )
             .subscribe();
 
         const removeSub: Subscription = fromCytoscapeObjEvent(
             this.cytoscapeObj,
             'remove',
-            'node.compartment[componentRef], edge.flow[componentRef]',
+            'node.compartment[componentRef], edge.flow[componentRef]'
         )
             .pipe(
                 map(
                     (
-                        params: CytoscapeEventHandlerFnParams,
-                    ): NodeSingular | EdgeSingular => params[0].target,
+                        params: CytoscapeEventHandlerFnParams
+                    ): NodeSingular | EdgeSingular => params[0].target
                 ),
-                tap(this.onRemove.bind(this)),
+                tap(this.onRemove.bind(this))
             )
             .subscribe();
 
         const destroySub: Subscription = fromCytoscapeObjEvent(
             this.cytoscapeObj,
-            'destroy',
+            'destroy'
         )
             .pipe(tap(this.onDestroy.bind(this)))
             .subscribe();
@@ -208,16 +208,14 @@ class CytoscapeDom {
                 const width: number = Math.floor(
                     Math.sqrt(
                         (sourceEndpoint.x - targetEndpoint.x) ** 2 +
-                            (sourceEndpoint.y - targetEndpoint.y) ** 2,
-                    ),
+                            (sourceEndpoint.y - targetEndpoint.y) ** 2
+                    )
                 );
-
-                componentRef.setInput('maxWidth', width);
 
                 domElement.style.transform = `translate(-50%, -50%) translate(${midpoint.x}px, ${midpoint.y}px)`;
                 domElement.style.position = 'absolute';
                 domElement.style.zIndex = '10';
-            },
+            }
         );
     }
 
@@ -256,6 +254,6 @@ export default function register(cytoscapeExtensionFn: typeof cytoscape): void {
         'dom',
         function (this: cytoscape.Core): CytoscapeDom {
             return new CytoscapeDom(this);
-        },
+        }
     );
 }

@@ -15,17 +15,48 @@ export enum PlotYAxisRangeMode {
     ToZero = 'tozero',
 }
 
+export enum Theme {
+    Light = 'light',
+    Dark = 'dark',
+    System = 'system',
+}
+
+export enum Palette {
+    Red = 'red',
+    Green = 'green',
+    Blue = 'blue',
+    Yellow = 'yellow',
+    Cyan = 'cyan',
+    Magenta = 'magenta',
+    Orange = 'orange',
+    Chartreuse = 'chartreuse',
+    SpringGreen = 'spring-green',
+    Azure = 'azure',
+    Violet = 'violet',
+    Rose = 'rose',
+}
+
+export interface AppSettings {
+    theme: Theme;
+    palette: Palette;
+}
+
 export interface DashboardSettings {
     yAxisRangeMode: PlotYAxisRangeMode;
 }
 
 export interface SettingsState {
+    app: AppSettings;
     dashboard: DashboardSettings;
 }
 
 export const settingsFeatureKey = 'settings';
 
 const initialState: SettingsState = {
+    app: {
+        theme: Theme.System,
+        palette: Palette.Cyan,
+    },
     dashboard: {
         yAxisRangeMode: PlotYAxisRangeMode.Normal,
     },

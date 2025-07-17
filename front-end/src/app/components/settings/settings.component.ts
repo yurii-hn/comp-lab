@@ -22,12 +22,26 @@ import {
   SettingsStore,
 } from 'src/app/components/settings/settings.store';
 import { SettingsActions } from 'src/app/state/actions/settings.actions';
-import { PlotYAxisRangeMode } from 'src/app/state/reducers/settings.reducer';
+import {
+  Palette,
+  PlotYAxisRangeMode,
+  Theme,
+} from 'src/app/state/reducers/settings.reducer';
 import { selectSettingsState } from 'src/app/state/selectors/settings.selectors';
 
 interface PlotYAxisRangeModeOption {
     text: string;
     value: PlotYAxisRangeMode;
+}
+
+interface ThemeOption {
+    text: string;
+    value: Theme;
+}
+
+interface PaletteOption {
+    text: string;
+    value: Palette;
 }
 
 @Component({
@@ -49,13 +63,17 @@ export class SettingsComponent implements OnInit {
     private readonly store: Store = inject(Store);
     private readonly localStore = inject(SettingsStore);
     private readonly dialogRef: MatDialogRef<SettingsComponent, void> = inject(
-        MatDialogRef<SettingsComponent, void>,
+        MatDialogRef<SettingsComponent, void>
     );
 
     public readonly control: FormGroup = new FormGroup({
+        app: new FormGroup({
+            theme: new FormControl<Theme>(Theme.System),
+            palette: new FormControl<Palette>(Palette.Cyan),
+        }),
         dashboard: new FormGroup({
             yAxisRangeMode: new FormControl<PlotYAxisRangeMode>(
-                PlotYAxisRangeMode.Normal,
+                PlotYAxisRangeMode.Normal
             ),
         }),
     });
@@ -71,12 +89,78 @@ export class SettingsComponent implements OnInit {
         },
     ];
 
+    public readonly themes: ThemeOption[] = [
+        {
+            text: 'Light',
+            value: Theme.Light,
+        },
+        {
+            text: 'Dark',
+            value: Theme.Dark,
+        },
+        {
+            text: 'System',
+            value: Theme.System,
+        },
+    ];
+
+    public readonly palettes: PaletteOption[] = [
+        {
+            text: 'Red',
+            value: Palette.Red,
+        },
+        {
+            text: 'Green',
+            value: Palette.Green,
+        },
+        {
+            text: 'Blue',
+            value: Palette.Blue,
+        },
+        {
+            text: 'Yellow',
+            value: Palette.Yellow,
+        },
+        {
+            text: 'Cyan',
+            value: Palette.Cyan,
+        },
+        {
+            text: 'Magenta',
+            value: Palette.Magenta,
+        },
+        {
+            text: 'Orange',
+            value: Palette.Orange,
+        },
+        {
+            text: 'Chartreuse',
+            value: Palette.Chartreuse,
+        },
+        {
+            text: 'Spring Green',
+            value: Palette.SpringGreen,
+        },
+        {
+            text: 'Azure',
+            value: Palette.Azure,
+        },
+        {
+            text: 'Violet',
+            value: Palette.Violet,
+        },
+        {
+            text: 'Rose',
+            value: Palette.Rose,
+        },
+    ];
+
     public ngOnInit(): void {
         const valueChanges: Signal<FormValue | undefined> = toSignal(
             this.control.valueChanges.pipe(skip(1)),
             {
                 injector: this.injector,
-            },
+            }
         );
 
         effect(
@@ -91,7 +175,7 @@ export class SettingsComponent implements OnInit {
             },
             {
                 injector: this.injector,
-            },
+            }
         );
 
         effect(
@@ -102,11 +186,11 @@ export class SettingsComponent implements OnInit {
             },
             {
                 injector: this.injector,
-            },
+            }
         );
 
         this.localStore.setValueFromParent(
-            this.store.selectSignal(selectSettingsState)(),
+            this.store.selectSignal(selectSettingsState)()
         );
     }
 
@@ -118,7 +202,7 @@ export class SettingsComponent implements OnInit {
         this.store.dispatch(
             SettingsActions.setSettings({
                 settings: this.localStore.value(),
-            }),
+            })
         );
 
         this.dialogRef.close();

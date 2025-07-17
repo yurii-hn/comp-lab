@@ -9,6 +9,103 @@
 :root {
     height: 100%;
 
+    .theme-light {
+        color-scheme: light;
+    }
+
+    .theme-dark {
+        color-scheme: dark;
+    }
+
+    .theme-system {
+        color-scheme: light dark;
+    }
+
+    .palette-red {
+        @include mat.theme(
+            (
+                color: mat.$red-palette,
+            )
+        );
+    }
+    .palette-green {
+        @include mat.theme(
+            (
+                color: mat.$green-palette,
+            )
+        );
+    }
+    .palette-blue {
+        @include mat.theme(
+            (
+                color: mat.$blue-palette,
+            )
+        );
+    }
+    .palette-yellow {
+        @include mat.theme(
+            (
+                color: mat.$yellow-palette,
+            )
+        );
+    }
+    .palette-cyan {
+        @include mat.theme(
+            (
+                color: mat.$cyan-palette,
+            )
+        );
+    }
+    .palette-magenta {
+        @include mat.theme(
+            (
+                color: mat.$magenta-palette,
+            )
+        );
+    }
+    .palette-orange {
+        @include mat.theme(
+            (
+                color: mat.$orange-palette,
+            )
+        );
+    }
+    .palette-chartreuse {
+        @include mat.theme(
+            (
+                color: mat.$chartreuse-palette,
+            )
+        );
+    }
+    .palette-spring-green {
+        @include mat.theme(
+            (
+                color: mat.$spring-green-palette,
+            )
+        );
+    }
+    .palette-azure {
+        @include mat.theme(
+            (
+                color: mat.$azure-palette,
+            )
+        );
+    }
+    .palette-violet {
+        @include mat.theme(
+            (
+                color: mat.$violet-palette,
+            )
+        );
+    }
+    .palette-rose {
+        @include mat.theme(
+            (
+                color: mat.$rose-palette,
+            )
+        );
+    }
+
     body {
         height: 100%;
         margin: 0;

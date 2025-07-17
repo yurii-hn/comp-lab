@@ -8,8 +8,10 @@ import {
   withState,
 } from '@ngrx/signals';
 import {
+  Palette,
   PlotYAxisRangeMode,
   SettingsState,
+  Theme,
 } from 'src/app/state/reducers/settings.reducer';
 
 export type Value = SettingsState;
@@ -17,6 +19,10 @@ export type Value = SettingsState;
 export type FormValue = Value;
 
 const initialState: FormValue = {
+    app: {
+        theme: Theme.System,
+        palette: Palette.Cyan,
+    },
     dashboard: {
         yAxisRangeMode: PlotYAxisRangeMode.Normal,
     },
@@ -30,11 +36,12 @@ export const SettingsStore = signalStore(
         });
         const formValue: Signal<FormValue> = computed(
             () => ({
+                app: store.app(),
                 dashboard: store.dashboard(),
             }),
             {
                 equal: areEqual,
-            },
+            }
         );
 
         return {
@@ -52,5 +59,5 @@ export const SettingsStore = signalStore(
             setValueFromParent,
             setValueFromForm,
         };
-    }),
+    })
 );
