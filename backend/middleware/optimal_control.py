@@ -2,6 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import sympy as sp
 
+from classes.common.data import Data
 from classes.common.error_response import ErrorResponse
 from classes.common.values import Values
 from classes.model.continuity_type import ContinuityType
@@ -16,7 +17,6 @@ from classes.optimal_control.intervention_parameters import InterventionParamete
 from classes.optimal_control.parameters import OptimalControlParameters
 from classes.optimal_control.result import OptimalControlResult
 from classes.optimal_control.success_response import OptimalControlSuccessResponse
-from classes.simulation.result import SimulationResult
 from classes.optimal_control.adjoint_model import AdjointModel
 from functions.is_population_preserved import is_population_preserved
 from functions.model_to_runtime_model import model_to_runtime_model
@@ -102,9 +102,7 @@ def optimal_control(
         no_control_cost: np.float64 = cost_function.calculate_interval(
             times, variables_datatable
         )
-        no_control_result: SimulationResult = {
-            "compartments": variables_datatable.compartments_data,
-        }
+        no_control_compartments: dict[str, Data] = variables_datatable.compartments_data
 
         optimal_cost: np.float64 = no_control_cost
         previous_interventions: dict[str, Values] = {}
@@ -141,9 +139,14 @@ def optimal_control(
             ):
                 break
 
-        optimal_result: OptimalControlResult = {
-            "compartments": variables_datatable.compartments_data,
+        result: OptimalControlResult = {
+            "noControlCompartments": no_control_compartments,
+            "optimalCompartments": variables_datatable.compartments_data,
             "interventions": variables_datatable.interventions_data,
+            "adjointModel": {
+                name: str(equation.expression)
+                for name, equation in adjoint_model["lambdas"].items()
+            },
             "noControlObjective": no_control_cost,
             "optimalObjective": optimal_cost,
         }
@@ -152,7 +155,7 @@ def optimal_control(
             "type": "OptimalControl",
             "parameters": parameters,
             "model": model,
-            "result": (no_control_result, optimal_result),
+            "result": result,
         }
 
     except RuntimeError as error:

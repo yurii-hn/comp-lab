@@ -38,7 +38,7 @@ export interface OptimalControlSuccessResponse {
     type: ProcessingType.OptimalControl;
     parameters: OptimalControlParameters;
     model: Model;
-    result: [SimulationResult, OptimalControlResult];
+    result: OptimalControlResult;
 }
 
 export interface PIRequestBody {

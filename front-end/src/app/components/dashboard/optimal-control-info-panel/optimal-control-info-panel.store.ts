@@ -49,6 +49,7 @@ export type DisplayData = {
         intervention: DisplayInterventionData;
     };
     model: Model | null;
+    adjointModel: Record<string, string> | null;
 };
 
 export interface State {
@@ -79,6 +80,7 @@ const initialState: State = {
             },
         },
         model: null,
+        adjointModel: null,
     },
 };
 
@@ -94,7 +96,7 @@ export const OptimalControlInfoPanelStore = signalStore(
                     ? Object.keys(interventions[0]).reduce(
                           (
                               rowScheme: RowScheme,
-                              intervention: string
+                              intervention: string,
                           ): RowScheme => ({
                               ...rowScheme,
                               [intervention]: {
@@ -102,10 +104,10 @@ export const OptimalControlInfoPanelStore = signalStore(
                                   type: InputType.Number,
                               },
                           }),
-                          {}
+                          {},
                       )
                     : {};
-            }
+            },
         );
         const boundariesRowScheme: Signal<
             RowScheme<InterventionBoundariesDefinition>
@@ -123,7 +125,7 @@ export const OptimalControlInfoPanelStore = signalStore(
                     name: 'Upper boundary',
                     type: InputType.Number,
                 },
-            })
+            }),
         );
 
         return {
@@ -153,11 +155,10 @@ export const OptimalControlInfoPanelStore = signalStore(
                 displayData: {
                     result: {
                         noControlObjective:
-                            data && data.result[1].noControlObjective,
-                        optimalObjective:
-                            data && data.result[1].optimalObjective,
+                            data && data.result.noControlObjective,
+                        optimalObjective: data && data.result.optimalObjective,
                         interventions: data
-                            ? datasetToRowData(data.result[1].interventions)
+                            ? datasetToRowData(data.result.interventions)
                             : [],
                     },
                     parameters: {
@@ -174,20 +175,21 @@ export const OptimalControlInfoPanelStore = signalStore(
                                 data.parameters.intervention.approximationType,
                             boundaries: data
                                 ? Object.entries(
-                                      data.parameters.intervention.boundaries
+                                      data.parameters.intervention.boundaries,
                                   ).map(
                                       ([name, boundaries]: [
                                           string,
-                                          InterventionBoundaries
+                                          InterventionBoundaries,
                                       ]): Record<string, string | number> => ({
                                           name,
                                           ...boundaries,
-                                      })
+                                      }),
                                   )
                                 : [],
                         },
                     },
                     model: data && data.model,
+                    adjointModel: data && data.result.adjointModel,
                 },
             });
 
@@ -195,5 +197,5 @@ export const OptimalControlInfoPanelStore = signalStore(
             alternateSplitAreasSizes,
             setData,
         };
-    })
+    }),
 );

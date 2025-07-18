@@ -1,73 +1,24 @@
-@let compartmentsExpressions = this.compartmentsExpressions();
-@let constantsExpressions = this.constantsExpressions();
-@let interventionsExpressions = this.interventionsExpressions();
+@let modelExpressions = this.modelExpressions();
+@let adjointModelExpressions = this.adjointModelExpressions();
 
 <p class="title">Model info</p>
 
-<div class="section">
-    @if (
-        compartmentsExpressions.length ||
-        constantsExpressions.length ||
-        interventionsExpressions.length
-    ) {
-        <p class="title">Equations</p>
+@for (
+    group of modelExpressions.concat(adjointModelExpressions);
+    track group.name
+) {
+    <div class="group">
+        <p class="title">{{ group.name }}</p>
 
         <div class="body">
-            @if (compartmentsExpressions.length) {
-                <div class="group">
-                    <p class="title">Compartments</p>
-
-                    <div class="body">
-                        @for (
-                            expression of compartmentsExpressions;
-                            track expression
-                        ) {
-                            <app-equation-display
-                                class="equation"
-                                [equation]="expression"
-                            />
-                        }
-                    </div>
-                </div>
-            }
-
-            @if (constantsExpressions.length) {
-                <div class="group">
-                    <p class="title">Constants</p>
-
-                    <div class="body">
-                        @for (
-                            expression of constantsExpressions;
-                            track expression
-                        ) {
-                            <app-equation-display
-                                class="equation"
-                                [equation]="expression"
-                            />
-                        }
-                    </div>
-                </div>
-            }
-
-            @if (interventionsExpressions.length) {
-                <div class="group">
-                    <p class="title">Interventions</p>
-
-                    <div class="body">
-                        @for (
-                            expression of interventionsExpressions;
-                            track expression
-                        ) {
-                            <app-equation-display
-                                class="equation"
-                                [equation]="expression"
-                            />
-                        }
-                    </div>
-                </div>
+            @for (expression of group.expressions; track expression) {
+                <app-equation-display
+                    class="equation"
+                    [equation]="expression"
+                />
             }
         </div>
-    } @else {
-        <p class="title">&lt;Model is empty&gt;</p>
-    }
-</div>
+    </div>
+} @empty {
+    <p class="title">&lt;No data&gt;</p>
+}

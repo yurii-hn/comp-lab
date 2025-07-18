@@ -47,8 +47,8 @@ export const selectCurrentRunValues = createSelector(
 
             case ProcessingType.OptimalControl:
                 return {
-                    ...run.data.result[1].compartments,
-                    ...run.data.result[1].interventions,
+                    ...run.data.result.noControlCompartments,
+                    ...run.data.result.interventions,
                 };
 
             case ProcessingType.PI:

@@ -19,8 +19,10 @@ export interface OptimalControlParameters {
 }
 
 export interface OptimalControlResult {
-    compartments: Record<string, Data>;
+    noControlCompartments: Record<string, Data>;
+    optimalCompartments: Record<string, Data>;
     interventions: Record<string, Data>;
+    adjointModel: Record<string, string>;
     noControlObjective: number;
     optimalObjective: number;
 }

@@ -116,6 +116,9 @@
     </as-split-area>
 
     <as-split-area class="split-area" [size]="splitSizes.parameters">
-        <app-model-info [model]="displayData.model" />
+        <app-model-info
+            [model]="displayData.model"
+            [adjointModel]="displayData.adjointModel"
+        />
     </as-split-area>
 </as-split>

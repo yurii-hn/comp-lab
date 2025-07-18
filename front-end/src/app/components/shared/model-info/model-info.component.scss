@@ -10,14 +10,13 @@
         margin: 0;
     }
 
-    .section {
+    .group {
         display: flex;
         flex-direction: column;
         gap: 10px;
-        padding: 10px;
 
         .title {
-            font: var(--mat-sys-title-large);
+            font: var(--mat-sys-title-medium);
             margin: 0;
         }
 
@@ -27,26 +26,8 @@
             gap: 10px;
             padding: 10px;
 
-            .group {
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-
-                .title {
-                    font: var(--mat-sys-title-medium);
-                    margin: 0;
-                }
-
-                .body {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                    padding: 10px;
-
-                    .equation {
-                        font: var(--mat-sys-title-large);
-                    }
-                }
+            .equation {
+                font: var(--mat-sys-title-large);
             }
         }
     }

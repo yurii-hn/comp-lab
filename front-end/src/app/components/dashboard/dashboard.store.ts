@@ -224,9 +224,10 @@ function getOptimalControlRunPlotData(
         : 'linear';
 
     plots.push(
-        ...Object.entries(result.result[0].compartments).map(
+        ...Object.entries(result.result.noControlCompartments).map(
             ([name, data]: [string, Data]): Plot => {
-                const optimalData: Data = result.result[1].compartments[name];
+                const optimalData: Data =
+                    result.result.optimalCompartments[name];
 
                 return {
                     data: [
@@ -272,7 +273,7 @@ function getOptimalControlRunPlotData(
     );
 
     plots.push(
-        ...Object.entries(result.result[1].interventions).map(
+        ...Object.entries(result.result.interventions).map(
             ([name, data]: [string, Data]): Plot => ({
                 data: [
                     {

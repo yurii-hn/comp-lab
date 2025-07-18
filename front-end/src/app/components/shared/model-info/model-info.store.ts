@@ -16,12 +16,19 @@ import {
   withState,
 } from '@ngrx/signals';
 
+export interface ExpressionsGroup {
+    name: string;
+    expressions: string[];
+}
+
 export interface State {
     _model: Model | null;
+    _adjointModel: Record<string, string> | null;
 }
 
 const initialState: State = {
     _model: null,
+    _adjointModel: null,
 };
 
 export const InfoStore = signalStore(
@@ -34,99 +41,128 @@ export const InfoStore = signalStore(
         };
     }),
     withComputed((store) => {
-        const compartmentsExpressions: Signal<string[]> = computed(
-            (): string[] => {
+        const modelExpressions: Signal<ExpressionsGroup[]> = computed(
+            (): ExpressionsGroup[] => {
                 const model: Model | null = store._model();
 
                 if (!model) {
                     return [];
                 }
 
-                return model.compartments.map(
-                    (compartment: Compartment): string => {
-                        const connectedFlows: Flow[] = model.flows.filter(
-                            (flow: Flow): boolean =>
-                                flow.source === compartment.id ||
-                                flow.target === compartment.id
-                        );
-                        const leftSideTex: string =
-                            store._mathJs
-                                .parse(`d${compartment.name}(t)/dt`)
-                                .toTex() + ' = ';
-                        let isExpressionEmpty: boolean = true;
+                const compartmentsExpressions: string[] =
+                    model.compartments.map(
+                        (compartment: Compartment): string => {
+                            const connectedFlows: Flow[] = model.flows.filter(
+                                (flow: Flow): boolean =>
+                                    flow.source === compartment.id ||
+                                    flow.target === compartment.id,
+                            );
+                            const compartmentTex: string = store._mathJs
+                                .parse(compartment.name)
+                                .toTex();
+                            const leftSideTex: string = `\\frac{${compartmentTex}\\left(t\\right)}{dt} = `;
+                            let isExpressionEmpty: boolean = true;
 
-                        return connectedFlows.length
-                            ? connectedFlows.reduce(
-                                  (tex: string, flow: Flow): string => {
-                                      const flowTex: string = store._mathJs
-                                          .parse(flow.equation)
-                                          .toTex();
+                            return connectedFlows.length
+                                ? connectedFlows.reduce(
+                                      (tex: string, flow: Flow): string => {
+                                          const flowTex: string = store._mathJs
+                                              .parse(flow.equation)
+                                              .toTex();
 
-                                      if (flow.source === compartment.id) {
-                                          tex += `- (${flowTex})`;
+                                          if (flow.source === compartment.id) {
+                                              tex += `- (${flowTex})`;
 
-                                          isExpressionEmpty = false;
-                                      }
+                                              isExpressionEmpty = false;
+                                          }
 
-                                      if (flow.target === compartment.id) {
-                                          const signString: string =
-                                              isExpressionEmpty ? '' : '+';
+                                          if (flow.target === compartment.id) {
+                                              const signString: string =
+                                                  isExpressionEmpty ? '' : '+';
 
-                                          tex += `${signString} (${flowTex})`;
+                                              tex += `${signString} (${flowTex})`;
 
-                                          isExpressionEmpty = false;
-                                      }
+                                              isExpressionEmpty = false;
+                                          }
 
-                                      return tex;
-                                  },
-                                  leftSideTex
-                              )
-                            : leftSideTex + '0';
-                    }
-                );
-            }
-        );
-
-        const constantsExpressions: Signal<string[]> = computed(
-            (): string[] => {
-                const model: Model | null = store._model();
-
-                if (!model) {
-                    return [];
-                }
-
-                return model.constants.map((constant: Constant): string =>
-                    store._mathJs
-                        .parse(`${constant.name} = ${constant.value}`)
-                        .toTex()
-                );
-            }
-        );
-
-        const interventionsExpressions: Signal<string[]> = computed(
-            (): string[] => {
-                const model: Model | null = store._model();
-
-                if (!model) {
-                    return [];
-                }
-
-                return model.interventions.map(
-                    (intervention: Intervention): string => {
-                        const interventionTex: string = store._mathJs
-                            .parse(intervention.name)
+                                          return tex;
+                                      },
+                                      leftSideTex,
+                                  )
+                                : leftSideTex + '0';
+                        },
+                    );
+                const constantsExpressions: string[] = model.constants.map(
+                    (constant: Constant): string => {
+                        const constantTex: string = store._mathJs
+                            .parse(constant.name)
                             .toTex();
 
-                        return `${interventionTex} = ${interventionTex}(t)`;
-                    }
+                        return `${constantTex} = ${constant.value}`;
+                    },
                 );
-            }
+                const interventionsExpressions: string[] =
+                    model.interventions.map(
+                        (intervention: Intervention): string => {
+                            const interventionTex: string = store._mathJs
+                                .parse(intervention.name)
+                                .toTex();
+
+                            return `${interventionTex} = ${interventionTex}(t)`;
+                        },
+                    );
+
+                return [
+                    {
+                        name: 'Compartments',
+                        expressions: compartmentsExpressions,
+                    },
+                    {
+                        name: 'Constants',
+                        expressions: constantsExpressions,
+                    },
+                    {
+                        name: 'Interventions',
+                        expressions: interventionsExpressions,
+                    },
+                ];
+            },
+        );
+
+        const adjointModelExpressions: Signal<ExpressionsGroup[]> = computed(
+            (): ExpressionsGroup[] => {
+                const adjointModel: Record<string, string> | null =
+                    store._adjointModel();
+
+                if (!adjointModel || !Object.keys(adjointModel).length) {
+                    return [];
+                }
+
+                const adjointExpressions: string[] = Object.entries(
+                    adjointModel,
+                ).map(([name, rightSide]): string => {
+                    const adjointTex: string = store._mathJs
+                        .parse(name)
+                        .toTex();
+
+                    return (
+                        `\\frac{${adjointTex}\\left(t\\right)}{dt} = ` +
+                        store._mathJs.parse(rightSide).toTex()
+                    );
+                });
+
+                return [
+                    {
+                        name: 'Adjoint Model',
+                        expressions: adjointExpressions,
+                    },
+                ];
+            },
         );
 
         return {
-            compartmentsExpressions,
-            constantsExpressions,
-            interventionsExpressions,
+            modelExpressions,
+            adjointModelExpressions,
         };
     }),
     withMethods((store) => {
@@ -134,9 +170,14 @@ export const InfoStore = signalStore(
             patchState(store, {
                 _model: model,
             });
+        const setAdjointModel = (adjointModel: Record<string, string> | null) =>
+            patchState(store, {
+                _adjointModel: adjointModel,
+            });
 
         return {
             setModel,
+            setAdjointModel,
         };
-    })
+    }),
 );
