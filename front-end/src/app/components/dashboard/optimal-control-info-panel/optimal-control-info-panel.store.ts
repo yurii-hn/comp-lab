@@ -1,7 +1,8 @@
-import { computed, Signal } from '@angular/core';
+import { computed, inject, Signal } from '@angular/core';
+import { MATH_JS } from '@core/injection-tokens';
 import { Model } from '@core/types/model.types';
 import {
-  ApproximationType,
+  InterpolationType,
   InterventionBoundaries,
 } from '@core/types/processing';
 import { OptimalControlResult } from '@core/types/run.types';
@@ -11,6 +12,7 @@ import {
   signalStore,
   withComputed,
   withMethods,
+  withProps,
   withState,
 } from '@ngrx/signals';
 import {
@@ -32,7 +34,7 @@ export type InterventionBoundariesDefinition = InterventionBoundaries & {
 
 export type DisplayInterventionData = {
     nodesAmount: number | null;
-    approximationType: ApproximationType | null;
+    interpolationType: string | null;
     boundaries: Record<string, string | number>[];
 };
 
@@ -50,12 +52,18 @@ export type DisplayData = {
     };
     model: Model | null;
     adjointModel: Record<string, string> | null;
+    hamiltonian: string | null;
 };
 
 export interface State {
     splitAreasSizes: SplitAreasSizes;
     displayData: DisplayData;
 }
+
+const interpolationTypeToString: Record<InterpolationType, string> = {
+    [InterpolationType.PiecewiseConstant]: 'Piecewise constant',
+    [InterpolationType.PiecewiseLinear]: 'Piecewise linear',
+};
 
 const initialState: State = {
     splitAreasSizes: {
@@ -75,17 +83,25 @@ const initialState: State = {
             objectiveFunction: null,
             intervention: {
                 nodesAmount: null,
-                approximationType: null,
+                interpolationType: null,
                 boundaries: [],
             },
         },
         model: null,
         adjointModel: null,
+        hamiltonian: null,
     },
 };
 
 export const OptimalControlInfoPanelStore = signalStore(
     withState(initialState),
+    withProps(() => {
+        const mathJs = inject(MATH_JS);
+
+        return {
+            _mathJs: mathJs,
+        };
+    }),
     withComputed((store) => {
         const interventionsRowScheme: Signal<RowScheme> = computed(
             (): RowScheme => {
@@ -165,14 +181,20 @@ export const OptimalControlInfoPanelStore = signalStore(
                         time: data && data.parameters.time,
                         nodesAmount: data && data.parameters.nodesAmount,
                         objectiveFunction:
-                            data && data.parameters.objectiveFunction,
+                            data &&
+                            store._mathJs
+                                .parse(data.parameters.objectiveFunction)
+                                .toTex(),
                         intervention: {
                             nodesAmount:
                                 data &&
                                 data.parameters.intervention.nodesAmount,
-                            approximationType:
+                            interpolationType:
                                 data &&
-                                data.parameters.intervention.approximationType,
+                                interpolationTypeToString[
+                                    data.parameters.intervention
+                                        .interpolationType
+                                ],
                             boundaries: data
                                 ? Object.entries(
                                       data.parameters.intervention.boundaries,
@@ -189,6 +211,7 @@ export const OptimalControlInfoPanelStore = signalStore(
                         },
                     },
                     model: data && data.model,
+                    hamiltonian: data && data.result.hamiltonian,
                     adjointModel: data && data.result.adjointModel,
                 },
             });

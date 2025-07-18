@@ -1,7 +1,7 @@
 import { computed, inject, Signal } from '@angular/core';
 import {
-  ApproximationType,
   Data,
+  InterpolationType,
   OptimalControlParameters,
   ProcessingType,
 } from '@core/types/processing';
@@ -216,10 +216,10 @@ function getOptimalControlRunPlotData(
 
     const parameters: OptimalControlParameters = result.parameters;
 
-    const piecewiseConstantApproximation: boolean =
-        parameters.intervention.approximationType ===
-        ApproximationType.PiecewiseConstant;
-    const lineShape: 'linear' | 'hv' = piecewiseConstantApproximation
+    const piecewiseConstantInterpolation: boolean =
+        parameters.intervention.interpolationType ===
+        InterpolationType.PiecewiseConstant;
+    const lineShape: 'linear' | 'hv' = piecewiseConstantInterpolation
         ? 'hv'
         : 'linear';
 

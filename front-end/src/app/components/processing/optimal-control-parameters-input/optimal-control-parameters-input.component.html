@@ -48,13 +48,13 @@
         >
             <mat-label>Interpolation Type</mat-label>
 
-            <mat-select formControlName="approximationType">
+            <mat-select formControlName="interpolationType">
                 @for (
-                    approximationType of approximationTypes;
-                    track approximationType.value
+                    interpolationType of interpolationTypes;
+                    track interpolationType.value
                 ) {
-                    <mat-option [value]="approximationType.value">
-                        {{ approximationType.text }}
+                    <mat-option [value]="interpolationType.value">
+                        {{ interpolationType.text }}
                     </mat-option>
                 }
             </mat-select>

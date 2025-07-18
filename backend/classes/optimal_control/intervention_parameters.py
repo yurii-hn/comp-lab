@@ -1,6 +1,6 @@
 from typing import TypedDict
 
-from classes.common.approximation_type import ApproximationType
+from classes.common.interpolation_type import InterpolationType
 from classes.optimal_control.intervention_boundaries import (
     InterventionBoundaries,
 )
@@ -8,5 +8,5 @@ from classes.optimal_control.intervention_boundaries import (
 
 class InterventionParameters(TypedDict):
     nodesAmount: int
-    approximationType: ApproximationType
+    interpolationType: InterpolationType
     boundaries: dict[str, InterventionBoundaries]

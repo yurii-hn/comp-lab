@@ -1,23 +1,23 @@
 import numpy as np
 import numpy.typing as npt
 
-from classes.common.approximation_type import ApproximationType
+from classes.common.interpolation_type import InterpolationType
 
 
 class Values:
     times: npt.NDArray[np.float64]
     values: npt.NDArray[np.float64]
-    approximation_type: ApproximationType
+    interpolation_type: InterpolationType
 
     def __init__(
         self,
         times: npt.NDArray[np.float64],
         values: npt.NDArray[np.float64],
-        approximation_type: ApproximationType = ApproximationType.PIECEWISE_LINEAR,
+        interpolation_type: InterpolationType = InterpolationType.PIECEWISE_LINEAR,
     ) -> None:
         self.times = times
         self.values = values
-        self.approximation_type = ApproximationType(approximation_type)
+        self.interpolation_type = InterpolationType(interpolation_type)
 
     def __call__(self, times: npt.ArrayLike) -> np.float64 | npt.NDArray[np.float64]:
         if self.values.size == 0:
@@ -36,10 +36,10 @@ class Values:
         out[mask_after] = self.values[-1]
 
         if np.any(mask_inside):
-            if self.approximation_type is ApproximationType.PIECEWISE_CONSTANT:
+            if self.interpolation_type is InterpolationType.PIECEWISE_CONSTANT:
                 out[mask_inside] = self.values[indexes[mask_inside] - 1]
 
-            elif self.approximation_type is ApproximationType.PIECEWISE_LINEAR:
+            elif self.interpolation_type is InterpolationType.PIECEWISE_LINEAR:
                 left: npt.NDArray[np.intp] = indexes[mask_inside] - 1
                 right: npt.NDArray[np.intp] = indexes[mask_inside]
 
@@ -53,6 +53,6 @@ class Values:
                 ) * values_right
 
             else:
-                raise ValueError("Approximation type not supported")
+                raise ValueError("Interpolation type not supported")
 
         return np.float64(out.item()) if out.shape == () else out

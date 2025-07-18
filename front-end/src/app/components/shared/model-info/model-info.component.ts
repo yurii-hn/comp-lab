@@ -28,12 +28,17 @@ export class ModelInfoComponent implements OnInit {
     private readonly localStore = inject(InfoStore);
 
     public readonly model: InputSignal<Model | null> = input.required();
+    public readonly hamiltonian: InputSignal<string | null> = input<
+        string | null
+    >(null);
     public readonly adjointModel: InputSignal<Record<string, string> | null> =
         input<Record<string, string> | null>({});
 
     public readonly modelExpressions: Signal<ExpressionsGroup[]> =
         this.localStore.modelExpressions;
-    public readonly adjointModelExpressions: Signal<ExpressionsGroup[]> =
+    public readonly hamiltonianExpression: Signal<ExpressionsGroup> =
+        this.localStore.hamiltonianExpression;
+    public readonly adjointModelExpressions: Signal<ExpressionsGroup> =
         this.localStore.adjointModelExpressions;
 
     public ngOnInit(): void {
@@ -43,6 +48,18 @@ export class ModelInfoComponent implements OnInit {
 
                 untracked((): void => {
                     this.localStore.setModel(model);
+                });
+            },
+            {
+                injector: this.injector,
+            },
+        );
+        effect(
+            (): void => {
+                const hamiltonian: string | null = this.hamiltonian();
+
+                untracked((): void => {
+                    this.localStore.setHamiltonian(hamiltonian);
                 });
             },
             {

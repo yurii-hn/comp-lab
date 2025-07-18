@@ -68,8 +68,18 @@
                     </p>
 
                     <p class="field">
-                        <span class="name">Objective Function:</span>
-                        {{ displayData.parameters.objectiveFunction ?? "N/A" }}
+                        <span class="name">Objective Function</span>
+
+                        @if (displayData.parameters.objectiveFunction) {
+                            <app-equation-display
+                                class="equation"
+                                [equation]="
+                                    displayData.parameters.objectiveFunction
+                                "
+                            />
+                        } @else {
+                            N/A
+                        }
                     </p>
 
                     <div class="group">
@@ -88,7 +98,7 @@
                                 <span class="name">Interpolation Type:</span>
                                 {{
                                     displayData.parameters.intervention
-                                        .approximationType ?? "N/A"
+                                        .interpolationType ?? "N/A"
                                 }}
                             </p>
 
@@ -118,6 +128,7 @@
     <as-split-area class="split-area" [size]="splitSizes.parameters">
         <app-model-info
             [model]="displayData.model"
+            [hamiltonian]="displayData.hamiltonian"
             [adjointModel]="displayData.adjointModel"
         />
     </as-split-area>

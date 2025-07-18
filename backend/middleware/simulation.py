@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import sympy as sp
 
-from classes.common.approximation_type import ApproximationType
+from classes.common.interpolation_type import InterpolationType
 from classes.common.error_response import ErrorResponse
 from classes.common.values import Values
 from classes.model.continuity_type import ContinuityType
@@ -37,7 +37,7 @@ def simulation(
                 constant["name"]: Values(
                     times,
                     np.repeat(constant["value"], times.size),
-                    ApproximationType.PIECEWISE_CONSTANT,
+                    InterpolationType.PIECEWISE_CONSTANT,
                 )
                 for constant in runtime_model["constants"]
             }
@@ -47,7 +47,7 @@ def simulation(
                 intervention["name"]: Values(
                     times,
                     np.zeros(times.size),
-                    ApproximationType.PIECEWISE_CONSTANT,
+                    InterpolationType.PIECEWISE_CONSTANT,
                 )
                 for intervention in runtime_model["interventions"]
             }

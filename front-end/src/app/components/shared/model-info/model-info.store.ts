@@ -23,11 +23,13 @@ export interface ExpressionsGroup {
 
 export interface State {
     _model: Model | null;
+    _hamiltonian: string | null;
     _adjointModel: Record<string, string> | null;
 }
 
 const initialState: State = {
     _model: null,
+    _hamiltonian: null,
     _adjointModel: null,
 };
 
@@ -129,39 +131,60 @@ export const InfoStore = signalStore(
             },
         );
 
-        const adjointModelExpressions: Signal<ExpressionsGroup[]> = computed(
-            (): ExpressionsGroup[] => {
+        const hamiltonianExpression: Signal<ExpressionsGroup> = computed(
+            (): ExpressionsGroup => {
+                const hamiltonian: string | null = store._hamiltonian();
+
+                const group: ExpressionsGroup = {
+                    name: 'Hamiltonian',
+                    expressions: [],
+                };
+
+                if (hamiltonian) {
+                    group.expressions.push(
+                        'H = ' +
+                            store._mathJs
+                                .parse(hamiltonian.replaceAll('**', '^'))
+                                .toTex(),
+                    );
+                }
+
+                return group;
+            },
+        );
+
+        const adjointModelExpressions: Signal<ExpressionsGroup> = computed(
+            (): ExpressionsGroup => {
                 const adjointModel: Record<string, string> | null =
                     store._adjointModel();
 
-                if (!adjointModel || !Object.keys(adjointModel).length) {
-                    return [];
+                const group: ExpressionsGroup = {
+                    name: 'Adjoint Model',
+                    expressions: [],
+                };
+
+                if (adjointModel && Object.keys(adjointModel).length) {
+                    group.expressions = Object.entries(adjointModel).map(
+                        ([name, rightSide]): string => {
+                            const adjointTex: string = store._mathJs
+                                .parse(name)
+                                .toTex();
+
+                            return (
+                                `\\frac{${adjointTex}\\left(t\\right)}{dt} = ` +
+                                store._mathJs.parse(rightSide).toTex()
+                            );
+                        },
+                    );
                 }
 
-                const adjointExpressions: string[] = Object.entries(
-                    adjointModel,
-                ).map(([name, rightSide]): string => {
-                    const adjointTex: string = store._mathJs
-                        .parse(name)
-                        .toTex();
-
-                    return (
-                        `\\frac{${adjointTex}\\left(t\\right)}{dt} = ` +
-                        store._mathJs.parse(rightSide).toTex()
-                    );
-                });
-
-                return [
-                    {
-                        name: 'Adjoint Model',
-                        expressions: adjointExpressions,
-                    },
-                ];
+                return group;
             },
         );
 
         return {
             modelExpressions,
+            hamiltonianExpression,
             adjointModelExpressions,
         };
     }),
@@ -170,6 +193,10 @@ export const InfoStore = signalStore(
             patchState(store, {
                 _model: model,
             });
+        const setHamiltonian = (hamiltonian: string | null) =>
+            patchState(store, {
+                _hamiltonian: hamiltonian,
+            });
         const setAdjointModel = (adjointModel: Record<string, string> | null) =>
             patchState(store, {
                 _adjointModel: adjointModel,
@@ -177,6 +204,7 @@ export const InfoStore = signalStore(
 
         return {
             setModel,
+            setHamiltonian,
             setAdjointModel,
         };
     }),

@@ -2,7 +2,7 @@ import { computed, inject, Signal } from '@angular/core';
 import { Validators } from '@angular/forms';
 import { Intervention } from '@core/types/model.types';
 import {
-  ApproximationType,
+  InterpolationType,
   InterventionBoundaries,
 } from '@core/types/processing';
 import { areEqual } from '@core/utils';
@@ -32,7 +32,7 @@ export interface Value {
     objectiveFunction: string | null;
     intervention: {
         nodesAmount: number | null;
-        approximationType: ApproximationType | null;
+        interpolationType: InterpolationType | null;
         boundaries: Record<string, InterventionBoundaries> | null;
     } | null;
 }
@@ -43,7 +43,7 @@ export interface FormValue {
     objectiveFunction: string | null;
     intervention: {
         nodesAmount: number | null;
-        approximationType: ApproximationType | null;
+        interpolationType: InterpolationType | null;
         boundaries: InterventionBoundariesDefinition[] | null;
     } | null;
 }
@@ -54,7 +54,7 @@ const initialState: FormValue = {
     objectiveFunction: null,
     intervention: {
         nodesAmount: null,
-        approximationType: null,
+        interpolationType: null,
         boundaries: null,
     },
 };

@@ -26,7 +26,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import {
-  ApproximationType,
+  InterpolationType,
   InterventionBoundaries,
 } from '@core/types/processing';
 import {
@@ -45,9 +45,9 @@ import { DatatableComponent } from 'src/app/components/shared/datatable/datatabl
 import { RowScheme } from 'src/app/components/shared/datatable/datatable.store';
 import { EquationInputComponent } from 'src/app/components/shared/equation-input/equation-input.component';
 
-interface ApproximationTypeOption {
+interface InterpolationTypeOption {
     text: string;
-    value: ApproximationType;
+    value: InterpolationType;
 }
 
 @Component({
@@ -102,7 +102,7 @@ export class OptimalControlParametersInputComponent
             nodesAmount: new FormControl<number | null>(null, [
                 Validators.required,
             ]),
-            approximationType: new FormControl<ApproximationType | null>(null, [
+            interpolationType: new FormControl<InterpolationType | null>(null, [
                 Validators.required,
             ]),
             boundaries: new FormControl<
@@ -122,14 +122,14 @@ export class OptimalControlParametersInputComponent
         RowScheme<InterventionBoundariesDefinition>
     > = this.localStore.boundariesRowScheme;
 
-    public readonly approximationTypes: ApproximationTypeOption[] = [
+    public readonly interpolationTypes: InterpolationTypeOption[] = [
         {
             text: 'Piecewise constant',
-            value: ApproximationType.PiecewiseConstant,
+            value: InterpolationType.PiecewiseConstant,
         },
         {
             text: 'Piecewise linear',
-            value: ApproximationType.PiecewiseLinear,
+            value: InterpolationType.PiecewiseLinear,
         },
     ];
 

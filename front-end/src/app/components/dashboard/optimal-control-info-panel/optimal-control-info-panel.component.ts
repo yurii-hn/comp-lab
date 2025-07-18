@@ -19,6 +19,7 @@ import {
 } from 'src/app/components/dashboard/optimal-control-info-panel/optimal-control-info-panel.store';
 import { DatatableComponent } from 'src/app/components/shared/datatable/datatable.component';
 import { RowScheme } from 'src/app/components/shared/datatable/datatable.store';
+import { EquationDisplayComponent } from 'src/app/components/shared/equation-display/equation-display.component';
 import { ModelInfoComponent } from 'src/app/components/shared/model-info/model-info.component';
 
 @Component({
@@ -27,6 +28,7 @@ import { ModelInfoComponent } from 'src/app/components/shared/model-info/model-i
         AngularSplitModule,
         DatatableComponent,
         ModelInfoComponent,
+        EquationDisplayComponent,
         DecimalPipe,
     ],
     providers: [OptimalControlInfoPanelStore],

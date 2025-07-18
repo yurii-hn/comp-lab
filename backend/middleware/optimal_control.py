@@ -11,7 +11,7 @@ from classes.model.runtime_compartment import RuntimeCompartment
 from classes.model.runtime_model import RuntimeModel
 from classes.model.datatable import Datatable
 from classes.model.model import Model
-from classes.common.approximation_type import ApproximationType
+from classes.common.interpolation_type import InterpolationType
 from classes.optimal_control.intervention_boundaries import InterventionBoundaries
 from classes.optimal_control.intervention_parameters import InterventionParameters
 from classes.optimal_control.parameters import OptimalControlParameters
@@ -81,7 +81,7 @@ def optimal_control(
                 constant["name"]: Values(
                     times,
                     np.repeat(constant["value"], times.size),
-                    ApproximationType.PIECEWISE_CONSTANT,
+                    InterpolationType.PIECEWISE_CONSTANT,
                 )
                 for constant in runtime_model["constants"]
             }
@@ -91,7 +91,7 @@ def optimal_control(
                 intervention["name"]: Values(
                     intervention_times,
                     np.zeros(intervention_times.size),
-                    ApproximationType.PIECEWISE_CONSTANT,
+                    InterpolationType.PIECEWISE_CONSTANT,
                 )
                 for intervention in runtime_model["interventions"]
             }
@@ -143,6 +143,7 @@ def optimal_control(
             "noControlCompartments": no_control_compartments,
             "optimalCompartments": variables_datatable.compartments_data,
             "interventions": variables_datatable.interventions_data,
+            "hamiltonian": str(hamiltonian.expression),
             "adjointModel": {
                 name: str(equation.expression)
                 for name, equation in adjoint_model["lambdas"].items()
@@ -214,7 +215,7 @@ def update_interventions(
                 times,
                 THETA * updated_values
                 + (1 - THETA) * variables_datatable[intervention_name](times),
-                intervention_parameters["approximationType"],
+                intervention_parameters["interpolationType"],
             )
         else:
             derivative_values = equation.calculate(
@@ -231,7 +232,7 @@ def update_interventions(
                     boundaries["lowerBoundary"],
                     boundaries["upperBoundary"],
                 ),
-                intervention_parameters["approximationType"],
+                intervention_parameters["interpolationType"],
             )
 
     variables_datatable.set_interventions(new_values)

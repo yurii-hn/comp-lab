@@ -34,6 +34,10 @@
             flex-direction: column;
             padding: 10px;
             gap: 10px;
+
+            .equation {
+                font: var(--mat-sys-title-large);
+            }
         }
     }
 

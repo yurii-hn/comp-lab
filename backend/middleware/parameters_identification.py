@@ -3,7 +3,7 @@ import numpy.typing as npt
 import sympy as sp
 from scipy.optimize import minimize
 
-from classes.common.approximation_type import ApproximationType
+from classes.common.interpolation_type import InterpolationType
 from classes.common.data import Data
 from classes.common.error_response import ErrorResponse
 from classes.common.values import Values
@@ -50,7 +50,7 @@ def parameters_identification(
                         ),
                         times.size,
                     ),
-                    ApproximationType.PIECEWISE_CONSTANT,
+                    InterpolationType.PIECEWISE_CONSTANT,
                 )
                 for constant in runtime_model["constants"]
             }
@@ -60,7 +60,7 @@ def parameters_identification(
                 intervention["name"]: Values(
                     times,
                     np.zeros(times.size),
-                    ApproximationType.PIECEWISE_CONSTANT,
+                    InterpolationType.PIECEWISE_CONSTANT,
                 )
                 for intervention in runtime_model["interventions"]
             }
@@ -124,7 +124,7 @@ def optimization_criteria(
             constant: Values(
                 times,
                 np.repeat(constants[i], times.size),
-                ApproximationType.PIECEWISE_CONSTANT,
+                InterpolationType.PIECEWISE_CONSTANT,
             )
             for i, constant in enumerate(parameters["selectedConstants"])
         }

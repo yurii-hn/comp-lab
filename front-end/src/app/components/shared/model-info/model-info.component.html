@@ -1,24 +1,29 @@
 @let modelExpressions = this.modelExpressions();
+@let hamiltonianExpression = this.hamiltonianExpression();
 @let adjointModelExpressions = this.adjointModelExpressions();
 
 <p class="title">Model info</p>
 
 @for (
-    group of modelExpressions.concat(adjointModelExpressions);
+    group of modelExpressions
+        .concat(hamiltonianExpression)
+        .concat(adjointModelExpressions);
     track group.name
 ) {
-    <div class="group">
-        <p class="title">{{ group.name }}</p>
+    @if (group.expressions.length) {
+        <div class="group">
+            <p class="title">{{ group.name }}</p>
 
-        <div class="body">
-            @for (expression of group.expressions; track expression) {
-                <app-equation-display
-                    class="equation"
-                    [equation]="expression"
-                />
-            }
+            <div class="body">
+                @for (expression of group.expressions; track expression) {
+                    <app-equation-display
+                        class="equation"
+                        [equation]="expression"
+                    />
+                }
+            </div>
         </div>
-    </div>
+    }
 } @empty {
     <p class="title">&lt;No data&gt;</p>
 }

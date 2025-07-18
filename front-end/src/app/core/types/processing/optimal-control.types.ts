@@ -7,7 +7,7 @@ export interface InterventionBoundaries {
 
 export interface InterventionParameters {
     nodesAmount: number;
-    approximationType: ApproximationType;
+    interpolationType: InterpolationType;
     boundaries: Record<string, InterventionBoundaries>;
 }
 
@@ -22,12 +22,13 @@ export interface OptimalControlResult {
     noControlCompartments: Record<string, Data>;
     optimalCompartments: Record<string, Data>;
     interventions: Record<string, Data>;
+    hamiltonian: string;
     adjointModel: Record<string, string>;
     noControlObjective: number;
     optimalObjective: number;
 }
 
-export enum ApproximationType {
+export enum InterpolationType {
     PiecewiseConstant = 'piecewise-constant',
     PiecewiseLinear = 'piecewise-linear',
 }
