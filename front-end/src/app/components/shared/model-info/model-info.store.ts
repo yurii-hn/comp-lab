@@ -62,7 +62,7 @@ export const InfoStore = signalStore(
                             const compartmentTex: string = store._mathJs
                                 .parse(compartment.name)
                                 .toTex();
-                            const leftSideTex: string = `\\frac{${compartmentTex}\\left(t\\right)}{dt} = `;
+                            const leftSideTex: string = `\\frac{d${compartmentTex}\\left(t\\right)}{dt} = `;
                             let isExpressionEmpty: boolean = true;
 
                             return connectedFlows.length
