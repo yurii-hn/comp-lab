@@ -182,7 +182,7 @@ def update_interventions(
     intervention_parameters: InterventionParameters,
     variables_datatable: Datatable,
 ) -> None:
-    THETA = 0.5
+    ETA = 0.5
 
     new_values: dict[str, Values] = {}
 
@@ -213,8 +213,8 @@ def update_interventions(
 
             new_values[intervention_name] = Values(
                 times,
-                THETA * updated_values
-                + (1 - THETA) * variables_datatable[intervention_name](times),
+                ETA * updated_values
+                + (1 - ETA) * variables_datatable[intervention_name](times),
                 intervention_parameters["interpolationType"],
             )
         else:
